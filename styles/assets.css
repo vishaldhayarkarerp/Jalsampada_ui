@@ -1,0 +1,126 @@
+.workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-20);
+}
+
+
+.doctype-capsule-link {
+  text-decoration: none;
+}
+
+
+.doctype-capsule-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  height: 100%;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.doctype-capsule-link:hover .doctype-capsule-card {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary);
+  /* Highlight with primary color */
+}
+
+/* 5. Style the Card Header content */
+.capsule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-16);
+}
+
+/* 6. Style the Card Title */
+.capsule-title {
+  font-size: var(--font-size-lg);
+  /* Or your preferred size */
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* 7. Style the Arrow Icon */
+.capsule-arrow {
+  color: var(--color-text-secondary);
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  /* Prevents icon from shrinking */
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.doctype-capsule-link:hover .capsule-arrow {
+  color: var(--color-primary);
+  transform: translate(4px, -4px);
+  /* The "northeast" effect */
+}
+/* Add this to styles/assets.css */
+
+/* 1. The container for our list */
+.doctype-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8); /* A small gap between each row */
+  max-width: 700px; /* Optional: Constrain the width for a cleaner look */
+}
+
+/* 2. Style the Button component itself */
+.doctype-row-button {
+  /* Make it full width and set height */
+  width: 100%;
+  height: 60px; /* Taller, more clickable row */
+  
+  /* Use flexbox to position the Link's content */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
+  /* Use our theme's border and radius */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  
+  /* Padding inside the button */
+  padding: 0 var(--space-16);
+  
+  /* Use the "ghost" variant's hover/active state from shadcn */
+  /* We just override the border for a nice effect */
+}
+
+/* 3. Add a blue border on hover */
+.doctype-row-button:hover {
+  border-color: var(--color-primary);
+}
+
+/* 4. Style the left side (Icon + Title) */
+.doctype-row-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.doctype-row-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-primary); /* Use your theme's primary blue */
+}
+
+.doctype-row-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+/* 5. Style the arrow on the right */
+.doctype-row-arrow {
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-secondary);
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+/* 6. Make the arrow move and change color on hover */
+.doctype-row-button:hover .doctype-row-arrow {
+  color: var(--color-primary);
+  transform: translateX(4px);
+}
