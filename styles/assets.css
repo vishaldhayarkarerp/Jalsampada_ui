@@ -55,34 +55,38 @@
   transform: translate(4px, -4px);
   /* The "northeast" effect */
 }
+
 /* Add this to styles/assets.css */
 
 /* 1. The container for our list */
 .doctype-list-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8); /* A small gap between each row */
-  max-width: 700px; /* Optional: Constrain the width for a cleaner look */
+  gap: var(--space-8);
+  /* A small gap between each row */
+  max-width: 700px;
+  /* Optional: Constrain the width for a cleaner look */
 }
 
 /* 2. Style the Button component itself */
 .doctype-row-button {
   /* Make it full width and set height */
   width: 100%;
-  height: 60px; /* Taller, more clickable row */
-  
+  height: 60px;
+  /* Taller, more clickable row */
+
   /* Use flexbox to position the Link's content */
   display: flex;
   justify-content: space-between;
   align-items: center;
-  
+
   /* Use our theme's border and radius */
   border: 1px solid var(--color-border);
   border-radius: var(--radius-base);
-  
+
   /* Padding inside the button */
   padding: 0 var(--space-16);
-  
+
   /* Use the "ghost" variant's hover/active state from shadcn */
   /* We just override the border for a nice effect */
 }
@@ -102,7 +106,8 @@
 .doctype-row-icon {
   width: 20px;
   height: 20px;
-  color: var(--color-primary); /* Use your theme's primary blue */
+  color: var(--color-primary);
+  /* Use your theme's primary blue */
 }
 
 .doctype-row-title {
@@ -124,16 +129,18 @@
   color: var(--color-primary);
   transform: translateX(4px);
 }
+
 /* Add to styles/assets.css */
 
 .form-grid-2-col {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Two equal columns */
+  grid-template-columns: 1fr 1fr;
+  /* Two equal columns */
   gap: var(--space-24);
-  background-color: var(--color-surface);
   padding: var(--space-24);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-card-border);
+  border: 1px solid var(--color-border);
+  background-color: transparent;
 }
 
 .form-column {
