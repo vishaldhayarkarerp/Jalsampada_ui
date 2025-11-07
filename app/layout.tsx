@@ -69,7 +69,7 @@ export default function RootLayout({
                 </Link>
 
                 <Link
-                  href="/assets/workspace"
+                  href="/assets"
                   className={`nav-item ${pathname.startsWith("/assets") ? "active" : ""}`}
                 >
                   <i className="fas fa-cogs"></i>
