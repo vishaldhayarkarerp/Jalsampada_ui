@@ -20,7 +20,7 @@ const Login: React.FC = () => {
 
     try {
       const response = await fetch(
-        "http://103.219.1.138:4430/api/method/quantbit_hims_integration.quantbit_hims_integration.api.login",
+        "http://103.219.1.138:4429/api/method/quantlis_management.quantlis_management.api.login",
         {
           method: "POST",
           headers: {

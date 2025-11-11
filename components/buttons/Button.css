@@ -1,0 +1,153 @@
+/* Button Sizes */
+@import "tailwindcss";
+@import "tw-animate-css";
+.button {
+  @apply flex flex-row gap-2 justify-center items-center rounded-lg 
+        focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none whitespace-nowrap cursor-pointer;
+}
+.icon {
+  @apply flex justify-center items-center rounded-lg 
+        focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none whitespace-nowrap;
+}
+.link-button {
+  @apply flex flex-row gap-2 justify-center items-center whitespace-nowrap w-fit h-[24px];
+}
+.link-primary {
+  @apply text-[#0D74CE] disabled:text-[#8EC8F6] flex flex-row gap-2;
+}
+
+.link-danger {
+  @apply text-[#E5484D] disabled:text-[#EB8E90] flex flex-row gap-2;
+}
+
+.link-black {
+  @apply text-[#1C2024] disabled:text-[#8B8D98] flex flex-row gap-2;
+}
+.link-size {
+  @apply p-0 text-sm font-medium leading-5;
+}
+
+/* button color */
+.primary-button {
+  @apply bg-[#0090FF] text-[#FFFFFF] hover:bg-[#0588F0] active:bg-[#0588F0] 
+  focus-visible:ring-[#0090FF] disabled:bg-[#E8E8EC] disabled:text-[#1C202480];
+}
+.primary-outlined-button {
+  @apply bg-white text-[#0D74CE] border-2 border-[#5EB1EF] hover:bg-[#E6F4FE] active:bg-[#E6F4FE]
+    focus-visible:ring-[#8EC8F6] focus-visible:ring-offset-0 disabled:border-[#D9D9E0] disabled:text-[#0000004D] disabled:bg-white;
+}
+
+.secondary-button {
+  @apply bg-white text-[#000000] border-[1px] border-[#D9D9E0] hover:bg-[#E8E8EC] hover:border-[#B9BBC6] active:bg-[#E8E8EC]
+    focus-visible:ring-[#0090FF] disabled:border-[#B9BBC6] disabled:text-[#000000] disabled:bg-white;
+}
+
+.ghost-primary-button {
+  @apply bg-white text-[#0D74CE] hover:bg-[#E6F4FE] active:bg-[#E6F4FE]
+focus-visible:ring-[#C2E5FF] focus-visible:ring-offset-0 disabled:text-[#000000];
+}
+
+.ghost-black-button {
+  @apply bg-white text-[#000000] hover:bg-[#E8E8EC] active:bg-[#E8E8EC]
+    focus-visible:ring-[#E8E8EC] focus-visible:ring-offset-0 disabled:text-[#000000];
+}
+
+.danger-button {
+  @apply bg-[#E5484D] text-[#FFFFFF] hover:bg-[#DC3E42] active:bg-[#DC3E42]
+  focus-visible:ring-[#E5484D]  disabled:bg-[#EB8E90] disabled:text-[#FFFFFF];
+}
+.icon-button {
+  @apply border-none outline-none;
+}
+
+/* button size */
+.button-xsmall {
+  @apply w-fit h-[24px] font-medium  text-xs leading-4 pl-3 pr-3 pt-1 pb-1 rounded-[4px];
+}
+.button-small {
+  @apply w-fit h-[32px] font-medium  text-xs leading-4 pl-3 pr-3 pt-2 pb-2;
+}
+
+.button-medium {
+  @apply  h-[40px] font-medium flex items-center justify-center  text-sm px-3 py-2 ;
+}
+
+.button-large {
+  @apply w-fit h-[48px] font-medium  text-base leading-6 pl-5 pr-5 pt-3 pb-3;
+}
+
+.button-xlarge {
+  @apply w-fit h-[52px] font-medium  text-base leading-6 pl-6 pr-6 pt-3 pb-3;
+}
+
+/* button icon size */
+.button-icon-xsmall {
+  @apply p-2 w-fit h-6;
+}
+.button-icon-small {
+  @apply p-2 w-fit h-8;
+}
+.button-icon-medium {
+  @apply p-2 w-fit h-10;
+}
+.button-icon-large {
+  @apply p-2 w-fit h-11;
+}
+.button-icon-xlarge {
+  @apply p-3 w-fit h-12;
+}
+.button-icon-xxlarge {
+  @apply p-3 w-fit h-[52px];
+}
+
+/* button icon image size */
+
+.button-icon-xsmall img {
+  @apply w-2 h-2;
+}
+.button-icon-small img {
+  @apply w-4 h-4;
+}
+.button-icon-medium img {
+  @apply w-6 h-6;
+}
+.button-icon-large img {
+  @apply w-7 h-7;
+}
+.button-icon-xlarge img {
+  @apply w-6 h-6;
+}
+.button-icon-xxlarge img {
+  @apply w-7 h-7;
+}
+
+/* image size */
+.img-small {
+  @apply w-4 h-4;
+}
+.img-medium {
+  @apply w-6 h-6;
+}
+
+
+/* Outline support based on type */
+
+.outline-primary-button {
+  @apply bg-white text-[#0D74CE] border-2 border-[#5EB1EF] hover:bg-[#E6F4FE] active:bg-[#E6F4FE]
+  focus-visible:ring-[#8EC8F6] focus-visible:ring-offset-0 disabled:border-[#D9D9E0] disabled:text-[#0000004D] disabled:bg-white;
+}
+
+.outline-secondary-button {
+  @apply bg-white text-[#000000] border-[1px] border-[#D9D9E0] hover:bg-[#E8E8EC] active:bg-[#E8E8EC]
+  focus-visible:ring-[#0090FF] disabled:border-[#B9BBC6] disabled:text-[#000000] disabled:bg-white;
+}
+
+.outline-danger-button {
+  @apply bg-white text-[#E5484D] border-[1px] border-[#E5484D] hover:bg-[#FBEAEA] active:bg-[#FBEAEA]
+  focus-visible:ring-[#E5484D] disabled:border-[#EB8E90] disabled:text-[#EB8E90] disabled:bg-white;
+}
+
+.outline-link-primary {
+  @apply bg-white text-[#0D74CE] border border-[#5EB1EF] hover:bg-[#F0F9FF] active:bg-[#F0F9FF]
+  focus-visible:ring-[#C2E5FF] focus-visible:ring-offset-0 disabled:text-[#8EC8F6] disabled:border-[#D9D9E0];
+}

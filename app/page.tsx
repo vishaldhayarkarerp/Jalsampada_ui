@@ -74,7 +74,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="dashboard-section">
+      {/* <div className="dashboard-section">
         <h3>Current System Status</h3>
         <div className="system-overview">
           <img
@@ -83,7 +83,7 @@ export default function Home() {
             className="system-image"
           />
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
