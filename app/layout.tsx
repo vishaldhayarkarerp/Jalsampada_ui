@@ -77,6 +77,14 @@ export default function RootLayout({
                 </Link>
 
                 <Link
+                  href="/lis-management"
+                  className={`nav-item ${pathname.startsWith("/lis-management") ? "active" : ""}`}
+                >
+                  <i className="fas fa-cogs"></i>
+                  <span>LIS Management</span>
+                </Link>
+
+                <Link
                   href="/operations"
                   className={`nav-item ${pathname === "/operations" ? "active" : ""}`}
                 >

@@ -5,11 +5,10 @@
 import * as React from "react";
 import { appData } from "@/lib/sample-data";
 // We only need the types used by the Dashboard
-import type { TechnicalData, SparePart, MaintenanceRecord } from "@/types/app-data";
+// import type { TechnicalData, SparePart, MaintenanceRecord } from "@/types/app-data";
 
 export default function Home() {
   // All state related to navigation and sidebar is GONE.
-
   // We only keep the data calculations needed for THIS page (the Dashboard).
   const activePumps = appData.operation_data.filter(op => op.status === "Running").length;
   const totalPumps = 3;

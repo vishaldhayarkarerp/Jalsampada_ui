@@ -7,7 +7,7 @@ import { DynamicForm, FormField } from "@/components/DynamicFormComponent";
 export default function RecordDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const doctypeName = params.doctypeName as string;
+  const doctypeName = "asset";
   const docname = params.docname as string;
 
   // Define your form fields

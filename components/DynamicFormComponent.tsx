@@ -771,7 +771,7 @@ export function DynamicForm({
                         <h2>{title}</h2>
                         {description && <p>{description}</p>}
                     </div>
-                    <Button type="submit">
+                    <Button type="submit" className="btn btn--primary">
                         <i className="fas fa-save" style={{ marginRight: '8px' }}></i>
                         {submitLabel}
                     </Button>

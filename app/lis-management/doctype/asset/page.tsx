@@ -30,9 +30,9 @@ export default function DoctypePage() {
     return doctypeName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }, [doctypeName]);
 
-  const handleCardClick = (recordId: string) => {
+  const handleCardClick = (id: string) => {
     // This part is correct, it navigates to the form
-    router.push(`/assets/${doctypeName}/${recordId}`);
+    router.push(`/lis-management/doctype/${doctypeName}/${id}`);
   };
 
   const getFieldsForDoctype = (record: TechnicalData): RecordCardField[] => {
