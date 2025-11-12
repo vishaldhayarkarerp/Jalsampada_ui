@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-// import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, User, Loader2 } from "lucide-react";
 
@@ -10,7 +10,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  // const { login } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -20,7 +20,7 @@ const Login: React.FC = () => {
 
     try {
       const response = await fetch(
-        "http://103.219.1.138:4429/api/method/quantlis_management.quantlis_management.api.login",
+        "http://103.219.1.138:4429/api/method/quantlis_management.api.login",
         {
           method: "POST",
           headers: {
@@ -34,10 +34,10 @@ const Login: React.FC = () => {
 
       if (response.ok && data.message === "Logged In") {
         const { api_key, api_secret } = data.key_details;
-        // console.log("API Key:", api_key);
-        // console.log("API Secret:", api_secret);
-        // login(api_key, api_secret);
-        router.push("/pos");
+        console.log("API Key:", api_key);
+        console.log("API Secret:", api_secret);
+        login(api_key, api_secret);
+        router.push("/");
       } else {
         setError(data.message || "Login failed");
       }

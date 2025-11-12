@@ -153,3 +153,171 @@
 .form-column .form-item {
   margin-bottom: var(--space-8);
 }
+
+/* =================================== */
+/* List View Table Styles (Theme-Aware) */
+/* =================================== */
+
+.equipment-list-view .list-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--color-border); /* USE VARIABLE */
+  border-radius: var(--radius-base); /* Use your radius variable */
+  overflow: hidden;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow-sm); /* Use your shadow variable */
+}
+
+.list-table th,
+.list-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: none; 
+}
+
+.list-table thead {
+  background-color: var(--color-secondary); /* USE VARIABLE */
+}
+
+.list-table th {
+  color: var(--color-text-secondary); /* USE VARIABLE */
+  font-weight: 600;
+  text-transform: capitalize;
+  font-size: 0.88rem;
+  letter-spacing: normal;
+}
+
+.list-table tbody tr {
+  background-color: var(--color-surface); /* USE VARIABLE */
+  transition: background-color 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+.list-table tbody tr:hover {
+  background-color: var(--color-secondary-hover); /* USE VARIABLE */
+}
+
+.list-table tbody tr:not(:last-child) {
+  border-bottom: 1px solid var(--color-border); /* USE VARIABLE */
+}
+
+.list-table tbody tr td {
+  color: var(--color-text); /* USE VARIABLE */
+}
+
+.list-table tbody tr td:first-child {
+  font-weight: 500;
+  color: var(--color-text); /* USE VARIABLE */
+}
+
+.list-table .no-results-cell {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-secondary); /* USE VARIABLE */
+}
+
+/* =================================== */
+/* Grid View Card (Dark Mode Fix)    */
+/* =================================== */
+
+/* Your globals.css already styles `.equipment-card` using theme variables.
+  However, the header has a hard-coded gradient.
+  Let's override the header in dark mode to use theme colors.
+*/
+[data-color-scheme="dark"] .equipment-card-header,
+[data-color-scheme="dark"] .equipment-card-header h4,
+[data-color-scheme="dark"] .equipment-card-header .equipment-type {
+  background: var(--color-primary); /* Use dark mode primary */
+  color: var(--color-btn-primary-text); /* Use text color for dark primary */
+}
+
+/* =F================================= */
+/* View Switcher (Single Button)     */
+/* =================================== */
+
+.view-switcher .btn {
+  /* This ensures the single button has the right icon size and padding */
+  width: 40px; 
+  height: 40px;
+  font-size: 1rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Use your standard outline button style */
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.view-switcher .btn:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+
+
+/* =================================== */
+/* Child Form Table Styles             */
+/* =================================== */
+
+/* Use the stock-table styles, but remove padding from body cells */
+.child-form-table tbody td {
+  padding: 0;
+  vertical-align: middle;
+}
+
+/* Style for the new borderless input */
+.form-control-borderless {
+  display: block;
+  width: 100%;
+  padding: var(--space-12) var(--space-16); /* Match table cell padding */
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+/* On focus, give it a background and a small shadow to show it's active */
+.form-control-borderless:focus {
+  background-color: var(--color-surface);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+  position: relative;
+  z-index: 1;
+}
+
+/* Style for the checkbox cells (header and body) */
+.child-table-checkbox-cell {
+  padding: var(--space-12); /* Add padding back for the checkbox */
+  text-align: center;
+  vertical-align: middle;
+  width: 40px;
+}
+
+/* Center the checkbox */
+.child-table-checkbox-cell .form-control {
+  display: inline-block;
+  margin: 0;
+}
+
+/* Add a background color to selected rows */
+.child-form-table tbody tr.row-selected {
+  /* Use one of your theme's light background colors */
+  background-color: var(--color-bg-1, rgba(59, 130, 246, 0.08)); 
+}
+
+/* Style for the destructive delete button in the footer */
+.btn--destructive {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.btn--destructive:hover {
+  background-color: rgba(var(--color-error-rgb), 0.1);
+  color: var(--color-error);
+}
