@@ -9,6 +9,7 @@ import {
   FormField,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const API_BASE_URL = "http://103.219.1.138:4429/api/resource";
 
@@ -44,6 +45,10 @@ interface AssetData {
   maintenance_required?: 0 | 1;
   custom_previous_hours?: number;
   custom_condition?: string;
+  docstatus: 0 | 1 | 2;
+  modified: string;
+  additional_asset_cost?: number;
+  total_asset_cost?: number;
 
   // Insurance fields (may be missing)
   policy_number?: string;
@@ -71,12 +76,51 @@ interface AssetData {
   }>;
   custom_drawing_attachment?: Array<{
     name_of_document?: string;
-    attachment?: string;
+    attachment?: string | File; // Can be a string (URL) or a new File
   }>;
   custom_asset_specifications?: Array<{
     specification_type: string;
     details: string;
   }>;
+}
+
+/**
+ * --- NEW HELPER FUNCTION ---
+ * Uploads a single file to Frappe's 'upload_file' method
+ * and returns the server URL.
+ */
+async function uploadFile(
+  file: File,
+  apiKey: string,
+  apiSecret: string,
+  methodUrl: string
+): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file, file.name);
+  formData.append("is_private", "0"); // 0 = Public, 1 = Private
+
+  try {
+    // Note: The base URL for this MUST be the root, not /api/resource
+    const resp = await axios.post(
+      `${methodUrl.replace("/api/resource", "")}/api/method/upload_file`,
+      formData,
+      {
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        },
+        withCredentials: true,
+      }
+    );
+    
+    if (resp.data && resp.data.message) {
+      return resp.data.message.file_url; // This is the /files/filename.jpg URL
+    } else {
+      throw new Error("Invalid response from file upload");
+    }
+  } catch (err) {
+    console.error("File upload failed:", err);
+    throw err;
+  }
 }
 
 /* -------------------------------------------------
@@ -110,8 +154,13 @@ export default function RecordDetailPage() {
         setError(null);
 
         const resp = await axios.get(`${API_BASE_URL}/${doctypeName}/${docname}`, {
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+          headers: {
+            Authorization: `token ${apiKey}:${apiSecret}`,
+            "Content-Type": "application/json",
+          },
           withCredentials: true,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
         });
 
         setAsset(resp.data.data);
@@ -162,27 +211,29 @@ export default function RecordDetailPage() {
           },
           { name: "status", label: "Status", type: "Read Only" },
           { name: "asset_name", label: "Asset Name", type: "Text", required: true },
-          { name: "company", label: "Company", type: "Link", required: true },
-          { name: "asset_category", label: "Asset Category", type: "Link" },
+          { name: "company", label: "Company", type: "Link", required: true, linkTarget: "Company" },
+          { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
           {
             name: "asset_owner",
             label: "Asset Owner",
-            type: "Select",
+            type: "Select", 
             options: [{ label: "Company", value: "Company" }],
           },
-          { name: "custom_asset_no", label: "Asset No", type: "Data" },
-          { name: "asset_owner_company", label: "Asset Owner Company", type: "Link" },
-          { name: "location", label: "Location", type: "Link", required: true },
+          { name: "custom_asset_no", label: "Asset No", type: "Data" }, 
+          { name: "asset_owner_company", label: "Asset Owner Company", type: "Link", linkTarget: "Company" },
+          { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location" },
           { name: "is_existing_asset", label: "Is Existing Asset", type: "Check" },
-          { name: "custom_lis_name", label: "Lift Irrigation Scheme", type: "Data" },
+          { name: "custom_lis_name", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme" },
           { name: "is_composite_asset", label: "Is Composite Asset", type: "Check" },
-          { name: "custom_stage_no", label: "Stage No.", type: "Data" },
+          { name: "custom_stage_no", label: "Stage No.", type: "Link", linkTarget: "Stage No" },
           { name: "is_composite_component", label: "Is Composite Component", type: "Check" },
           { name: "custom_serial_number", label: "Serial Number", type: "Data" },
           { name: "section_purchase", label: "Purchase Details", type: "Section Break" },
           { name: "purchase_date", label: "Purchase Date", type: "Date" },
           { name: "gross_purchase_amount", label: "Net Purchase Amount", type: "Currency", required: true },
           { name: "asset_quantity", label: "Asset Quantity", type: "Int", min: 1 },
+          { name: "additional_asset_cost", label: "Additional Asset Cost", type: "Currency" },
+          { name: "total_asset_cost", label: "Total Asset Cost", type: "Read Only" },
         ]),
       },
 
@@ -201,15 +252,15 @@ export default function RecordDetailPage() {
       {
         name: "Other Info",
         fields: fields([
-          { name: "custodian", label: "Custodian", type: "Data" },
-          { name: "department", label: "Department", type: "Data" },
-          { name: "equipement_make", label: "Equipement Make", type: "Data" },
+          { name: "custodian", label: "Custodian", type: "Link", linkTarget: "Employee" },
+          { name: "department", label: "Department", type: "Link", linkTarget: "Department" },
+          { name: "equipement_make", label: "Equipement Make", type: "Link", linkTarget: "Equipement Make" },
           { name: "maintenance_required", label: "Maintenance Required", type: "Check" },
-          { name: "equipement_model", label: "Equipement Model", type: "Data" },
+          { name: "equipement_model", label: "Equipement Model", type: "Link", linkTarget: "Equipement Model" },
           { name: "installation_date", label: "Installation Date", type: "Date" },
-          { name: "equipement_capacity", label: "Equipement Capacity", type: "Data" },
+          { name: "equipement_capacity", label: "Equipement Capacity", type: "Link", linkTarget: "Equipement Capacity" },
           { name: "last_repair_date", label: "Last Repair Date", type: "Date" },
-          { name: "equipement_rating", label: "Equipement Rating", type: "Data" },
+          { name: "equipement_rating", label: "Equipement Rating", type: "Link", linkTarget: "Rating" },
           { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float" },
           {
             name: "custom_condition",
@@ -239,7 +290,7 @@ export default function RecordDetailPage() {
             type: "Table",
             columns: [
               { name: "name_of_document", label: "Name of Document", type: "text" },
-              { name: "attachment", label: "Attachment", type: "Link" },
+              { name: "attachment", label: "Attachment", type: "Attach" },
             ],
           },
         ]),
@@ -277,41 +328,135 @@ export default function RecordDetailPage() {
     ];
   }, [asset]);
 
-  /* -------------------------------------------------
-     5. SUBMIT – convert booleans → 0/1
-     ------------------------------------------------- */
-  const handleSubmit = async (data: Record<string, any>) => {
+ /* -------------------------------------------------
+    5. SUBMIT – Now with File Uploading (Corrected Logic)
+    ------------------------------------------------- */
+  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+    
+    if (!isDirty) {
+      toast.info("No changes to save.");
+      return; 
+    }
+
     setIsSaving(true);
+    
     try {
-      const payload = { ...data };
+      // 1. Create a deep copy of the form data. This will be our FINAL payload.
+      const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
 
-      const boolFields = [
-        "is_existing_asset",
-        "is_composite_asset",
-        "is_composite_component",
-        "calculate_depreciation",
-        "is_fully_depreciated",
-        "maintenance_required",
-        "comprehensive_insurance",
-      ];
+      // 2. Handle File Uploads
+      if (payload.custom_drawing_attachment && apiKey && apiSecret) {
+        toast.info("Uploading attachments...");
+        
+        // Use Promise.all to upload all new files in parallel
+        await Promise.all(
+          payload.custom_drawing_attachment.map(async (row: any, index: number) => {
+            // Get the original value from the 'data' object (which has the File)
+            const originalFile = data.custom_drawing_attachment[index]?.attachment;
+            
+            if (originalFile instanceof File) {
+              // This is a new file that needs to be uploaded
+              try {
+                // Pass the base URL, not the resource URL
+                const fileUrl = await uploadFile(originalFile, apiKey, apiSecret, API_BASE_URL.replace("/api/resource", ""));
+                
+                // --- THIS IS THE CRITICAL CHANGE ---
+                // We update the 'attachment' field *inside* our 'payload'
+                row.attachment = fileUrl; 
+                // -----------------------------------
+                
+              } catch (err) {
+                // Throw an error to stop the save
+                throw new Error(`Failed to upload file: ${originalFile.name}`);
+              }
+            }
+            // If it's not a File, it's already a string URL (or null),
+            // so we don't need an 'else' block. It's already correct in 'payload'.
+          })
+        );
+      }
 
-      boolFields.forEach((f) => {
-        if (f in payload) payload[f] = payload[f] ? 1 : 0;
+      // 3. Clean the payload (remove virtual fields)
+      const allFields = formTabs.flatMap(tab => tab.fields);
+      const nonDataFields = new Set<string>();
+      allFields.forEach(field => {
+        if (
+          field.type === "Section Break" ||
+          field.type === "Column Break" ||
+          field.type === "Button" ||
+          field.type === "Read Only"
+        ) {
+          nonDataFields.add(field.name);
+        }
       });
 
-      await axios.put(`${API_BASE_URL}/${doctypeName}/${docname}`, payload, {
+      // We create 'finalPayload' *from our modified payload*, not from 'data'
+      const finalPayload: Record<string, any> = {};
+      for (const key in payload) {
+        if (!nonDataFields.has(key)) {
+          finalPayload[key] = payload[key];
+        }
+      }
+
+      // 4. Add metadata
+      if (!asset) {
+         alert("Error: Asset data not loaded. Cannot save.");
+         setIsSaving(false);
+         return;
+      }
+      finalPayload.modified = asset.modified;
+      finalPayload.docstatus = asset.docstatus;
+
+      // 5. Conversions
+      const boolFields = [
+        "is_existing_asset", "is_composite_asset", "is_composite_component",
+        "calculate_depreciation", "is_fully_depreciated",
+        "maintenance_required", "comprehensive_insurance",
+      ];
+      boolFields.forEach((f) => {
+        if (f in finalPayload) finalPayload[f] = finalPayload[f] ? 1 : 0;
+      });
+
+      const numericFields = [
+        "gross_purchase_amount", "additional_asset_cost", "total_asset_cost",
+        "asset_quantity", "opening_accumulated_depreciation",
+        "opening_number_of_booked_depreciations", "value_after_depreciation",
+        "custom_previous_hours", "insured_value"
+      ];
+      numericFields.forEach((f) => {
+        finalPayload[f] = Number(finalPayload[f]) || 0; 
+      });
+
+      // 6. Delete "Set Only Once" fields
+      delete finalPayload.naming_series;
+
+      console.log("Sending this PAYLOAD to Frappe:", finalPayload);
+
+      // 7. Send the final payload
+      const resp = await axios.put(`${API_BASE_URL}/${doctypeName}/${docname}`, finalPayload, {
         headers: {
           Authorization: `token ${apiKey}:${apiSecret}`,
           "Content-Type": "application/json",
         },
         withCredentials: true,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
       });
 
-      alert("Changes saved!");
-      router.push(`/lis-management/doctype/${doctypeName}`);
-    } catch (err) {
+      toast.success("Changes saved!");
+      
+      if (resp.data && resp.data.data) {
+        setAsset(resp.data.data);
+      }
+      
+      router.push(`/lis-management/doctype/asset/${docname}`);
+
+    } catch (err: any) {
       console.error("Save error:", err);
-      alert("Failed to save. Check console for details.");
+      console.log("Full server error:", err.response?.data); 
+      toast.error("Failed to save", {
+        description: (err as Error).message || "Check the browser console (F12) for the full server error."
+      });
     } finally {
       setIsSaving(false);
     }

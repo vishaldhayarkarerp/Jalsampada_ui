@@ -3,12 +3,18 @@
 import * as React from "react";
 import {
   useForm,
+  FormProvider,
   useFieldArray,
   FieldErrors,
   RegisterOptions,
 } from "react-hook-form";
-import { TableField } from "./TableField";   // <-- new import
+import { Checkbox } from "@/components/ui/checkbox"
+import { Button } from "@/components/ui/button";
+import { Upload, X } from "lucide-react";
+import { useRef } from "react";
 
+import { TableField } from "./TableField";   // <-- new import
+import { LinkField } from "./LinkField";
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (unchanged from your original code)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,12 +46,14 @@ export type FieldType =
   | "Button"
   | "Table MultiSelect"
   | "Percent"
-  | "Rating";
+  | "Rating"
+  | "Attach";
 
 export interface FormField {
   name: string;
   label: string;
   type: FieldType;
+  linkTarget?: string;
   required?: boolean;
   description?: string;
   placeholder?: string;
@@ -72,7 +80,7 @@ export interface TabbedLayout {
 // Props
 export interface DynamicFormProps {
   tabs: TabbedLayout[];
-  onSubmit: (data: Record<string, any>) => void;
+  onSubmit: (data: Record<string, any>, isDirty: boolean) => void;
   onCancel?: () => void;
   title?: string;
   description?: string;
@@ -109,17 +117,17 @@ function rulesFor(field: FormField): RegisterOptions<Record<string, any>, string
   if (field.max !== undefined)
     rules.max = { value: field.max, message: `${field.label} must be <= ${field.max}` };
 
-  if (field.type === "Link") {
-    rules.validate = (val: string) => {
-      if (!val) return true;
-      try {
-        new URL(val);
-        return true;
-      } catch (_) {
-        return "Please enter a valid URL";
-      }
-    };
-  }
+  // if (field.type === "Link") {
+  //   rules.validate = (val: string) => {
+  //     if (!val) return true;
+  //     try {
+  //       new URL(val);
+  //       return true;
+  //     } catch (_) {
+  //       return "Please enter a valid URL";
+  //     }
+  //   };
+  // }
 
   if (field.type === "Percent") {
     if (rules.min === undefined) rules.min = { value: 0, message: "Percent must be between 0 and 100" };
@@ -177,14 +185,15 @@ export function DynamicForm({
   const defaultValues = React.useMemo(() => buildDefaultValues(allFields), [allFields]);
 
   // ── RHF SETUP ─────────────────────────────────────────────────────────────
+  const methods = useForm<Record<string, any>>({ defaultValues, mode: "onBlur" });
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
     control,
     setValue,
     watch,
-  } = useForm<Record<string, any>>({ defaultValues, mode: "onBlur" });
+  } = methods;
 
   const activeTabFields = tabs[activeTab]?.fields || [];
 
@@ -194,8 +203,7 @@ export function DynamicForm({
     [register]
   );
 
-  const onFormSubmit = (data: Record<string, any>) => onSubmit(data);
-
+  const onFormSubmit = (data: Record<string, any>) => onSubmit(data, isDirty);
   // ── RENDER HELPERS (no hooks inside) ─────────────────────────────────────
   const renderInput = (field: FormField, type: string = "text") => {
     const rules = rulesFor(field);
@@ -272,27 +280,33 @@ export function DynamicForm({
 
   const renderCheckbox = (field: FormField) => {
     const rules = rulesFor(field);
+
     return (
-      <div className="form-group" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <input
+      <div className="flex items-center gap-2">
+        <Checkbox
           id={field.name}
-          type="checkbox"
-          className="form-control"
-          style={{ width: 18, height: 18 }}
+          className="rounded border border-gray-300 data-[state=checked]:bg-primary"
           {...reg(field.name, rules)}
         />
-        <label htmlFor={field.name} className="form-label" style={{ margin: 0 }}>
+
+        <label
+          htmlFor={field.name}
+          className="text-sm font-medium leading-none cursor-pointer"
+        >
           {field.label}
         </label>
-        <FieldError error={(errors as FieldErrors<Record<string, any>>)[field.name]} />
-        {field.description ? (
-          <div style={{ marginLeft: 8 }}>
+
+        <FieldError error={(errors as any)[field.name]} />
+
+        {field.description && (
+          <div className="ml-2">
             <FieldHelp text={field.description} />
           </div>
-        ) : null}
+        )}
       </div>
     );
   };
+
 
   const renderColor = (field: FormField) => {
     const rules = rulesFor(field);
@@ -423,6 +437,86 @@ export function DynamicForm({
     </div>
   );
 
+  const renderAttachment = (field: FormField) => {
+  const rules = rulesFor(field);
+  const value = watch(field.name);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // get registration props once so we can merge refs safely
+  const registration = reg(field.name, rules) as any;
+  const { ref: registerRef, ...registerRest } = registration || {};
+
+  return (
+    <div className="form-group flex flex-col gap-2">
+      <label className="form-label font-medium">{field.label}</label>
+
+      <input
+        type="file"
+        className="hidden"
+        {...registerRest}
+        ref={(el: HTMLInputElement | null) => {
+          // keep local ref
+          fileInputRef.current = el;
+          // also forward to react-hook-form's ref
+          if (typeof registerRef === "function") {
+            registerRef(el);
+          } else if (registerRef) {
+            (registerRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+          }
+        }}
+        onChange={(e) => {
+          // use the registration onChange if present
+          if (registration && registration.onChange) registration.onChange(e);
+          const file = e.target.files?.[0];
+          if (file) {
+            setValue(field.name, file);
+          }
+        }}
+      />
+
+      {!value && (
+        <Button
+          variant="outline"
+          className="w-fit flex items-center gap-2"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Upload size={16} />
+          Upload File
+        </Button>
+      )}
+
+      {value && (
+        <div className="flex items-center gap-3 bg-muted/40 p-3 rounded-md border">
+          <span className="text-sm flex-1">{value?.name}</span>
+
+          <Button
+            variant="outline"
+            className="h-8 px-2"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Replace
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-red-500"
+            onClick={() => setValue(field.name, null)}
+          >
+            <X size={16} />
+          </Button>
+        </div>
+      )}
+
+      <FieldError error={errors[field.name]} />
+    </div>
+  );
+};
+
+
+
+
+
   // ── MAIN FIELD SWITCH ─────────────────────────────────────────────────────
   const renderField = (field: FormField, idx: number) => {
     switch (field.type) {
@@ -458,7 +552,14 @@ export function DynamicForm({
       case "Select":
         return renderSelect(field);
       case "Link":
-        return renderInput(field, "url");
+        return (
+          <LinkField
+            key={field.name}
+            field={field}
+            control={control}
+            error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+          />
+        );
       case "Barcode":
         return renderInput(field, "text");
       case "Read Only":
@@ -478,6 +579,9 @@ export function DynamicForm({
         );
       case "Button":
         return renderButton(field);
+      case "Attach":
+        return renderAttachment(field);
+
       case "Section Break":
         return (
           <div
@@ -498,6 +602,7 @@ export function DynamicForm({
 
   // ── RENDER ───────────────────────────────────────────────────────────────
   return (
+    <FormProvider {...methods}>
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <div className="card" style={{ padding: 16 }}>
         {/* Header */}
@@ -581,6 +686,7 @@ export function DynamicForm({
         </div>
       </div>
     </form>
+    </FormProvider>
   );
 }
 

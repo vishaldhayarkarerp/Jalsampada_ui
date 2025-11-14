@@ -8,7 +8,7 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-
+import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/ModeToggle";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -139,6 +139,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
       <footer className="footer">
         <p>© 2025 JALSAMPADA. All rights reserved.</p>
       </footer>
+
+      <Toaster richColors position="top-right" />
     </div>
   );
 }

@@ -18,7 +18,7 @@ export default function RecordDetailPage() {
       label: "Asset Name",
       type: "Text",
       required: true,
-      placeholder: "Enter asset name",
+      placeholder: "Enter", 
       description: "The name or identifier of the asset"
     },
     {
@@ -339,13 +339,15 @@ export default function RecordDetailPage() {
 
   return (
     <DynamicForm
-      fields={formFields}
-      onSubmit={handleSubmit}
-      onCancel={handleCancel}
-      title={`Edit ${doctypeName} Record`}
-      description={`Update details for record ID: ${docname}`}
-      submitLabel="Save Changes"
-      cancelLabel="Cancel"
+      {...({
+        fields: formFields,
+        onSubmit: handleSubmit,
+        onCancel: handleCancel,
+        title: `Edit ${doctypeName} Record`,
+        description: `Update details for record ID: ${docname}`,
+        submitLabel: "Save Changes",
+        cancelLabel: "Cancel"
+      } as any)}
     />
   );
 }

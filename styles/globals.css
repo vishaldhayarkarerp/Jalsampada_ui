@@ -1704,3 +1704,16 @@ body {
   color: #6f806b;
   margin-bottom: 8px;
 }
+
+.btn--tab {
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.btn--tab-active {
+  border-bottom-color: var(--color-primary, #007bff);
+  color: var(--color-text-primary, #111);
+  font-weight: 600;
+}
+

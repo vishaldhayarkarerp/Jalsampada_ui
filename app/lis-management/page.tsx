@@ -20,8 +20,8 @@ const assetsDoctypes: Doctype[] = [
   { name: "lift-irrigation-scheme", title: "Lift Irrigation Scheme", icon: Droplets },
   { name: "stage-no", title: "Stage No", icon: Layers },
   { name: "equipment-make", title: "Equipement Make", icon: Factory },
-  { name: "equipment-model", title: "Equipement Model", icon: Package },
-  { name: "equipment-capacity", title: "Equipement Capacity", icon: Ruler },
+  { name: "equipement-model", title: "Equipement Model", icon: Package },
+  { name: "equipement-capacity", title: "Equipement Capacity", icon: Ruler },
   { name: "rating", title: "Equipement Rating", icon: Star }
 ];
 
