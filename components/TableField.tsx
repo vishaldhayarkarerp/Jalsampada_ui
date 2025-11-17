@@ -23,28 +23,26 @@ interface TableFieldProps {
 function AttachmentCell({ fieldName, control }: { fieldName: string, control: any }) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   
-  // Get functions to watch and set the value of this specific cell
   const { watch, setValue } = useFormContext(); 
-  const value = watch(fieldName); // Watch the value (e.g., a File object or a string URL)
+  const value = watch(fieldName); 
 
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    // This effect creates a preview URL
     let objectUrl: string | null = null;
 
     if (value instanceof File) {
-      // New file selected: Create a temporary local URL
+      // Case 1: New file selected by user
       objectUrl = URL.createObjectURL(value);
       setPreviewUrl(objectUrl);
-    } else if (typeof value === 'string' && value.startsWith("/files/")) {
-      // Existing file from Frappe: Create a full server URL
+      
+    } else if (typeof value === 'string' && (value.startsWith("/files/") || value.startsWith("/private/files/"))) {
       setPreviewUrl(API_BASE_URL + value);
+
     } else {
       setPreviewUrl(null);
     }
 
-    // Cleanup: Revoke the temporary URL when the component unmounts
     return () => {
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
@@ -55,14 +53,14 @@ function AttachmentCell({ fieldName, control }: { fieldName: string, control: an
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setValue(fieldName, file, { shouldDirty: true }); // Set the value in react-hook-form
+      setValue(fieldName, file, { shouldDirty: true }); 
     }
   };
 
   const handleClear = () => {
-    setValue(fieldName, null, { shouldDirty: true }); // Clear the value
+    setValue(fieldName, null, { shouldDirty: true }); 
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Clear the file input
+      fileInputRef.current.value = ""; 
     }
   };
 
@@ -132,7 +130,6 @@ export function TableField({ field, control, register, errors }: TableFieldProps
     name: field.name,
   });
 
-  // We need the *full* form context to be able to watch cell values
   const formMethods = useFormContext(); 
 
   const [selectedIndices, setSelectedIndices] = React.useState<Set<number>>(new Set());
@@ -213,7 +210,6 @@ export function TableField({ field, control, register, errors }: TableFieldProps
                 {(field.columns || []).map((c) => (
                   <td key={c.name} className="child-table-input-cell">
                     
-                    {/* --- THIS IS THE CHANGE --- */}
                     {c.type === "Attach" ? (
                       <AttachmentCell
                         control={formMethods.control}
@@ -224,11 +220,9 @@ export function TableField({ field, control, register, errors }: TableFieldProps
                         className="form-control-borderless"
                         type={c.type === "number" ? "number" : "text"}
                         placeholder={c.label}
-                        // Use formMethods.register here for context
                         {...formMethods.register(`${field.name}.${idx}.${c.name}`)}
                       />
                     )}
-                    {/* ------------------------ */}
 
                   </td>
                 ))}

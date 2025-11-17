@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import axios from "axios";
-import { Controller, FieldPathValue } from "react-hook-form";
+import { Controller } from "react-hook-form";
 import { useAuth } from "@/context/AuthContext";
 import { FormField } from "./DynamicFormComponent";
 
@@ -20,10 +20,11 @@ interface LinkFieldProps {
 }
 
 /**
- * 1. Load options **once** (mount + auth change)
- * 2. If the current value is not in the list → prepend it
- * 3. Render **nothing** while loading
- * 4. Use Controller with a stable key
+ * FIXED VERSION:
+ * 1. Load options once (mount + auth change)
+ * 2. Inject current value if missing
+ * 3. Show the current value even while loading
+ * 4. Use stable Controller key
  */
 export function LinkField({ control, field, error }: LinkFieldProps) {
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
@@ -31,11 +32,18 @@ export function LinkField({ control, field, error }: LinkFieldProps) {
   const [options, setOptions] = React.useState<Option[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
+  // Get the current value from the controller
+  const currentValue = field.defaultValue;
+
   // -----------------------------------------------------------------
   // FETCH + INJECT CURRENT VALUE
   // -----------------------------------------------------------------
   React.useEffect(() => {
     if (!field.linkTarget || !isAuthenticated || !isInitialized || !apiKey || !apiSecret) {
+      // If no link target or not authenticated, just show the current value
+      if (currentValue) {
+        setOptions([{ value: currentValue, label: currentValue }]);
+      }
       setIsLoading(false);
       return;
     }
@@ -46,7 +54,7 @@ export function LinkField({ control, field, error }: LinkFieldProps) {
         const resp = await axios.get(`${API_BASE_URL}/${field.linkTarget}`, {
           params: {
             fields: JSON.stringify(["name"]),
-            limit_page_length: 200, // a bit more than 100 – adjust if needed
+            limit_page_length: 200,
           },
           headers: { Authorization: `token ${apiKey}:${apiSecret}` },
           withCredentials: true,
@@ -56,13 +64,17 @@ export function LinkField({ control, field, error }: LinkFieldProps) {
         const fromApi = raw.map((r) => ({ value: r.name, label: r.name }));
 
         // ---- inject current value if missing ----
-        if (field.defaultValue && !fromApi.some((o) => o.value === field.defaultValue)) {
-          fromApi.unshift({ value: field.defaultValue, label: field.defaultValue });
+        if (currentValue && !fromApi.some((o) => o.value === currentValue)) {
+          fromApi.unshift({ value: currentValue, label: currentValue });
         }
 
         setOptions(fromApi);
       } catch (e) {
         console.error("LinkField fetch error", e);
+        // On error, still show current value if available
+        if (currentValue) {
+          setOptions([{ value: currentValue, label: currentValue }]);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -71,7 +83,7 @@ export function LinkField({ control, field, error }: LinkFieldProps) {
     fetch();
   }, [
     field.linkTarget,
-    field.defaultValue,
+    currentValue,
     isAuthenticated,
     isInitialized,
     apiKey,
@@ -79,22 +91,8 @@ export function LinkField({ control, field, error }: LinkFieldProps) {
   ]);
 
   // -----------------------------------------------------------------
-  // RENDER
+  // RENDER - Show current value even while loading
   // -----------------------------------------------------------------
-  if (isLoading) {
-    return (
-      <div className="form-group">
-        <label className="form-label">
-          {field.label}
-          {field.required ? " *" : ""}
-        </label>
-        <select className="form-control" disabled>
-          <option>Loading options…</option>
-        </select>
-      </div>
-    );
-  }
-
   return (
     <div className="form-group">
       <label htmlFor={field.name} className="form-label">
@@ -105,10 +103,8 @@ export function LinkField({ control, field, error }: LinkFieldProps) {
       <Controller
         control={control}
         name={field.name}
-        // keep the field registered even when the component re‑mounts
         shouldUnregister={false}
-        // a stable key prevents RHF from resetting when options change
-        key={`${field.name}-${field.linkTarget}`}
+        // Remove the key prop - it's causing unnecessary re-renders
         rules={{ required: field.required ? `${field.label} is required` : false }}
         render={({ field: { onChange, onBlur, value } }) => (
           <select
@@ -116,9 +112,12 @@ export function LinkField({ control, field, error }: LinkFieldProps) {
             className="form-control"
             onChange={onChange}
             onBlur={onBlur}
-            value={value ?? ""}   // <-- important: keep the current value
+            value={value ?? ""}
+            disabled={isLoading && options.length === 0}
           >
-            <option value="">{field.placeholder || "Select..."}</option>
+            <option value="">
+              {isLoading ? "Loading options..." : (field.placeholder || "Select...")}
+            </option>
             {options.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}

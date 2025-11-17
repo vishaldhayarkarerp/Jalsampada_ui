@@ -115,6 +115,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
             },
             { href: "/reports", icon: "fa-file-alt", label: "Reports" },
             { href: "/tp_reports", icon: "fa-file-alt", label: "TP Reports" },
+            { href: "/test", icon: "fa-vial", label: "Test Module" },
           ].map((item) => (
             <Link
               key={item.href}

@@ -1717,3 +1717,595 @@ body {
   font-weight: 600;
 }
 
+/* ---------------------------------- */
+/* STYLES FOR THE NEW TEST MODULE PAGE */
+/* ---------------------------------- */
+
+/* Use a light background for the page body in light mode */
+/* In dark mode, it will inherit your --color-background */
+body {
+  background-color: var(--color-page-background, #f1f5f9);
+  /* A light gray */
+}
+
+/* In dark mode, reset the page background to your app's dark bg */
+[data-color-scheme="dark"] body {
+  background-color: var(--color-background);
+}
+
+.test-module-page {
+  /* This text color will be overridden by cards, but sets a base */
+  color: var(--color-text-primary);
+}
+
+/* --- Back Link --- */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-primary);
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Header Card --- */
+.test-module-header {
+  background-image: linear-gradient(to right, var(--color-primary, #007bff), var(--color-primary-dark, #025dbe));
+  color: #ffffff;
+  border-radius: var(--radius-lg, 8px);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.test-module-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.status-badge-healthy {
+  background-color: #ffffff;
+  color: var(--color-success, #15803d);
+  /* Green */
+  font-weight: 700;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-md, 6px);
+  font-size: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-header-primary {
+  /* Use your existing button styles and just override colors */
+  composes: btn;
+  background-color: #ffffff;
+  color: var(--color-primary);
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-header-primary:hover {
+  background-color: #f1f5f9;
+  /* Light gray hover */
+}
+
+.btn-header-secondary {
+  /* Use your existing button styles and just override colors */
+  composes: btn;
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-header-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+
+/* --- Main Content Cards (The light ones) --- */
+.test-card {
+  /* This is the key: white background in light mode */
+  background-color: var(--color-background-light-mode, #ffffff);
+  /* Dark background in dark mode */
+  background-color: var(--color-background);
+
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 8px);
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  color: var(--color-text-primary);
+}
+
+[data-color-scheme="dark"] .test-card {
+  background-color: var(--color-surface);
+  /* Use your app's card color */
+}
+
+.test-card-title {
+  font-size: 1.25rem;
+  /* 20px */
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: var(--color-text-primary);
+}
+
+/* --- Info boxes inside cards --- */
+.test-info-box {
+  /* Light gray background for light mode */
+  background: var(--color-page-background, #f1f5f9);
+  /* Your app's muted surface for dark mode */
+  background: var(--color-surface-muted);
+
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  padding: 1.25rem;
+  text-align: center;
+}
+
+[data-color-scheme="dark"] .test-info-box {
+  background-color: var(--color-surface-muted);
+}
+
+.test-info-box p {
+  font-size: 0.875rem;
+  /* 14px */
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.test-info-box strong {
+  font-size: 2.25rem;
+  /* 36px */
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.test-info-box .text-sm {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* --- Anomaly text in your table --- */
+.anomaly-yes {
+  color: var(--color-danger, #b91c1c);
+  font-weight: 600;
+}
+
+.anomaly-no {
+  color: var(--color-success, #15803d);
+  font-weight: 500;
+}
+
+/* ---------------------------------- */
+/* STYLES FOR THE NEW TEST MODULE PAGE */
+/* ---------------------------------- */
+
+/* Page Background */
+body {
+  background-color: var(--color-page-background, #f1f5f9);
+}
+
+[data-color-scheme="dark"] body {
+  background-color: var(--color-background);
+}
+
+.test-module-page {
+  color: var(--color-text-primary);
+}
+
+/* --- Back Link --- */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-primary);
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Header Card --- */
+.test-module-header {
+  background-image: linear-gradient(to right, var(--color-primary, #007bff), var(--color-primary-dark, #025dbe));
+  color: #ffffff;
+  border-radius: var(--radius-lg, 8px);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.test-module-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.status-badge-healthy {
+  background-color: #ffffff;
+  color: var(--color-success, #15803d);
+  font-weight: 700;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-md, 6px);
+  font-size: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-header-primary {
+  composes: btn;
+  background-color: #ffffff;
+  color: var(--color-primary);
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-header-primary:hover {
+  background-color: #f1f5f9;
+}
+
+.btn-header-secondary {
+  composes: btn;
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-header-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+
+/* --- Main Content Cards (Light theme) --- */
+.test-card {
+  background-color: #ffffff;
+  /* White background in light mode */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 8px);
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  color: var(--color-text-primary);
+}
+
+/* Dark mode card style */
+[data-color-scheme="dark"] .test-card {
+  background-color: var(--color-surface);
+}
+
+.test-card-title {
+  font-size: 1.25rem;
+  /* 20px */
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: var(--color-text-primary);
+}
+
+/* --- Info boxes inside cards --- */
+.test-info-box {
+  background: var(--color-page-background, #f1f5f9);
+  /* Light gray */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  padding: 1rem;
+  /* <-- REDUCED PADDING */
+  text-align: center;
+  /* <-- CHANGED FROM 'center' */
+}
+
+[data-color-scheme="dark"] .test-info-box {
+  background-color: var(--color-surface-muted);
+}
+
+/* --- THIS IS THE FIX --- */
+.test-info-box p {
+  font-size: 0.75rem;
+  /* 12px (Was 14px) */
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.test-info-box strong {
+  font-size: 1.125rem;
+  /* 18px (Was 36px) */
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.text-4xl {
+  font-size: 2.25rem;
+  line-height: var(--tw-leading, var(--text-4xl--line-height));
+}
+
+.test-info-box .text-sm {
+  font-size: 0.75rem;
+  /* 12px (Was 14px) */
+  color: var(--color-text-muted);
+}
+
+/* --- END OF FIX --- */
+
+
+/* --- Anomaly text in your table --- */
+.anomaly-yes {
+  color: var(--color-danger, #b91c1c);
+  font-weight: 600;
+}
+
+.anomaly-no {
+  color: var(--color-success, #15803d);
+  font-weight: 500;
+}
+
+
+
+
+
+/* ---------------------------------- */
+/* STYLES FOR THE NEW TEST MODULE PAGE */
+/* ---------------------------------- */
+
+/* Use a light background for the page body in light mode */
+body {
+  background-color: var(--color-page-background, #f1f5f9);
+}
+
+/* In dark mode, reset the page background to your app's dark bg */
+[data-color-scheme="dark"] body {
+  background-color: var(--color-background);
+}
+
+.test-module-page {
+  color: var(--color-text-primary);
+}
+
+/* --- Back Link --- */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-primary);
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Header Card --- */
+.test-module-header {
+  background-image: linear-gradient(to right, var(--color-primary, #007bff), var(--color-primary-dark, #025dbe));
+  color: #ffffff;
+  border-radius: var(--radius-lg, 8px);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.test-module-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.status-badge-healthy {
+  background-color: #ffffff;
+  color: var(--color-success, #15803d);
+  /* Green */
+  font-weight: 700;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-md, 6px);
+  font-size: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-header-primary {
+  composes: btn;
+  background-color: #ffffff;
+  color: var(--color-primary);
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-header-primary:hover {
+  background-color: #f1f5f9;
+}
+
+.btn-header-secondary {
+  composes: btn;
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-header-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+
+/* --- Main Content Cards (The light ones) --- */
+.test-card {
+  /* 1. Set light mode background */
+  background-color: #ffffff;
+
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 8px);
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  color: var(--color-text-primary);
+}
+
+/* 2. Set dark mode background *only* in dark mode */
+[data-color-scheme="dark"] .test-card {
+  background-color: var(--color-surface);
+}
+
+.test-card-title {
+  font-size: 1.25rem;
+  /* 20px */
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: var(--color-text-primary);
+}
+
+/* --- Info boxes inside cards --- */
+.test-info-box {
+  background: var(--color-page-background, #f1f5f9);
+  /* Light gray */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  padding: 1rem;
+  /* --- THIS IS THE FIX for Quick Info --- */
+  text-align: left;
+}
+
+[data-color-scheme="dark"] .test-info-box {
+  background-color: var(--color-surface-muted);
+}
+
+/* --- THIS IS THE FIX for Current Status (which should be centered) --- */
+.test-card-title+.grid .test-info-box {
+  text-align: center;
+}
+
+/* --- END OF FIX --- */
+
+.test-info-box p {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.test-info-box strong {
+  font-size: 1.125rem;
+  /* 18px */
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+
+.test-info-box .text-sm {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.test-info-box .text-xs {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+/* --- Row-style box for Maintenance History --- */
+.test-info-box-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-page-background, #f1f5f9);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  padding: 1rem 1.5rem;
+}
+
+[data-color-scheme="dark"] .test-info-box-row {
+  background-color: var(--color-surface-muted);
+}
+
+.test-info-box-row .font-medium {
+  font-weight: 500;
+}
+
+.test-info-box-row .text-sm {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* --- Anomaly text in your table --- */
+.anomaly-yes {
+  color: var(--color-danger, #b91c1c);
+  font-weight: 600;
+}
+
+.anomaly-no {
+  color: var(--color-success, #15803d);
+  font-weight: 500;
+}
+
+/* --- TABS (IndustriSense Style) --- */
+.test-module-tab-bar {
+  display: flex;
+  gap: 2rem;
+  /* 32px */
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1.5rem;
+  /* 24px */
+  /* Adds the spacing you wanted between tabs and content */
+  margin-top: 1.5rem;
+}
+
+.test-module-tab {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  /* 16px */
+
+  /* Font */
+  font-weight: 500;
+  white-space: nowrap;
+
+  /* Underline */
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease-in-out;
+
+  /* --- THIS IS THE FIX --- */
+
+  /* Default (Inactive) state */
+  color: var(--color-text-muted);
+  /* Gray text */
+}
+
+/* Inactive Tab: HOVER STATE */
+.test-module-tab:hover {
+  /* Light Mode: dark text */
+  color: var(--color-text-primary);
+  /* Dark Mode: light text */
+  color: var(--color-text-primary);
+}
+
+/* Active Tab: */
+.test-module-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}

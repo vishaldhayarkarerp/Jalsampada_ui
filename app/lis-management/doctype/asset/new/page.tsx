@@ -153,7 +153,7 @@ export default function NewRecordPage() {
   ];
 
  /* -------------------------------------------------
-     2. SUBMIT (Create) - 'savedocs' method
+     2. SUBMIT (Create) - Removing 'frappe' object
      ------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     
@@ -163,6 +163,8 @@ export default function NewRecordPage() {
     }
 
     setIsSaving(true);
+    
+    let finalPayload: Record<string, any> = {}; 
     
     try {
       const allFields = formTabs.flatMap(tab => tab.fields);
@@ -179,18 +181,14 @@ export default function NewRecordPage() {
         }
       });
 
-      const payload: Record<string, any> = {};
       for (const key in data) {
         if (!nonDataFields.has(key)) {
-          payload[key] = data[key];
+          finalPayload[key] = data[key] === undefined ? null : data[key];
         }
       }
 
-      payload.doctype = doctypeName;
-      payload.docstatus = 0; 
-      
-      // We DO NOT send 'name' or 'modified'
-      // We MUST send 'naming_series' and a valid 'purchase_date'
+      finalPayload.doctype = doctypeName;
+      finalPayload.naming_series = "ACC-ASS-.YYYY.-";
       
       const boolFields = [
         "is_existing_asset", "is_composite_asset", "is_composite_component",
@@ -198,7 +196,7 @@ export default function NewRecordPage() {
         "maintenance_required", "comprehensive_insurance",
       ];
       boolFields.forEach((f) => {
-        if (f in payload) payload[f] = payload[f] ? 1 : 0;
+        if (f in finalPayload) finalPayload[f] = finalPayload[f] ? 1 : 0;
       });
 
       const numericFields = [
@@ -208,7 +206,7 @@ export default function NewRecordPage() {
         "custom_previous_hours", "insured_value"
       ];
       numericFields.forEach((f) => {
-        payload[f] = Number(payload[f]) || 0; 
+        finalPayload[f] = Number(finalPayload[f]) || 0; 
       });
 
       const dateFields = [
@@ -216,42 +214,50 @@ export default function NewRecordPage() {
         "installation_date", "last_repair_date"
       ];
       dateFields.forEach((f) => {
-        if (payload[f] === "") {
-          payload[f] = null;
+        if (finalPayload[f] === "") {
+          finalPayload[f] = null;
         }
       });
 
-      console.log("Sending this NEW DOC to Frappe:", payload);
+      console.log("Sending this NEW DOC to Frappe:", finalPayload);
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Authorization': `token ${apiKey}:${apiSecret}`,
+      };
 
-      // --- This is the fix ---
-      // 1. We use FormData
-      const formData = new FormData();
-      formData.append('doc', JSON.stringify(payload));
-      formData.append('action', 'Save'); 
-      
-      // 2. We use the 'savedocs' method URL
-      const API_METHOD_URL = API_BASE_URL.replace("/api/resource", "/api/method");
-      
-      // 3. We do NOT add maxBodyLength to this request
-      // This is the one combination we have not tried.
-      const resp = await axios.post(`${API_METHOD_URL}/frappe.desk.form.save.savedocs`, formData, {
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-          // Content-Type is set automatically by browser for FormData
-        },
-        withCredentials: true,
-      });
+      // --- THIS IS THE FIX ---
+      // Get the CSRF token from local storage
+      const storedCsrfToken = localStorage.getItem('csrfToken');
+      if (storedCsrfToken) {
+        headers['X-Frappe-CSRF-Token'] = storedCsrfToken;
+      }
+      // We have REMOVED the 'frappe.csrf_token' line that caused the crash
       // -----------------------
 
+      const resp = await fetch(`${API_BASE_URL}/${doctypeName}`, {
+        method: 'POST',
+        headers: headers,
+        credentials: 'include', 
+        body: JSON.stringify(finalPayload), 
+      });
+
+      const responseData = await resp.json();
+
+      if (!resp.ok) {
+        console.log("Full server error:", responseData);
+        throw new Error(responseData.exception || responseData._server_messages || "Failed to create asset");
+      }
+      
       toast.success("Asset created successfully!");
       
       router.push(`/lis-management/doctype/asset`);
 
     } catch (err: any) {
       console.error("Save error:", err);
-      console.log("Full server error:", err.response?.data); 
+      console.log("Full server error message:", err.message); 
       toast.error("Failed to create Asset", {
-        description: "Check the browser console (F12) for the full server error."
+        description: err.message || "Check the browser console (F12) for the full server error."
       });
     } finally {
       setIsSaving(false);

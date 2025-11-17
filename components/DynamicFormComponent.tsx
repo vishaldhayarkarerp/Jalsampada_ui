@@ -13,10 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Upload, X } from "lucide-react";
 import { useRef } from "react";
 
-import { TableField } from "./TableField";   // <-- new import
+import { TableField } from "./TableField"; 
 import { LinkField } from "./LinkField";
 // ─────────────────────────────────────────────────────────────────────────────
-// Types (unchanged from your original code)
+// Types
 // ─────────────────────────────────────────────────────────────────────────────
 export type FieldType =
   | "Data"
@@ -185,7 +185,15 @@ export function DynamicForm({
   const defaultValues = React.useMemo(() => buildDefaultValues(allFields), [allFields]);
 
   // ── RHF SETUP ─────────────────────────────────────────────────────────────
-  const methods = useForm<Record<string, any>>({ defaultValues, mode: "onBlur" });
+  
+  // --- THIS IS THE FIX ---
+  // 1. We ONLY call useForm ONCE and store it in 'methods'.
+  const methods = useForm<Record<string, any>>({ 
+    defaultValues, 
+    mode: "onBlur",
+  });
+  
+  // 2. We destructure everything from 'methods'
   const {
     register,
     handleSubmit,
@@ -194,6 +202,17 @@ export function DynamicForm({
     setValue,
     watch,
   } = methods;
+
+  // 3. We DELETE the second, buggy useForm call
+  // const {
+  //   register,
+  //   handleSubmit,
+  //   formState: { errors, isDirty },
+  //   control,
+  //   setValue,
+  //   watch,
+  // } = useForm<Record<string, any>>({ defaultValues, mode: "onBlur" });
+  // --- END OF FIX ---
 
   const activeTabFields = tabs[activeTab]?.fields || [];
 
@@ -204,6 +223,7 @@ export function DynamicForm({
   );
 
   const onFormSubmit = (data: Record<string, any>) => onSubmit(data, isDirty);
+  
   // ── RENDER HELPERS (no hooks inside) ─────────────────────────────────────
   const renderInput = (field: FormField, type: string = "text") => {
     const rules = rulesFor(field);
@@ -409,7 +429,7 @@ export function DynamicForm({
   };
 
   const renderReadOnly = (field: FormField) => {
-    const val = watch(field.name);
+    const val = watch(field.name); 
     return (
       <div className="form-group">
         <label className="form-label">{field.label}</label>
@@ -438,80 +458,80 @@ export function DynamicForm({
   );
 
   const renderAttachment = (field: FormField) => {
-  const rules = rulesFor(field);
-  const value = watch(field.name);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const rules = rulesFor(field);
+    const value = watch(field.name);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // get registration props once so we can merge refs safely
-  const registration = reg(field.name, rules) as any;
-  const { ref: registerRef, ...registerRest } = registration || {};
+    // get registration props once so we can merge refs safely
+    const registration = reg(field.name, rules) as any;
+    const { ref: registerRef, ...registerRest } = registration || {};
 
-  return (
-    <div className="form-group flex flex-col gap-2">
-      <label className="form-label font-medium">{field.label}</label>
+    return (
+      <div className="form-group flex flex-col gap-2">
+        <label className="form-label font-medium">{field.label}</label>
 
-      <input
-        type="file"
-        className="hidden"
-        {...registerRest}
-        ref={(el: HTMLInputElement | null) => {
-          // keep local ref
-          fileInputRef.current = el;
-          // also forward to react-hook-form's ref
-          if (typeof registerRef === "function") {
-            registerRef(el);
-          } else if (registerRef) {
-            (registerRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
-          }
-        }}
-        onChange={(e) => {
-          // use the registration onChange if present
-          if (registration && registration.onChange) registration.onChange(e);
-          const file = e.target.files?.[0];
-          if (file) {
-            setValue(field.name, file);
-          }
-        }}
-      />
+        <input
+          type="file"
+          className="hidden"
+          {...registerRest}
+          ref={(el: HTMLInputElement | null) => {
+            // keep local ref
+            fileInputRef.current = el;
+            // also forward to react-hook-form's ref
+            if (typeof registerRef === "function") {
+              registerRef(el);
+            } else if (registerRef) {
+              (registerRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+            }
+          }}
+          onChange={(e) => {
+            // use the registration onChange if present
+            if (registration && registration.onChange) registration.onChange(e);
+            const file = e.target.files?.[0];
+            if (file) {
+              setValue(field.name, file);
+            }
+          }}
+        />
 
-      {!value && (
-        <Button
-          variant="outline"
-          className="w-fit flex items-center gap-2"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Upload size={16} />
-          Upload File
-        </Button>
-      )}
-
-      {value && (
-        <div className="flex items-center gap-3 bg-muted/40 p-3 rounded-md border">
-          <span className="text-sm flex-1">{value?.name}</span>
-
+        {!value && (
           <Button
             variant="outline"
-            className="h-8 px-2"
+            className="w-fit flex items-center gap-2"
             onClick={() => fileInputRef.current?.click()}
           >
-            Replace
+            <Upload size={16} />
+            Upload File
           </Button>
+        )}
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-red-500"
-            onClick={() => setValue(field.name, null)}
-          >
-            <X size={16} />
-          </Button>
-        </div>
-      )}
+        {value && (
+          <div className="flex items-center gap-3 bg-muted/40 p-3 rounded-md border">
+            <span className="text-sm flex-1">{value?.name}</span>
 
-      <FieldError error={errors[field.name]} />
-    </div>
-  );
-};
+            <Button
+              variant="outline"
+              className="h-8 px-2"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Replace
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-red-500"
+              onClick={() => setValue(field.name, null)}
+            >
+              <X size={16} />
+            </Button>
+          </div>
+        )}
+
+        <FieldError error={errors[field.name]} />
+      </div>
+    );
+  };
 
 
 
@@ -603,89 +623,89 @@ export function DynamicForm({
   // ── RENDER ───────────────────────────────────────────────────────────────
   return (
     <FormProvider {...methods}>
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <div className="card" style={{ padding: 16 }}>
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
-          <div>
-            <h2 style={{ margin: 0 }}>{title}</h2>
-            {description ? (
-              <p style={{ margin: 0, color: "var(--color-text-muted, #6b7280)" }}>
-                {description}
-              </p>
+      <form onSubmit={handleSubmit(onFormSubmit)}>
+        <div className="card" style={{ padding: 16 }}>
+          {/* Header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 12,
+            }}
+          >
+            <div>
+              <h2 style={{ margin: 0 }}>{title}</h2>
+              {description ? (
+                <p style={{ margin: 0, color: "var(--color-text-muted, #6b7280)" }}>
+                  {description}
+                </p>
+              ) : null}
+            </div>
+            <button type="submit" className="btn btn--primary">
+              {submitLabel}
+            </button>
+          </div>
+
+          {/* Tab navigation */}
+          <div
+            className="form-tabs"
+            style={{
+              display: "flex",
+              gap: "4px",
+              borderBottom: "1px solid var(--color-border)",
+              marginBottom: "16px",
+            }}
+          >
+            {tabs.map((tab, i) => (
+              <button
+                key={tab.name}
+                type="button"
+                className={`btn btn--tab ${i === activeTab ? "btn--tab-active" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveTab(i);
+                }}
+              >
+                {tab.name}
+              </button>
+            ))}
+          </div>
+
+          {/* 2-column layout for the active tab */}
+          <div className="form-grid-2-col">
+            <div className="form-column">
+              {activeTabFields
+                .filter((_, i) => i % 2 === 0)
+                .map((f, i) => (
+                  <div key={`${f.name}-${i}`}>{renderField(f, i)}</div>
+                ))}
+            </div>
+            <div className="form-column">
+              {activeTabFields
+                .filter((_, i) => i % 2 === 1)
+                .map((f, i) => (
+                  <div key={`${f.name}-${i}`}>{renderField(f, i)}</div>
+                ))}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <hr
+            style={{ borderColor: "var(--color-border)", margin: "16px 0" }}
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            {onCancel ? (
+              <button type="button" className="btn btn--outline" onClick={onCancel}>
+                {cancelLabel}
+              </button>
             ) : null}
-          </div>
-          <button type="submit" className="btn btn--primary">
-            {submitLabel}
-          </button>
-        </div>
-
-        {/* Tab navigation */}
-        <div
-          className="form-tabs"
-          style={{
-            display: "flex",
-            gap: "4px",
-            borderBottom: "1px solid var(--color-border)",
-            marginBottom: "16px",
-          }}
-        >
-          {tabs.map((tab, i) => (
-            <button
-              key={tab.name}
-              type="button"
-              className={`btn btn--tab ${i === activeTab ? "btn--tab-active" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveTab(i);
-              }}
-            >
-              {tab.name}
+            <button type="submit" className="btn btn--primary">
+              {submitLabel}
             </button>
-          ))}
-        </div>
-
-        {/* 2-column layout for the active tab */}
-        <div className="form-grid-2-col">
-          <div className="form-column">
-            {activeTabFields
-              .filter((_, i) => i % 2 === 0)
-              .map((f, i) => (
-                <div key={`${f.name}-${i}`}>{renderField(f, i)}</div>
-              ))}
-          </div>
-          <div className="form-column">
-            {activeTabFields
-              .filter((_, i) => i % 2 === 1)
-              .map((f, i) => (
-                <div key={`${f.name}-${i}`}>{renderField(f, i)}</div>
-              ))}
           </div>
         </div>
-
-        {/* Footer */}
-        <hr
-          style={{ borderColor: "var(--color-border)", margin: "16px 0" }}
-        />
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          {onCancel ? (
-            <button type="button" className="btn btn--outline" onClick={onCancel}>
-              {cancelLabel}
-            </button>
-          ) : null}
-          <button type="submit" className="btn btn--primary">
-            {submitLabel}
-          </button>
-        </div>
-      </div>
-    </form>
+      </form>
     </FormProvider>
   );
 }
