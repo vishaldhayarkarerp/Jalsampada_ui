@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4429/api/resource";
+const API_BASE_URL = "http://192.168.1.30:4429//api/resource";
 
 export default function NewRecordPage() {
   const router = useRouter();
@@ -102,8 +102,8 @@ export default function NewRecordPage() {
           label: "Asset Specifications",
           type: "Table",
           columns: [
-            { name: "specification_type", label: "Specification Type", type: "text" },
-            { name: "details", label: "Details", type: "text" },
+            { name: "specification_type", label: "Specification Type", type: "Text" },
+            { name: "details", label: "Details", type: "Text" },
           ],
         },
       ],
@@ -116,7 +116,7 @@ export default function NewRecordPage() {
           label: "Drawing Attachment",
           type: "Table",
           columns: [
-            { name: "name_of_document", label: "Name of Document", type: "text" },
+            { name: "name_of_document", label: "Name of Document", type: "Text" },
             { name: "attachment", label: "Attachment", type: "Link" },
           ],
         },
@@ -143,9 +143,9 @@ export default function NewRecordPage() {
           label: "Finance Books",
           type: "Table",
           columns: [
-            { name: "finance_book", label: "Finance Book", type: "text" },
-            { name: "depreciation_method", label: "Depreciation Method", type: "text" },
-            { name: "rate", label: "Rate (%)", type: "number" },
+            { name: "finance_book", label: "Finance Book", type: "Text" },
+            { name: "depreciation_method", label: "Depreciation Method", type: "Text" },
+            { name: "rate", label: "Rate (%)", type: "Int" },
           ],
         },
       ],
@@ -218,6 +218,28 @@ export default function NewRecordPage() {
           finalPayload[f] = null;
         }
       });
+
+      const requiredNameFields = [
+        "custom_lis_name",
+        "custom_stage_no",
+        "asset_category",
+        "custom_asset_no",
+      ];
+      const missingNameFields = requiredNameFields.filter((field) => !finalPayload[field]);
+
+      if (missingNameFields.length) {
+        toast.error("Please fill LIS, Stage, Asset Category and Asset No before saving.");
+        return;
+      }
+
+      const lisPrefix = String(finalPayload.custom_lis_name).slice(0, 3).toUpperCase();
+      const stagePrefix = String(finalPayload.custom_stage_no).toUpperCase();
+      const categoryPrefix = String(finalPayload.asset_category).slice(0, 2).toUpperCase();
+      const assetSuffix = String(finalPayload.custom_asset_no);
+      const customDocName = `${lisPrefix}${stagePrefix}${categoryPrefix}${assetSuffix}`;
+
+      finalPayload.name = customDocName;
+      finalPayload.custom_doctype_name = customDocName;
 
       console.log("Sending this NEW DOC to Frappe:", finalPayload);
       

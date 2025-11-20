@@ -57,13 +57,13 @@ export interface FormField {
   required?: boolean;
   description?: string;
   placeholder?: string;
-  options?: { label: string; value: string }[];
+  options?: string | { label: string; value: string }[];
   defaultValue?: any;
   min?: number;
   max?: number;
   step?: number;
   rows?: number;
-  columns?: { name: string; label: string; type: string }[];
+  columns?: { name: string; label: string; type: FieldType; linkTarget?: string }[];
   action?: () => void;
   buttonLabel?: string;
   readOnlyValue?: string;
@@ -277,26 +277,40 @@ export function DynamicForm({
   };
 
   const renderSelect = (field: FormField) => {
-    const rules = rulesFor(field);
-    return (
-      <div className="form-group">
-        <label htmlFor={field.name} className="form-label">
-          {field.label}
-          {field.required ? " *" : ""}
-        </label>
-        <select id={field.name} className="form-control" {...reg(field.name, rules)}>
-          <option value="">Select...</option>
-          {(field.options || []).map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <FieldError error={(errors as FieldErrors<Record<string, any>>)[field.name]} />
-        <FieldHelp text={field.description} />
-      </div>
-    );
-  };
+  const rules = rulesFor(field);
+
+  // Normalize options: string → array of {label, value}
+  const options =
+    typeof field.options === "string"
+      ? field.options.split("\n").map((o) => ({
+          label: o,
+          value: o,
+        }))
+      : field.options;
+
+  return (
+    <div className="form-group">
+      <label htmlFor={field.name} className="form-label">
+        {field.label}
+        {field.required ? " *" : ""}
+      </label>
+
+      <select id={field.name} className="form-control" {...reg(field.name, rules)}>
+        <option value="">Select...</option>
+
+        {options?.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+
+      <FieldError error={(errors as FieldErrors<Record<string, any>>)[field.name]} />
+      <FieldHelp text={field.description} />
+    </div>
+  );
+};
+
 
   const renderCheckbox = (field: FormField) => {
     const rules = rulesFor(field);

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import axios from "axios";
+// import axios from "axios"; // No longer need axios
 import { useParams, useRouter } from "next/navigation";
 import {
   DynamicForm,
@@ -9,8 +9,10 @@ import {
   FormField,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4429/api/resource";
+// --- FIX #1: Define the API_BASE_URL ---
+const API_BASE_URL = "http://192.168.1.30:4429//api/resource";
 
 /* -------------------------------------------------
  1. LIS Data type
@@ -18,6 +20,8 @@ const API_BASE_URL = "http://103.219.1.138:4429/api/resource";
 interface LisData {
   name: string;
   lis_name: string;
+  modified: string;
+  docstatus: 0 | 1 | 2;
 }
 
 /* -------------------------------------------------
@@ -29,18 +33,18 @@ export default function RecordDetailPage() {
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
   const docname = params.id as string;
-  const doctypeName = "Lift Irrigation Scheme"; // <-- CHANGED
+  const doctypeName = "Lift Irrigation Scheme";
 
-  const [scheme, setScheme] = React.useState<LisData | null>(null); // <-- CHANGED
+  const [scheme, setScheme] = React.useState<LisData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
 
   /* -------------------------------------------------
-  3. FETCH LIS
+  3. FETCH LIS (using fetch)
   ------------------------------------------------- */
   React.useEffect(() => {
-    const fetchScheme = async () => { // <-- CHANGED
+    const fetchScheme = async () => {
       if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret || !docname) {
         setLoading(false);
         return;
@@ -50,18 +54,31 @@ export default function RecordDetailPage() {
         setLoading(true);
         setError(null);
 
-        const resp = await axios.get(`${API_BASE_URL}/${doctypeName}/${docname}`, {
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-          withCredentials: true,
+        // --- FIX #2: Use 'fetch' instead of 'axios' ---
+        const headers: HeadersInit = {
+          'Authorization': `token ${apiKey}:${apiSecret}`,
+        };
+
+        const resp = await fetch(`${API_BASE_URL}/${doctypeName}/${docname}`, {
+          method: 'GET',
+          headers: headers,
+          credentials: 'include',
         });
 
-        setScheme(resp.data.data); // <-- CHANGED
+        if (!resp.ok) {
+          throw new Error(`Failed to load ${doctypeName}`);
+        }
+        
+        const responseData = await resp.json();
+        setScheme(responseData.data);
+        // ------------------------------------------
+
       } catch (err: any) {
         console.error("API Error:", err);
         setError(
-          err.response?.status === 404
+          err.status === 404
             ? `${doctypeName} not found`
-            : err.response?.status === 403
+            : err.status === 403
               ? "Unauthorized"
               : `Failed to load ${doctypeName}`
         );
@@ -70,14 +87,14 @@ export default function RecordDetailPage() {
       }
     };
 
-    fetchScheme(); // <-- CHANGED
+    fetchScheme();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
   /* -------------------------------------------------
   4. Build tabs
   ------------------------------------------------- */
   const formTabs: TabbedLayout[] = React.useMemo(() => {
-    if (!scheme) return []; // <-- CHANGED
+    if (!scheme) return [];
 
     const fields = (list: FormField[]): FormField[] =>
       list.map((f) => ({
@@ -89,7 +106,6 @@ export default function RecordDetailPage() {
             : f.defaultValue,
       }));
 
-    // Very simple tab layout
     return [
       {
         name: "Details",
@@ -109,32 +125,71 @@ export default function RecordDetailPage() {
         ]),
       },
     ];
-  }, [scheme]); // <-- CHANGED
+  }, [scheme]);
 
   /* -------------------------------------------------
-  5. SUBMIT
+  5. SUBMIT (UPDATE - using fetch)
   ------------------------------------------------- */
-  const handleSubmit = async (data: Record<string, any>) => {
+  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+    
+    if (!isDirty) {
+      toast.info("No changes to save.");
+      return;
+    }
+    
+    if (!scheme) {
+      toast.error("Cannot save, data not loaded.");
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // The payload only needs the fields that are being saved
       const payload = {
         lis_name: data.lis_name,
+        modified: scheme.modified,
+        docstatus: scheme.docstatus,
       };
 
-      await axios.put(`${API_BASE_URL}/${doctypeName}/${docname}`, payload, {
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: true,
+      // --- FIX #3: Use 'fetch' with 'PUT' and CSRF Token ---
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Authorization': `token ${apiKey}:${apiSecret}`,
+      };
+      
+      const storedCsrfToken = localStorage.getItem('csrfToken');
+      if (storedCsrfToken) {
+        headers['X-Frappe-CSRF-Token'] = storedCsrfToken;
+      }
+      
+      const resp = await fetch(`${API_BASE_URL}/${doctypeName}/${docname}`, {
+        method: 'PUT',
+        headers: headers,
+        credentials: 'include',
+        body: JSON.stringify(payload),
       });
 
-      alert("Changes saved!");
-      router.push(`/lis-management/doctype/${doctypeName}`);
-    } catch (err) {
+      const responseData = await resp.json();
+
+      if (!resp.ok) {
+        console.log("Full server error:", responseData);
+        throw new Error(responseData.exception || responseData._server_messages || "Failed to save");
+      }
+      // -------------------------------------------------
+
+      toast.success("Changes saved!");
+      
+      if (responseData && responseData.data) {
+        setScheme(responseData.data);
+      }
+      
+      router.push(`/lis-management/doctype/lift-irrigation-scheme/${docname}`);
+
+    } catch (err: any) {
       console.error("Save error:", err);
-      alert("Failed to save. Check console for details.");
+      console.log("Full server error:", err.message);
+      toast.error("Failed to save", {
+        description: (err as Error).message || "Check console for details."
+      });
     } finally {
       setIsSaving(false);
     }
@@ -164,7 +219,7 @@ export default function RecordDetailPage() {
     );
   }
 
-  if (!scheme) { // <-- CHANGED
+  if (!scheme) {
     return (
       <div className="module active" style={{ padding: "2rem" }}>
         <p>{doctypeName} not found.</p>
@@ -180,7 +235,7 @@ export default function RecordDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit ${doctypeName}: ${scheme.lis_name}`} // <-- CHANGED
+      title={`Edit ${doctypeName}: ${scheme.lis_name}`}
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save Changes"}
       cancelLabel="Cancel"

@@ -10,7 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 
-const API_BASE_URL = "http://103.219.1.138:4429/api/resource";
+const API_BASE_URL = "http://192.168.1.30:4429//api/resource";
 
 /* -------------------------------------------------
  1. Asset Category type – mirrors the API
@@ -112,8 +112,8 @@ export default function RecordDetailPage() {
             label: "Specifications",
             type: "Table",
             columns: [
-              { name: "specification_type", label: "Specification Type", type: "text" },
-              { name: "details", label: "Details", type: "text" },
+              { name: "specification_type", label: "Specification Type", type: "Text" },
+              { name: "details", label: "Details", type: "Text" },
             ],
           },
         ]),
@@ -132,7 +132,7 @@ export default function RecordDetailPage() {
       // Ensure 'name' isn't overwritten if it's not the editable field
       // If 'category_name' is your main field, 'name' might be read-only
       // This submit handler assumes the form data is correct
-      
+
       await axios.put(`${API_BASE_URL}/${doctypeName}/${docname}`, payload, {
         headers: {
           Authorization: `token ${apiKey}:${apiSecret}`,

@@ -2309,3 +2309,19 @@ body {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
+/* In your globals.css or assets.css */
+.sidebar {
+  /* ... existing styles ... */
+  display: flex;
+  flex-direction: column;
+  /* ... more existing styles ... */
+}
+
+.nav-item {
+  /* ... existing styles ... */
+  display: flex; /* Ensure icons and text are in a row */
+  align-items: center; /* Vertically align them */
+  gap: 1rem; /* Adjust space between icon and text */
+  padding: 0.75rem 1.5rem; /* Example padding */
+  /* ... more existing styles ... */
+}

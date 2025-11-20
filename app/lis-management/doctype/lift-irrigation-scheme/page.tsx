@@ -5,8 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
-
-const API_BASE_URL = "http://103.219.1.138:4429/api/resource";
+import Link from "next/link";
+const API_BASE_URL = "http://192.168.1.30:4429//api/resource";
 
 /* -------------------------------------------------
  1. Minimal LIS type
@@ -190,9 +190,11 @@ export default function DoctypePage() {
           <h2>{title}</h2>
           <p>Manage Lift Irrigation Scheme master</p> {/* <-- CHANGED */}
         </div>
-        <button className="btn btn--primary">
-          <i className="fas fa-plus"></i> Add {title}
-        </button>
+        <Link href="/lis-management/doctype/lift-irrigation-scheme/new" passHref>
+    <button className="btn btn--primary">
+      <i className="fas fa-plus"></i> Add {title}
+    </button>
+  </Link>
       </div>
 
       <div

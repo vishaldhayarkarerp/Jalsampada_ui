@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4429/api/resource";
+const API_BASE_URL = "http://192.168.1.30:4429//api/resource";
 
 /* -------------------------------------------------
    1. Asset type – mirrors the API exactly
@@ -218,7 +218,7 @@ export default function RecordDetailPage() {
                         name: "asset_owner",
                         label: "Asset Owner",
                         type: "Select",
-                        options: [{ label: "Company", value: "Company" }],
+                       options: "Company\nSupplier\nCustomer"
                     },
                     { name: "custom_asset_no", label: "Asset No", type: "Data" },
                     { name: "asset_owner_company", label: "Asset Owner Company", type: "Link", linkTarget: "Company" },
@@ -275,8 +275,8 @@ export default function RecordDetailPage() {
                         label: "Asset Specifications",
                         type: "Table",
                         columns: [
-                            { name: "specification_type", label: "Specification Type", type: "text" },
-                            { name: "details", label: "Details", type: "text" },
+                            { name: "specification_type", label: "Specification Type", type: "Text" },
+                            { name: "details", label: "Details", type: "Text" },
                         ],
                     },
                 ]),
@@ -290,7 +290,7 @@ export default function RecordDetailPage() {
                         label: "Drawing Attachment",
                         type: "Table",
                         columns: [
-                            { name: "name_of_document", label: "Name of Document", type: "text" },
+                            { name: "name_of_document", label: "Name of Document", type: "Text" },
                             { name: "attachment", label: "Attachment", type: "Attach" },
                         ],
                     },
@@ -319,9 +319,9 @@ export default function RecordDetailPage() {
                         label: "Finance Books",
                         type: "Table",
                         columns: [
-                            { name: "finance_book", label: "Finance Book", type: "text" },
-                            { name: "depreciation_method", label: "Depreciation Method", type: "text" },
-                            { name: "rate", label: "Rate (%)", type: "number" },
+                            { name: "finance_book", label: "Finance Book", type: "Text" },
+                            { name: "depreciation_method", label: "Depreciation Method", type: "Text" },
+                            { name: "rate", label: "Rate (%)", type: "Int" },
                         ],
                     },
                 ]),

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     // This fetch runs on YOUR server, so there is no CORS error
-    const response = await fetch("http://103.219.1.138:4429/api/resource/Asset", {
+    const response = await fetch("http://192.168.1.30:4429//api/resource/Asset", {
       cache: 'no-store', // Ensures you always get fresh data
     });
 

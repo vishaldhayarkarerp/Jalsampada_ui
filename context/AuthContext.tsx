@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     try {
       const response = await fetch(
-        "http://103.219.1.138:4429/api/method/frappe.auth.get_logged_user",
+        "http://192.168.1.30:4429//api/method/frappe.auth.get_logged_user",
         {
           method: "GET",
           headers: {
@@ -150,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const encodedUser = encodeURIComponent(user);
 
       const response = await fetch(
-        `http://103.219.1.138:4429/api/resource/POS%20Opening%20Entry?filters=[["pos_profile","=","${encodedProfile}"],["status","=","Open"],["user","=","${encodedUser}"]]`,
+        `http://192.168.1.30:4429//api/resource/POS%20Opening%20Entry?filters=[["pos_profile","=","${encodedProfile}"],["status","=","Open"],["user","=","${encodedUser}"]]`,
         {
           method: "GET",
           headers: {
@@ -177,7 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const encodedProfile = encodeURIComponent(posProfile);
 
       const response = await fetch(
-        `http://103.219.1.138:4429/api/resource/POS%20Opening%20Entry?filters=[["pos_profile","=","${encodedProfile}"],["status","=","Open"]]&fields=["name","user"]`,
+        `http://192.168.1.30:4429//api/resource/POS%20Opening%20Entry?filters=[["pos_profile","=","${encodedProfile}"],["status","=","Open"]]&fields=["name","user"]`,
         {
           method: "GET",
           headers: {
