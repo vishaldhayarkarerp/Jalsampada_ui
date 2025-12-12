@@ -18,7 +18,7 @@ import {
   Check
 } from "lucide-react";
 
-const API_BASE_URL = "http://192.168.1.30:4429/api/resource"; // Fixed double slash
+const API_BASE_URL = "http://103.219.1.138:4412/api/resource"; // Fixed double slash
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {

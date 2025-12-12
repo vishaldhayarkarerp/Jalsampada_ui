@@ -10,7 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 
-const API_BASE_URL = "http://192.168.1.30:4429//api/resource";
+const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
 /* -------------------------------------------------
  1. Make Data type

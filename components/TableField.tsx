@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, X, Eye } from "lucide-react"; // Import icons
 
 // API base URL for creating preview links
-const API_BASE_URL = "http://192.168.1.30:4429/";
+const API_BASE_URL = "http://103.219.1.138:4412/";
 
 interface TableFieldProps {
   field: FormField;

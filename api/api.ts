@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext"; // Adjust the import path as needed
 
-const FRAPPE_BASE_URL = "http://192.168.1.30:4429/";
+const FRAPPE_BASE_URL = "http://103.219.1.138:4412/";
 
 const buildFrappeApiUrl = (resource: string, fields: string[], filters?: any[]) => {
   const baseUrl = `${FRAPPE_BASE_URL}/api/resource/${encodeURIComponent(resource)}`;
