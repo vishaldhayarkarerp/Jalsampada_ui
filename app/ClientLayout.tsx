@@ -90,14 +90,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
         <div className="nav-items">
           {[
             { href: "/", icon: "fa-tachometer-alt", label: "Dashboard" },
-            { href: "/assets", icon: "fa-cogs", label: "Assets" },
-            { href: "/lis-management", icon: "fa-cogs", label: "LIS Management" },
+            { href: "/lis-management", icon: "fa-cogs", label: "Asset" },
             { href: "/operations", icon: "fa-chart-line", label: "Operations" },
             { href: "/stock", icon: "fa-boxes", label: "Stock & Maintenance" },
             { href: "/reports", icon: "fa-file-alt", label: "Reports" },
             { href: "/tp_reports", icon: "fa-file-alt", label: "TP Reports" },
             { href: "/test", icon: "fa-vial", label: "Test Module" },
-            { href: "/tender-module", icon: "fa-gavel", label: "Tender Module" },
+            { href: "/tender", icon: "fa-gavel", label: "Tender" },
           ].map((item) => (
             <Link
               key={item.href}

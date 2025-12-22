@@ -686,23 +686,26 @@ export function DynamicForm({
             ))}
           </div>
 
-          {/* 2-column layout for the active tab */}
-          <div className="form-grid-2-col">
-            <div className="form-column">
-              {activeTabFields
-                .filter((_, i) => i % 2 === 0)
-                .map((f, i) => (
-                  <div key={`${f.name}-${i}`}>{renderField(f, i)}</div>
-                ))}
-            </div>
-            <div className="form-column">
-              {activeTabFields
-                .filter((_, i) => i % 2 === 1)
-                .map((f, i) => (
-                  <div key={`${f.name}-${i}`}>{renderField(f, i)}</div>
-                ))}
-            </div>
-          </div>
+          {/* Dynamic grid: 2 columns normally, 1 column for Table fields */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+  {activeTabFields.map((field, idx) => {
+    const isTable = field.type === "Table" || field.type === "Table MultiSelect";
+    const isSectionBreak = field.type === "Section Break";
+
+    return (
+      <div
+        key={`${field.name}-${idx}`}
+        className={
+          isTable || isSectionBreak
+            ? "md:col-span-3"  // Full width on md+ screens
+            : "md:col-span-1"  // Normal half width
+        }
+      >
+        {renderField(field, idx)}
+      </div>
+    );
+  })}
+</div>
 
           {/* Footer */}
           <hr

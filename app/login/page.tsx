@@ -1,8 +1,14 @@
 "use client";
+
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Lock, User, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Lock, User, Loader2, Droplets } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -20,7 +26,6 @@ const Login: React.FC = () => {
 
     try {
       const response = await fetch(
-        // "http://103.219.1.138:4412//api/method/quantlis_management.api.login",
         "http://103.219.1.138:4412/api/method/quantlis_management.api.login",
         {
           method: "POST",
@@ -35,8 +40,6 @@ const Login: React.FC = () => {
 
       if (response.ok && data.message === "Logged In") {
         const { api_key, api_secret } = data.key_details;
-        console.log("API Key:", api_key);
-        console.log("API Secret:", api_secret);
         login(api_key, api_secret);
         router.push("/");
       } else {
@@ -51,107 +54,121 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-lg mx-auto">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-            <Lock className="w-10 h-10 text-white" />
-          </div>
-          <h2 className="text-4xl font-bold text-gray-800 mb-3">Welcome Back</h2>
-          <p className="text-gray-600 text-lg">Please sign in to your account</p>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-6">
-          {/* Username Field */}
-          <div className="space-y-3">
-            <label
-              htmlFor="username"
-              className="block text-sm font-semibold text-gray-700"
-            >
-              Username
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <User className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-gray-800"
-                placeholder="Enter your username"
-                required
-              />
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background image with overlay */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat object-cover w-full h-full"
+        style={{ backgroundImage: "url('/images/sangli_irrigation.jpg')" }}
+      />
+      <div className="absolute inset-0 bg-black/30 dark:bg-black/60" />
+      
+      <div className="">
+        <Card className="shadow-lg border-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-xl overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 text-center">
+            <div className="mx-auto bg-white/20 p-3 rounded-full w-16 h-16 flex items-center justify-center mb-4">
+              <Droplets className="w-8 h-8 text-white" />
             </div>
+            <h1 className="text-2xl font-bold text-white">JALSAMPADA</h1>
+            <p className="text-blue-100 mt-1">Water Resources Department</p>
           </div>
-
-          {/* Password Field */}
-          <div className="space-y-3">
-            <label
-              htmlFor="password"
-              className="block text-sm font-semibold text-gray-700"
-            >
-              Password
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
+          
+          <CardHeader className="text-center pb-2 pt-6">
+            <CardTitle className="text-xl font-bold text-slate-800 dark:text-white">Portal Login</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-300">Access your official account</CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Username
+                </Label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="pl-10 py-5 bg-background/80 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700/80 dark:text-white"
+                    placeholder="Enter your official username"
+                    required
+                  />
+                </div>
               </div>
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-12 pr-14 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-gray-800"
-                placeholder="Enter your password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-4 flex items-center hover:text-blue-600 transition-colors"
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Password
+                </Label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10 py-5 bg-background/80 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700/80 dark:text-white"
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-blue-600 transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-slate-400" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-slate-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <Alert variant="destructive" className="py-2 px-3 rounded-lg border-red-200 bg-red-50/80 dark:border-red-900 dark:bg-red-900/30">
+                  <AlertDescription className="text-sm text-red-700 dark:text-red-300">{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full py-5 text-base font-medium transition-all duration-200 mt-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-md hover:shadow-lg"
               >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-400" />
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Authenticating...
+                  </>
                 ) : (
-                  <Eye className="h-5 w-5 text-gray-400" />
+                  "Sign In to Portal"
                 )}
-              </button>
+              </Button>
+            </form>
+          </CardContent>
+          
+          <CardFooter className="flex flex-col items-center justify-center pt-4 border-t border-slate-200 dark:border-slate-700">
+            {/* <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+              Government of India • Water Resources Department
+            </p> */}
+            <div className="mt-2 flex items-center text-xs text-slate-500 dark:text-slate-400">
+              <Lock className="h-3 w-3 mr-1" />
+              <span>© 2025 Developed and maintained by QUANBIT TECHNOLOGIES PVT LTD</span>
             </div>
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-              <p className="text-red-600 text-sm font-medium">{error}</p>
-            </div>
-          )}
-
-          {/* Login Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
-          >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="w-6 h-6 mr-3 animate-spin" />
-                Signing in...
-              </div>
-            ) : (
-              "🔐 Sign In"
-            )}
-          </button>
-        </form>
-
-        {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-          <p className="text-gray-500">
-            Secure login powered by Quantbit Technologies
-          </p>
-        </div>
+          </CardFooter>
+        </Card>
+        
+        {/* <div className="mt-6 text-center text-xs text-white/80 dark:text-slate-300">
+          <p> 2025 Water Resources Department, Government of India</p>
+          <p className="mt-1"></p>
+        </div> */}
       </div>
     </div>
   );

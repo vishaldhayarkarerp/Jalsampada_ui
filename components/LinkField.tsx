@@ -5,6 +5,7 @@ import axios from "axios";
 import { Controller } from "react-hook-form";
 import { useAuth } from "@/context/AuthContext";
 import { FormField } from "./DynamicFormComponent";
+import SelectInput from "./form/Select";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
@@ -106,25 +107,35 @@ export function LinkField({ control, field, error }: LinkFieldProps) {
         shouldUnregister={false}
         // Remove the key prop - it's causing unnecessary re-renders
         rules={{ required: field.required ? `${field.label} is required` : false }}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <select
-            id={field.name}
-            className="form-control"
-            onChange={onChange}
-            onBlur={onBlur}
-            value={value ?? ""}
-            disabled={isLoading && options.length === 0}
-          >
-            <option value="">
-              {isLoading ? "Loading options..." : (field.placeholder || "Select...")}
-            </option>
-            {options.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        )}
+        render={({ field: { onChange, onBlur, value } }) => {
+            // FIX: Validate value exists in options or is loading
+            const isValidValue = value && 
+              (options.length > 0 ? options.some(opt => opt.value === value) : true);
+            
+            // Transform data to limit initial display and prioritize search results
+            const transformData = (data: any[]) => {
+              if (!data || data.length === 0) return data;
+              
+              // For initial display, show only first 4 options
+              // Search will show all filtered results, prioritized by match
+              return data.map((item) => ({
+                label: item.label || item.name || item,
+                value: item.value || item.name || item
+              }));
+            };
+            
+            return (
+              <SelectInput
+                data={isLoading || options.length === 0 ? [] : transformData(options)}
+                placeholder={field.placeholder || "Select..."}
+                value={isValidValue ? value : undefined}  // Pass undefined if invalid
+                selValue={isValidValue ? value : undefined}
+                onValueChange={onChange}
+                disabled={isLoading}  // Prevent interaction during load
+                borderLess={false}
+              />
+            );
+          }}
       />
 
       {error && (
