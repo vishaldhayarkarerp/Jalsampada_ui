@@ -22,7 +22,7 @@ export default function DoctypePage() {
   const doctypeName = "Asset Category"; // <-- CHANGED
 
   const [categories, setCategories] = React.useState<AssetCategory[]>([]); // <-- CHANGED
-  const [view, setView] = React.useState<ViewMode>("grid");
+  const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 

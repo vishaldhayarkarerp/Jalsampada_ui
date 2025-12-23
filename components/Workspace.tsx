@@ -43,7 +43,7 @@ export function Workspace({
         </button>
       </div>
 
-      <div className="doctype-list-container">
+      <div className="doctype-list-container ">
         {doctypes.map((doc) => (
           <Button
             key={doc.name}

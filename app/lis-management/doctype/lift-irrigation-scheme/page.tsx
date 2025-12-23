@@ -27,7 +27,7 @@ export default function DoctypePage() {
   const doctypeName = "Lift Irrigation Scheme"; // <-- CHANGED
 
   const [schemes, setSchemes] = React.useState<LiftIrrigationScheme[]>([]); // <-- CHANGED
-  const [view, setView] = React.useState<ViewMode>("grid");
+  const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 

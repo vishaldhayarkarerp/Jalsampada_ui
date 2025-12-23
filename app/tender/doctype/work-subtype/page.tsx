@@ -20,7 +20,7 @@ export default function DoctypePage() {
   const doctypeName = "Work Subtype";
 
   const [records, setRecords] = React.useState<WorkSubtype[]>([]);
-  const [view, setView] = React.useState<ViewMode>("grid");
+  const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 

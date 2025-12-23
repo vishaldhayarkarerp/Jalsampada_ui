@@ -28,7 +28,7 @@ export default function DoctypePage() {
   const doctypeName = "Stage No"; // <-- CHANGED
 
   const [stages, setStages] = React.useState<StageNo[]>([]); // <-- CHANGED
-  const [view, setView] = React.useState<ViewMode>("grid");
+  const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
