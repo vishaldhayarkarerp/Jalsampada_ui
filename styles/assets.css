@@ -60,12 +60,10 @@
 
 /* 1. The container for our list */
 .doctype-list-container {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-8);
-  /* A small gap between each row */
-  max-width: 700px;
-  /* Optional: Constrain the width for a cleaner look */
+  width: 100%;
 }
 
 /* 2. Style the Button component itself */

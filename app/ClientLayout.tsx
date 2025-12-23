@@ -91,12 +91,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
           {[
             { href: "/", icon: "fa-tachometer-alt", label: "Dashboard" },
             { href: "/lis-management", icon: "fa-cogs", label: "Asset" },
-            { href: "/operations", icon: "fa-chart-line", label: "Operations" },
-            { href: "/stock", icon: "fa-boxes", label: "Stock & Maintenance" },
-            { href: "/reports", icon: "fa-file-alt", label: "Reports" },
-            { href: "/tp_reports", icon: "fa-file-alt", label: "TP Reports" },
-            { href: "/test", icon: "fa-vial", label: "Test Module" },
             { href: "/tender", icon: "fa-gavel", label: "Tender" },
+            { href: "/operations", icon: "fa-chart-line", label: "Operations" },
+            // { href: "/stock", icon: "fa-boxes", label: "Stock & Maintenance" },
+            { href: "/tp_reports", icon: "fa-file-alt", label: "Reports" },
+            { href: "/test", icon: "fa-vial", label: "Test Module" },
+            
           ].map((item) => (
             <Link
               key={item.href}
