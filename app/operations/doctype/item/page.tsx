@@ -191,7 +191,7 @@ export default function ItemPage() {
   const title = "Item";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/item/${id}`);
+    router.push(`/operations/doctype/item/${id}`);
   };
 
   /* -------------------------------------------------
@@ -300,7 +300,7 @@ export default function ItemPage() {
           <h2>{title}</h2>
           <p>Items with group and enabled/disabled status</p>
         </div>
-        <Link href="/lis-management/doctype/item/new" passHref>
+        <Link href="/operations/doctype/item/new" passHref>
           <button className="btn btn--primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add {title}
           </button>

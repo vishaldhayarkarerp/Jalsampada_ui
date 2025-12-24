@@ -199,7 +199,7 @@ export default function LisIncidentRecordPage() {
   const title = "LIS Incident Record";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/lis-incident-record/${id}`);
+    router.push(`/operations/doctype/lis-incident-record/${id}`);
   };
 
   /* -------------------------------------------------
@@ -315,7 +315,7 @@ export default function LisIncidentRecordPage() {
           <h2>{title}</h2>
           <p>Incident records with workflow_state, priority, and reporter</p>
         </div>
-        <Link href="/lis-management/doctype/lis-incident-record/new" passHref>
+        <Link href="/operations/doctype/lis-incident-record/new" passHref>
           <button className="btn btn--primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add Incident
           </button>

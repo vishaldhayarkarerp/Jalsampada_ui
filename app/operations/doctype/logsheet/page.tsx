@@ -220,7 +220,7 @@ export default function LogSheetPage() {
   const title = "LogSheet";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/logsheet/${id}`);
+    router.push(`/operations/doctype/logsheet/${id}`);
   };
 
   /* -------------------------------------------------

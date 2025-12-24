@@ -201,7 +201,7 @@ export default function GateOperationLogbookPage() {
   const title = "Gate Operation Logbook";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/gate-operation-logbook/${id}`);
+    router.push(`/operations/doctype/gate-operation-logbook/${id}`);
   };
 
   /* -------------------------------------------------
@@ -317,7 +317,7 @@ export default function GateOperationLogbookPage() {
           <h2>{title}</h2>
           <p>Gate operation history with LIS and stages</p>
         </div>
-        <Link href="/lis-management/doctype/gate-operation-logbook/new" passHref>
+        <Link href="/operations/doctype/gate-operation-logbook/new" passHref>
           <button className="btn btn--primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add Entry
           </button>

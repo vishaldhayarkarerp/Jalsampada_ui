@@ -27,7 +27,7 @@ const operationsDoctypes: Doctype[] = [
   { name: "warehouse", title: "Warehouse", icon: Warehouse },
   { name: "logbook", title: "Log Book", icon: Book },
   { name: "logsheet", title: "Log Sheet", icon: FileText },
-  { name: "gate-operation-book", title: "Gate Operation Book", icon: ClipboardList },
+  { name: "gate-operation-logbook", title: "Gate Operation Logbook", icon: ClipboardList },
   { name: "repair-work-requirement", title: "Repair Work Requirement", icon: Wrench },
   { name: "lis-incident-record", title: "LIS Incident Record", icon: AlertTriangle },
   { name: "spare-indent", title: "Spare Indent", icon: FilePlus },

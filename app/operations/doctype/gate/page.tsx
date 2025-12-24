@@ -192,7 +192,7 @@ export default function GatePage() {
   const title = "Gate";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/gate/${id}`);
+    router.push(`/operations/doctype/gate/${id}`);
   };
 
   /* -------------------------------------------------
@@ -281,7 +281,7 @@ export default function GatePage() {
           <h2>{title}</h2>
           <p>Gate mapping with LIS and stages</p>
         </div>
-        <Link href="/lis-management/doctype/gate/new" passHref>
+        <Link href="/operations/doctype/gate/new" passHref>
           <button className="btn btn--primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add {title}
           </button>

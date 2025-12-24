@@ -119,8 +119,8 @@ export function LinkField({ control, field, error }: LinkFieldProps) {
               // For initial display, show only first 4 options
               // Search will show all filtered results, prioritized by match
               return data.map((item) => ({
-                label: item.label || item.name || item,
-                value: item.value || item.name || item
+                label: String(item.label || item.name || item || ''),
+                value: String(item.value || item.name || item || '')
               }));
             };
             

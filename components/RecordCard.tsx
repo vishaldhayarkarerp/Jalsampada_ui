@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"; // (Assuming you have this from shadcn)
 export interface RecordCardField {
   label: string;
   value: string | number;
+  type?: 'success' | 'danger' | 'warning' | 'info';
 }
 
 interface RecordCardProps {
@@ -49,7 +50,7 @@ export function RecordCard({
           {fields.map((field) => (
             <div key={field.label} className="spec-item">
               <span className="spec-label">{field.label}</span>
-              <span className="spec-value">{field.value}</span>
+              <span className={`spec-value ${field.type ? `spec-value--${field.type}` : ''}`}>{field.value}</span>
             </div>
           ))}
         </div>

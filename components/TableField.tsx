@@ -218,7 +218,7 @@ export function TableField({ field, control, register, errors }: TableFieldProps
                     ) : (
                       <input
                         className="form-control-borderless"
-                        type={c.type === "number" ? "number" : "text"}
+                        type={c.type === "Int" ? "number" : c.type === "Float" ? "number" : "text"}
                         placeholder={c.label}
                         {...formMethods.register(`${field.name}.${idx}.${c.name}`)}
                       />

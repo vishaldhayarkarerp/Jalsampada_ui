@@ -96,6 +96,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
             // { href: "/stock", icon: "fa-boxes", label: "Stock & Maintenance" },
             { href: "/tp_reports", icon: "fa-file-alt", label: "Reports" },
             { href: "/test", icon: "fa-vial", label: "Test Module" },
+            {href: "/admin", icon: "fa-user-cog", label: "Admin"}
             
           ].map((item) => (
             <Link

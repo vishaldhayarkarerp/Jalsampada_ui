@@ -1,5 +1,5 @@
 "use client";
-
+import { Controller } from "react-hook-form";
 import * as React from "react";
 import {
   useForm,
@@ -63,7 +63,7 @@ export interface FormField {
   max?: number;
   step?: number;
   rows?: number;
-  columns?: { name: string; label: string; type: FieldType; linkTarget?: string }[];
+  columns?: { name: string; label: string; type: FieldType; linkTarget?: string; options?: string | { label: string; value: string }[] }[];
   action?: () => void;
   buttonLabel?: string;
   readOnlyValue?: string;
@@ -203,6 +203,9 @@ export function DynamicForm({
     watch,
   } = methods;
 
+  // 3. File input refs for attachment fields
+  const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
+
   // 3. We DELETE the second, buggy useForm call
   // const {
   //   register,
@@ -311,35 +314,40 @@ export function DynamicForm({
   );
 };
 
+const renderCheckbox = (field: FormField) => {
+  return (
+    <Controller
+      name={field.name}
+      control={control}
+      render={({ field: rhfField }) => (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={field.name}
+            checked={!!rhfField.value}
+            onCheckedChange={(val) => rhfField.onChange(val)}
+            className="rounded border border-gray-300 data-[state=checked]:bg-primary"
+          />
 
-  const renderCheckbox = (field: FormField) => {
-    const rules = rulesFor(field);
+          <label
+            htmlFor={field.name}
+            className="text-sm font-medium leading-none cursor-pointer"
+          >
+            {field.label}
+          </label>
 
-    return (
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id={field.name}
-          className="rounded border border-gray-300 data-[state=checked]:bg-primary"
-          {...reg(field.name, rules)}
-        />
+          <FieldError error={(errors as any)[field.name]} />
 
-        <label
-          htmlFor={field.name}
-          className="text-sm font-medium leading-none cursor-pointer"
-        >
-          {field.label}
-        </label>
+          {field.description && (
+            <div className="ml-2">
+              <FieldHelp text={field.description} />
+            </div>
+          )}
+        </div>
+      )}
+    />
+  );
+};
 
-        <FieldError error={(errors as any)[field.name]} />
-
-        {field.description && (
-          <div className="ml-2">
-            <FieldHelp text={field.description} />
-          </div>
-        )}
-      </div>
-    );
-  };
 
 
   const renderColor = (field: FormField) => {
@@ -358,7 +366,7 @@ export function DynamicForm({
   };
 
   const renderDateLike = (field: FormField, type: "date" | "datetime-local" | "time") => {
-    const rules = rulesFor(field);
+    const rules = field.type === "DateTime" ? {} : rulesFor(field);
     return (
       <div className="form-group">
         <label htmlFor={field.name} className="form-label">
@@ -474,7 +482,11 @@ export function DynamicForm({
   const renderAttachment = (field: FormField) => {
     const rules = rulesFor(field);
     const value = watch(field.name);
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    // Initialize ref for this field if not exists
+    if (!fileInputRefs.current[field.name]) {
+      fileInputRefs.current[field.name] = null;
+    }
 
     // get registration props once so we can merge refs safely
     const registration = reg(field.name, rules) as any;
@@ -489,8 +501,8 @@ export function DynamicForm({
           className="hidden"
           {...registerRest}
           ref={(el: HTMLInputElement | null) => {
-            // keep local ref
-            fileInputRef.current = el;
+            // keep local ref for this field
+            fileInputRefs.current[field.name] = el;
             // also forward to react-hook-form's ref
             if (typeof registerRef === "function") {
               registerRef(el);
@@ -512,7 +524,7 @@ export function DynamicForm({
           <Button
             variant="outline"
             className="w-fit flex items-center gap-2"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => fileInputRefs.current[field.name]?.click()}
           >
             <Upload size={16} />
             Upload File
@@ -526,7 +538,7 @@ export function DynamicForm({
             <Button
               variant="outline"
               className="h-8 px-2"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => fileInputRefs.current[field.name]?.click()}
             >
               Replace
             </Button>

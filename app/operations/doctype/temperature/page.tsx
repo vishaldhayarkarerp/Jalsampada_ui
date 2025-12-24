@@ -181,7 +181,7 @@ export default function TemperatureReadingsPage() {
   const title = "Temperature Readings";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/temperature-readings/${id}`);
+    router.push(`/operations/doctype/temperature/${id}`);
   };
 
   /* -------------------------------------------------
