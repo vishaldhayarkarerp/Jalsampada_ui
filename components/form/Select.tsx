@@ -173,7 +173,15 @@ export default function SelectInput({
               className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-zinc-500 disabled:cursor-not-allowed disabled:opacity-50"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              disabled={disabled} // <-- 5. PROP PASSED TO SEARCH INPUT
+              disabled={disabled}
+              ref={(ref) => {
+                // Add 3-second timeout for focus
+                if (ref) {
+                  setTimeout(() => {
+                    ref?.focus();
+                  }, 3000);
+                }
+              }}
             />
           </div>
           <div className="max-h-64 overflow-y-auto">

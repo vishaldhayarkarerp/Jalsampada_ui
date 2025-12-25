@@ -204,31 +204,20 @@ export default function RecordDetailPage() {
             {
                 name: "Details",
                 fields: fields([
-                    {
-                        name: "naming_series",
-                        label: "Series",
-                        type: "Select",
-                        options: [{ label: "ACC-ASS-.YYYY.-", value: "ACC-ASS-.YYYY.-" }],
-                    },
+                   
                     { name: "status", label: "Status", type: "Read Only" },
                     { name: "asset_name", label: "Asset Name", type: "Text", required: true },
                     { name: "company", label: "Company", type: "Link", required: true, linkTarget: "Company" },
                     { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
-                    {
-                        name: "asset_owner",
-                        label: "Asset Owner",
-                        type: "Select",
-                       options: "Company\nSupplier\nCustomer"
-                    },
+                    
                     { name: "custom_asset_no", label: "Asset No", type: "Data" },
-                    { name: "asset_owner_company", label: "Asset Owner Company", type: "Link", linkTarget: "Company" },
                     { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location" },
-                    { name: "is_existing_asset", label: "Is Existing Asset", type: "Check" },
                     { name: "custom_lis_name", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme" },
-                    { name: "is_composite_asset", label: "Is Composite Asset", type: "Check" },
                     { name: "custom_stage_no", label: "Stage No.", type: "Link", linkTarget: "Stage No" },
-                    { name: "is_composite_component", label: "Is Composite Component", type: "Check" },
                     { name: "custom_serial_number", label: "Serial Number", type: "Data" },
+                    { name: "is_existing_asset", label: "Is Existing Asset", type: "Check" },
+                    { name: "is_composite_asset", label: "Is Composite Asset", type: "Check" },
+                    { name: "is_composite_component", label: "Is Composite Component", type: "Check" },
                     { name: "section_purchase", label: "Purchase Details", type: "Section Break" },
                     { name: "purchase_date", label: "Purchase Date", type: "Date" },
                     { name: "gross_purchase_amount", label: "Net Purchase Amount", type: "Currency", required: true },
@@ -255,20 +244,22 @@ export default function RecordDetailPage() {
                 fields: fields([
                     { name: "custodian", label: "Custodian", type: "Link", linkTarget: "Employee" },
                     { name: "department", label: "Department", type: "Link", linkTarget: "Department" },
-                    { name: "custom_equipement_make", label: "Equipement Make", type: "Link", linkTarget: "Equipement Make" },
-                    { name: "maintenance_required", label: "Maintenance Required", type: "Check" },
-                    { name: "custom_equipement_model", label: "Equipement Model", type: "Link", linkTarget: "Equipement Model" },
                     { name: "installation_date", label: "Installation Date", type: "Date" },
-                    { name: "custom_equipement_capacity", label: "Equipement Capacity", type: "Link", linkTarget: "Equipement Capacity" },
+                    { name: "custom_equipement_make", label: "Equipement Make", type: "Link", linkTarget: "Equipement Make" },
+                    { name: "custom_equipement_model", label: "Equipement Model", type: "Link", linkTarget: "Equipement Model" },
                     { name: "last_repair_date", label: "Last Repair Date", type: "Date" },
+                    { name: "custom_equipement_capacity", label: "Equipement Capacity", type: "Link", linkTarget: "Equipement Capacity" },
                     { name: "custom_equipement_rating", label: "Equipement Rating", type: "Link", linkTarget: "Rating" },
+                    { name: "maintenance_required", label: "Maintenance Required", type: "Check" },
                     { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float" },
                     {
                         name: "custom_condition",
                         label: "Condition",
                         type: "Select",
-                        options: [{ label: "Working", value: "Working" }],
+                        options: [{ label: "Working", value: "Working" },{ label: "Under Repair", value: "Under Repair", }],
                     },
+                    { name: "custom_description", label: "Description", type: "Small Text" },
+
                     { name: "section_specifications", label: "Specification of Asset", type: "Section Break" },
                     {
                         name: "custom_asset_specifications",
@@ -297,35 +288,7 @@ export default function RecordDetailPage() {
                 ]),
             },
 
-            {
-                name: "Depreciation",
-                fields: fields([
-                    { name: "calculate_depreciation", label: "Calculate Depreciation", type: "Check" },
-                    { name: "opening_accumulated_depreciation", label: "Opening Accumulated Depreciation", type: "Currency" },
-                    { name: "opening_number_of_booked_depreciations", label: "Opening Booked Depreciations", type: "Int" },
-                    { name: "is_fully_depreciated", label: "Is Fully Depreciated", type: "Check" },
-                    {
-                        name: "depreciation_method",
-                        label: "Depreciation Method",
-                        type: "Select",
-                        options: [
-                            { label: "Straight Line", value: "Straight Line" },
-                            { label: "Written Down Value", value: "Written Down Value" },
-                        ],
-                    },
-                    { name: "value_after_depreciation", label: "Value After Depreciation", type: "Currency" },
-                    {
-                        name: "finance_books",
-                        label: "Finance Books",
-                        type: "Table",
-                        columns: [
-                            { name: "finance_book", label: "Finance Book", type: "Text" },
-                            { name: "depreciation_method", label: "Depreciation Method", type: "Text" },
-                            { name: "rate", label: "Rate (%)", type: "Int" },
-                        ],
-                    },
-                ]),
-            },
+            
         ];
     }, [asset]);
 

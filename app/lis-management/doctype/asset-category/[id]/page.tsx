@@ -9,6 +9,7 @@ import {
   FormField,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
@@ -18,7 +19,7 @@ const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 // Updated to match your screenshots
 interface AssetCategoryData {
   name: string;
-  category_name?: string; // Frappe often has a 'category_name' field
+  asset_category_name?: string; // Frappe often has a 'asset_category_name' field
   custom_specifications?: Array<{ // The child table
     specification_type: string;
     details: string;
@@ -99,23 +100,18 @@ export default function RecordDetailPage() {
       {
         name: "Details",
         fields: fields([
-          // In Frappe, 'name' is often the ID, 'category_name' is the editable field
-          { name: "category_name", label: "Category Name", type: "Data", required: true, defaultValue: category.name },
-          { name: "name", label: "Category ID (Read Only)", type: "Read Only", readOnlyValue: category.name },
-        ]),
-      },
-      {
-        name: "Asset Specifications",
-        fields: fields([
+          // In Frappe, 'name' is often the ID, 'asset_category_name' is the editable field
+          { name: "asset_category_name", label: "Category Name", type: "Data", required: true, defaultValue: category.name },
           {
             name: "custom_specifications", // This is the field name for the child table
             label: "Specifications",
             type: "Table",
             columns: [
-              { name: "specification_type", label: "Specification Type", type: "Text" },
+              { name: "specification_type", label: "Specification Type", type: "Link", linkTarget: "Specifications" },
               { name: "details", label: "Details", type: "Text" },
             ],
           },
+          // { name: "name", label: "Category ID (Read Only)", type: "Read Only", readOnlyValue: category.name },
         ]),
       },
     ];
@@ -141,11 +137,16 @@ export default function RecordDetailPage() {
         withCredentials: true,
       });
 
-      alert("Changes saved!");
-      router.push(`/lis-management/doctype/${doctypeName}`);
+      toast.success("Changes saved successfully!");
+      const categoryName = category?.asset_category_name || category?.name;
+      if (categoryName) {
+        router.push(`/lis-management/doctype/asset-category/${categoryName}`);
+      } else {
+        router.push(`/lis-management/doctype/asset-category`);
+      }
     } catch (err) {
       console.error("Save error:", err);
-      alert("Failed to save. Check console for details.");
+      toast.error("Failed to save. Check console for details.");
     } finally {
       setIsSaving(false);
     }

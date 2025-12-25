@@ -1,13 +1,22 @@
 "use client";
 
 import * as React from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, Controller } from "react-hook-form";
 import { FormField } from "./DynamicFormComponent";
 import { Button } from "@/components/ui/button";
 import { Upload, X, Eye } from "lucide-react"; // Import icons
+import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
+import SelectInput from "./form/Select";
 
 // API base URL for creating preview links
 const API_BASE_URL = "http://103.219.1.138:4412/";
+const LINK_API_BASE_URL = "http://103.219.1.138:4412//api/resource";
+
+interface Option {
+  value: string;
+  label: string;
+}
 
 interface TableFieldProps {
   field: FormField;
@@ -123,6 +132,117 @@ function AttachmentCell({ fieldName, control }: { fieldName: string, control: an
   );
 }
 
+/**
+ * Link cell component for table fields
+ * Handles link selection with async loading and caching
+ */
+function LinkCell({ fieldName, control, column }: { fieldName: string, control: any, column: any }) {
+  const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
+  const { watch, setValue } = useFormContext(); 
+  const currentValue = watch(fieldName);
+
+  const [options, setOptions] = React.useState<Option[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // Cache for options to prevent repeated API calls
+  const optionsCache = React.useRef<Map<string, Option[]>>(new Map());
+
+  // Generate unique key for this cell to prevent focus conflicts
+  const cellKey = React.useMemo(() => `${fieldName}-${column.linkTarget}`, [fieldName, column.linkTarget]);
+
+  // Fetch options with caching
+  React.useEffect(() => {
+    if (!column.linkTarget || !isAuthenticated || !isInitialized || !apiKey || !apiSecret) {
+      if (currentValue) {
+        setOptions([{ value: currentValue, label: currentValue }]);
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    const cacheKey = column.linkTarget;
+    const cached = optionsCache.current.get(cacheKey);
+    
+    if (cached) {
+      setOptions(cached);
+      setIsLoading(false);
+      return;
+    }
+
+    const fetch = async () => {
+      setIsLoading(true);
+      try {
+        const resp = await axios.get(`${LINK_API_BASE_URL}/${column.linkTarget}`, {
+          params: {
+            fields: JSON.stringify(["name"]),
+            limit_page_length: 200,
+          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+          withCredentials: true,
+        });
+
+        const raw = (resp.data.data || []) as { name: string }[];
+        const fromApi = raw.map((r) => ({ value: r.name, label: r.name }));
+
+        // Inject current value if missing
+        if (currentValue && !fromApi.some((o) => o.value === currentValue)) {
+          fromApi.unshift({ value: currentValue, label: currentValue });
+        }
+
+        setOptions(fromApi);
+        optionsCache.current.set(cacheKey, fromApi);
+      } catch (e) {
+        console.error("LinkCell fetch error", e);
+        if (currentValue) {
+          setOptions([{ value: currentValue, label: currentValue }]);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetch();
+  }, [
+    column.linkTarget,
+    currentValue,
+    isAuthenticated,
+    isInitialized,
+    apiKey,
+    apiSecret,
+  ]);
+
+  const transformData = (data: Option[]) => {
+    return data.map((item) => ({
+      label: String(item.label || ''),
+      value: String(item.value || '')
+    }));
+  };
+
+  const isValidValue = currentValue && 
+    (options.length > 0 ? options.some(opt => opt.value === currentValue) : true);
+
+  return (
+    <Controller
+      control={control}
+      name={fieldName}
+      shouldUnregister={false}
+      key={cellKey} // Add key to prevent focus conflicts
+      render={({ field: { onChange, onBlur, value } }) => (
+        <SelectInput
+          data={isLoading || options.length === 0 ? [] : transformData(options)}
+          placeholder="Select..."
+          value={isValidValue ? value : undefined}
+          selValue={isValidValue ? value : undefined}
+          onValueChange={onChange}
+          disabled={isLoading}
+          borderLess={true}
+          className="w-full" // Ensure proper width
+        />
+      )}
+    />
+  );
+}
+
 
 export function TableField({ field, control, register, errors }: TableFieldProps) {
   const { fields: rows, append, remove } = useFieldArray({
@@ -214,6 +334,12 @@ export function TableField({ field, control, register, errors }: TableFieldProps
                       <AttachmentCell
                         control={formMethods.control}
                         fieldName={`${field.name}.${idx}.${c.name}`}
+                      />
+                    ) : c.type === "Link" ? (
+                      <LinkCell
+                        control={formMethods.control}
+                        fieldName={`${field.name}.${idx}.${c.name}`}
+                        column={c}
                       />
                     ) : (
                       <input

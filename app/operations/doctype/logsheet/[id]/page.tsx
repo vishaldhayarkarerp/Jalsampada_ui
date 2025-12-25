@@ -181,7 +181,7 @@ export default function LogSheetDetailPage() {
                             {
                                 name: "temperature",
                                 label: "Temperature",
-                                type: "Float",
+                                type: "Data",
                                 
                             },
                             {

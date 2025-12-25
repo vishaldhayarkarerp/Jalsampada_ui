@@ -32,7 +32,7 @@ const operationsDoctypes: Doctype[] = [
   { name: "lis-incident-record", title: "LIS Incident Record", icon: AlertTriangle },
   { name: "spare-indent", title: "Spare Indent", icon: FilePlus },
   { name: "stock-entry", title: "Stock Entry", icon: ArrowDownUp },
-  { name: "stock-reconciliation", title: "Stock Reconciliation", icon: ListChecks }
+  // { name: "stock-reconciliation", title: "Stock Reconciliation", icon: ListChecks }
 ];
 
 

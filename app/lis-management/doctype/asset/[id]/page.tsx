@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { toast } from "sonner";
-import { 
-  ArrowLeft, Download, QrCode, Clipboard, 
-  BarChart3, History, Settings, X, Pencil, Loader2, 
+import {
+  ArrowLeft, Download, QrCode, Clipboard,
+  BarChart3, History, Settings, X, Pencil, Loader2,
   Image as ImageIcon, FileText, ExternalLink, UploadCloud
 } from "lucide-react";
 
@@ -15,7 +15,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 
 // We need the root URL for images, not just the API resource URL
-const FRAPPE_BASE_URL = "http://103.219.1.138:4412"; 
+const FRAPPE_BASE_URL = "http://103.219.1.138:4412";
 const API_BASE_URL = `${FRAPPE_BASE_URL}/api/resource`;
 
 // ------------------------------------------------------------------
@@ -29,14 +29,14 @@ interface AssetData {
   asset_category?: string;
   purchase_date?: string;
   gross_purchase_amount?: number;
-  
+
   // Custom fields
   custom_lis_name?: string;
   custom_stage_no?: string;
   custom_condition?: string;
   custom_equipement_make?: string;
   custom_equipement_model?: string;
-  
+
   // Child Tables
   custom_asset_specifications?: Array<{
     specification_type: string;
@@ -48,7 +48,7 @@ interface AssetData {
     name_of_document?: string;
     attachment?: string; // e.g., "/files/my-drawing.pdf"
   }>;
-  
+
   // Standard Frappe fields
   modified: string;
 }
@@ -66,9 +66,9 @@ const isImage = (url?: string) => {
 export default function AssetDetailPage() {
   const params = useParams();
   const docname = params.id as string;
-  
+
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-  
+
   // State
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +86,7 @@ export default function AssetDetailPage() {
     const fetchAsset = async () => {
       if (!isInitialized) return;
       if (!isAuthenticated || !apiKey || !apiSecret) {
-        setLoading(false); 
+        setLoading(false);
         return;
       }
 
@@ -112,7 +112,7 @@ export default function AssetDetailPage() {
   // 4. HANDLERS
   // ------------------------------------------------------------------
   const handleDownloadReport = () => toast.success("Report downloading...");
-  
+
   const handleCreateWorkOrder = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     toast.success("Work Order Created!");
@@ -130,7 +130,7 @@ export default function AssetDetailPage() {
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "drawings", label: "Drawings", icon: ImageIcon }, // --- NEW TAB ---
-    { id: "readings", label: "Readings", icon: BarChart3 }, 
+    { id: "readings", label: "Readings", icon: BarChart3 },
     { id: "maintenance", label: "Maintenance", icon: History },
     { id: "specs", label: "Specifications", icon: Settings },
   ];
@@ -178,7 +178,7 @@ export default function AssetDetailPage() {
             {asset.status}
           </div>
         </div>
-        
+
         <div className="flex flex-wrap gap-3">
           <Link href={`/lis-management/doctype/asset/edit/${docname}`}>
             <button className="btn-header-primary bg-green-600 hover:bg-green-700">
@@ -270,28 +270,28 @@ export default function AssetDetailPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {asset.custom_drawing_attachment.map((file, idx) => {
                     const isImg = isImage(file.attachment);
-                    const fullUrl = file.attachment?.startsWith("http") 
-                      ? file.attachment 
+                    const fullUrl = file.attachment?.startsWith("http")
+                      ? file.attachment
                       : `${FRAPPE_BASE_URL}${file.attachment}`;
 
                     return (
-                      <div 
-                        key={idx} 
+                      <div
+                        key={idx}
                         onClick={() => handleOpenFile(file.attachment)}
                         className="group border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all bg-gray-50 dark:bg-gray-900"
                       >
                         {/* Preview Area */}
                         <div className="h-32 w-full flex items-center justify-center bg-gray-200 dark:bg-gray-800 overflow-hidden relative">
                           {isImg ? (
-                            <img 
-                              src={fullUrl} 
-                              alt={file.name_of_document || "Drawing"} 
+                            <img
+                              src={fullUrl}
+                              alt={file.name_of_document || "Drawing"}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           ) : (
                             <FileText size={48} className="text-gray-400" />
                           )}
-                          
+
                           {/* Hover Overlay Icon */}
                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <ExternalLink className="text-white drop-shadow-md" size={24} />
@@ -353,10 +353,10 @@ export default function AssetDetailPage() {
 
           {/* --- PLACEHOLDER TABS --- */}
           {(activeTab === "readings" || activeTab === "maintenance") && (
-             <div className="test-card">
-                <h2 className="test-card-title">Data Unavailable</h2>
-                <p className="text-gray-500">This module is not yet connected to the historical API.</p>
-             </div>
+            <div className="test-card">
+              <h2 className="test-card-title">Data Unavailable</h2>
+              <p className="text-gray-500">This module is not yet connected to the historical API.</p>
+            </div>
           )}
         </div>
 
@@ -375,12 +375,24 @@ export default function AssetDetailPage() {
               </div>
               <div className="test-info-box !text-left">
                 <p>Purchase Date</p>
-                <strong>{asset.purchase_date || "—"}</strong>
+                <strong>
+                  {asset.purchase_date
+                    ? new Date(asset.purchase_date).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric"
+                    })
+                    : "—"}
+                </strong>
               </div>
+
               <div className="test-info-box !text-left">
                 <p>Last Updated</p>
-                <strong>{asset.modified.split(" ")[0]}</strong>
+                <strong>
+                  {new Date(asset.modified).toLocaleDateString("en-GB").replaceAll("-", " ")}
+                </strong>
               </div>
+
             </div>
           </div>
         </div>
@@ -395,7 +407,7 @@ export default function AssetDetailPage() {
               <button onClick={() => setShowQR(false)}><X size={24} /></button>
             </div>
             <div className="flex justify-center mb-6 bg-gray-50 p-8 rounded-xl border border-dashed">
-                 <QrCode size={128} className="text-gray-800" />
+              <QrCode size={128} className="text-gray-800" />
             </div>
             <div className="text-center font-mono font-bold">{asset.name}</div>
           </div>
@@ -403,23 +415,23 @@ export default function AssetDetailPage() {
       )}
 
       {showWorkOrderModal && (
-         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-lg w-full shadow-lg">
             <div className="flex justify-between items-center mb-6">
-               <h3 className="text-2xl font-bold">Create Work Order</h3>
-               <button onClick={() => setShowWorkOrderModal(false)}><X size={24} /></button>
+              <h3 className="text-2xl font-bold">Create Work Order</h3>
+              <button onClick={() => setShowWorkOrderModal(false)}><X size={24} /></button>
             </div>
             <form onSubmit={handleCreateWorkOrder} className="space-y-5">
-               <div>
-                 <label className="block text-sm font-semibold mb-2">Title</label>
-                 <input required className="w-full px-4 py-3 border rounded-lg bg-transparent" placeholder="e.g. Pump Maintenance" />
-               </div>
-               <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold">
-                 Create
-               </button>
+              <div>
+                <label className="block text-sm font-semibold mb-2">Title</label>
+                <input required className="w-full px-4 py-3 border rounded-lg bg-transparent" placeholder="e.g. Pump Maintenance" />
+              </div>
+              <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold">
+                Create
+              </button>
             </form>
           </div>
-         </div>
+        </div>
       )}
     </div>
   );
