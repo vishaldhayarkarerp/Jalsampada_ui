@@ -9,6 +9,7 @@ import {
   FormField,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
@@ -107,13 +108,7 @@ export default function RecordDetailPage() {
             required: true,
             // Add description if you want to specify the link target
             description: "Links to Lift Irrigation Scheme"
-          },
-          { 
-            name: "name", 
-            label: "ID", 
-            type: "Read Only",
-            readOnlyValue: stage.name
-          },
+          }
         ]),
       },
     ];
@@ -139,11 +134,18 @@ export default function RecordDetailPage() {
         withCredentials: true,
       });
 
-      alert("Changes saved!");
-      router.push(`/lis-management/doctype/${doctypeName}`);
+      toast.success("Changes saved successfully!");
+      const lisName = stage?.lis_name || '';
+      const stageNo = stage?.stage_no || stage?.name;
+      const navigationId = lisName && stageNo ? `${lisName}-${stageNo}` : stageNo;
+      if (navigationId) {
+        router.push(`/lis-management/doctype/stage-no/${navigationId}`);
+      } else {
+        router.push(`/lis-management/doctype/stage-no`);
+      }
     } catch (err) {
       console.error("Save error:", err);
-      alert("Failed to save. Check console for details.");
+      toast.error("Failed to save. Check console for details.");
     } finally {
       setIsSaving(false);
     }

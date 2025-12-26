@@ -173,10 +173,12 @@ export default function DoctypePage() {
           <h2>{title}</h2>
           <p>Manage tender records</p>
         </div>
-        {/* optional: add button for New Tender */}
-        {/* <button className="btn btn--primary">
-          <i className="fas fa-plus" /> Add {title}
-        </button> */}
+        <button 
+          className="btn btn--primary"
+          onClick={() => router.push('/tender/doctype/tender/new')}
+        >
+          <i className="fas fa-plus"></i> Add {title}
+        </button>
       </div>
 
       <div

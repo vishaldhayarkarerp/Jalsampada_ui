@@ -1,0 +1,6 @@
+2025-12-25T16:08:16:  ⚠ Invalid next.config.js options detected: 
+2025-12-25T16:08:16:  ⚠     Unrecognized key(s) in object: 'hostname', 'port'
+2025-12-25T16:08:16:  ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+2025-12-25T16:08:16:  ⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+2025-12-25T16:41:30: [Error: Failed to find Server Action "x". This request might be from an older or newer deployment.
+2025-12-25T16:41:30: Read more: https://nextjs.org/docs/messages/failed-to-find-server-action]

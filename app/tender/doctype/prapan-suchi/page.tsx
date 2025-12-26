@@ -188,7 +188,10 @@ export default function DoctypePage() {
           <h2>{title}</h2>
           <p>Manage Prapan Suchi records</p>
         </div>
-        <button className="btn btn--primary">
+        <button 
+          className="btn btn--primary"
+          onClick={() => router.push('/tender/doctype/prapan-suchi/new')}
+        >
           <i className="fas fa-plus"></i> Add {title}
         </button>
       </div>

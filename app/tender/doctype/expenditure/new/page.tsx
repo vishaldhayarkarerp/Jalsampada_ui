@@ -2,14 +2,12 @@
 
 import * as React from "react";
 import axios from "axios";
-import { useParams, useRouter } from "next/navigation";
-
+import { useRouter } from "next/navigation";
 import {
   DynamicForm,
   TabbedLayout,
   FormField,
 } from "@/components/DynamicFormComponent";
-
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
@@ -38,7 +36,7 @@ interface ExpenditureDetailsRow {
 }
 
 interface ExpenditureData {
-  name: string;
+  name?: string;
 
   fiscal_year?: string;             // Link -> Fiscal Year
   prev_bill_no?: string;            // Data
@@ -59,8 +57,8 @@ interface ExpenditureData {
   saved_amount?: number;            // Currency
   work_description?: string;        // Text
 
-  docstatus: 0 | 1 | 2;
-  modified: string;
+  docstatus?: 0 | 1 | 2;
+  modified?: string;
 }
 
 /**
@@ -104,86 +102,21 @@ async function uploadFile(
 2. Page component
 ------------------------------------------------- */
 
-export default function RecordDetailPage() {
-  const params = useParams();
+export default function NewExpenditurePage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
-  const docname = params.id as string;
   const doctypeName = "Expenditure";
-
-  const [expenditure, setExpenditure] = React.useState<ExpenditureData | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
 
   /* -------------------------------------------------
-  3. FETCH DOCUMENT
+  3. Form tabs configuration
   ------------------------------------------------- */
-
-  React.useEffect(() => {
-    const fetchDoc = async () => {
-      if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret || !docname) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const resp = await axios.get(
-          `${API_BASE_URL}/${doctypeName}/${docname}`,
-          {
-            headers: {
-              Authorization: `token ${apiKey}:${apiSecret}`,
-              "Content-Type": "application/json",
-            },
-            withCredentials: true,
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-          }
-        );
-
-        setExpenditure(resp.data.data as ExpenditureData);
-      } catch (err: any) {
-        console.error("API Error:", err);
-        setError(
-          err.response?.status === 404
-            ? "Record not found"
-            : err.response?.status === 403
-            ? "Unauthorized"
-            : "Failed to load record"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDoc();
-  }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
-
-  /* -------------------------------------------------
-  4. Build tabs once when data is ready
-  ------------------------------------------------- */
-
   const formTabs: TabbedLayout[] = React.useMemo(() => {
-    if (!expenditure) return [];
-
-    const fields = (list: FormField[]): FormField[] =>
-      list.map((f) => ({
-        ...f,
-        defaultValue:
-          f.name in expenditure
-            ? // @ts-ignore
-              expenditure[f.name as keyof ExpenditureData]
-            : f.defaultValue,
-      }));
-
     return [
       {
         name: "Details",
-        fields: fields([
+        fields: [
           {
             name: "fiscal_year",
             label: "Fiscal Year",
@@ -201,8 +134,6 @@ export default function RecordDetailPage() {
             type: "Currency",
           },
 
-         
-
           {
             name: "tender_number",
             label: "Tender Number",
@@ -219,8 +150,6 @@ export default function RecordDetailPage() {
             label: "Remaining Amount",
             type: "Currency",
           },
-
-        
 
           {
             name: "tender_amount",
@@ -243,8 +172,6 @@ export default function RecordDetailPage() {
             ],
           },
 
-
-
           {
             name: "posting_date",
             label: "Bill Date",
@@ -266,8 +193,6 @@ export default function RecordDetailPage() {
             type: "Data",
           },
 
-        
-
           {
             name: "lift_irrigation_scheme",
             label: "Lift Irrigation Scheme",
@@ -282,7 +207,6 @@ export default function RecordDetailPage() {
           },
 
           
-
           {
             name: "expenditure_details",
             label: "Expenditure Details",
@@ -380,18 +304,22 @@ export default function RecordDetailPage() {
             label: "Work Description",
             type: "Text",
           },
-        ]),
+        ],
       },
     ];
-  }, [expenditure]);
+  }, []);
 
   /* -------------------------------------------------
-  5. SUBMIT – with file uploading for child table
+  4. SUBMIT – with file uploading for child table
   ------------------------------------------------- */
-
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) {
       toast.info("No changes to save.");
+      return;
+    }
+
+    if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
+      toast.error("Authentication required. Please log in.");
       return;
     }
 
@@ -401,7 +329,7 @@ export default function RecordDetailPage() {
       const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
 
       // Handle file uploads in Expenditure Details child table
-      if (payload.expenditure_details && apiKey && apiSecret) {
+      if (payload.expenditure_details) {
         toast.info("Uploading attachments in expenditure details...");
 
         await Promise.all(
@@ -451,15 +379,6 @@ export default function RecordDetailPage() {
         }
       }
 
-      if (!expenditure) {
-        alert("Error: Record data not loaded. Cannot save.");
-        setIsSaving(false);
-        return;
-      }
-
-      finalPayload.modified = expenditure.modified;
-      finalPayload.docstatus = expenditure.docstatus;
-
       // Boolean conversions (include child-level have_asset if present)
       const boolFields = [
         "have_asset",
@@ -501,31 +420,30 @@ export default function RecordDetailPage() {
       // Send payload
       console.log("Sending this PAYLOAD to Frappe:", finalPayload);
 
-      const resp = await axios.put(
-        `${API_BASE_URL}/${doctypeName}/${docname}`,
-        finalPayload,
-        {
-          headers: {
-            Authorization: `token ${apiKey}:${apiSecret}`,
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/${doctypeName}`, finalPayload, {
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      });
 
-      toast.success("Changes saved!");
+      toast.success("Expenditure created successfully!");
 
-      if (resp.data && resp.data.data) {
-        setExpenditure(resp.data.data as ExpenditureData);
+      // Navigate using the auto-generated naming series ID (EXP-####)
+      const docName = response.data.data.name;
+      if (docName) {
+        router.push(`/tender/doctype/expenditure/${docName}`);
+      } else {
+        router.push(`/tender/doctype/expenditure`);
       }
-
-      router.push(`/lis-management/doctype/expenditure/${docname}`);
+      
     } catch (err: any) {
-      console.error("Save error:", err);
+      console.error("Create error:", err);
       console.log("Full server error:", err.response?.data);
-      toast.error("Failed to save", {
+      toast.error("Failed to create Expenditure", {
         description:
           (err as Error).message ||
           "Check the browser console (F12) for the full server error.",
@@ -538,42 +456,17 @@ export default function RecordDetailPage() {
   const handleCancel = () => router.back();
 
   /* -------------------------------------------------
-  6. UI STATES
+  5. RENDER FORM
   ------------------------------------------------- */
-
-  if (loading) {
-    return <div>Loading expenditure details...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div>{error}</div>
-        <button
-          className="border px-3 py-1 rounded"
-          onClick={() => window.location.reload()}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  if (!expenditure) {
-    return <div>Expenditure not found.</div>;
-  }
-
-  /* -------------------------------------------------
-  7. RENDER FORM
-  ------------------------------------------------- */
-
   return (
     <DynamicForm
-      title={`Expenditure ${expenditure.name}`}
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      submitLabel={isSaving ? "Saving..." : "Save Changes"}
+      title={`New ${doctypeName}`}
+      description="Create a new expenditure record"
+      submitLabel={isSaving ? "Creating..." : "Create Expenditure"}
+      cancelLabel="Cancel"
     />
   );
 }

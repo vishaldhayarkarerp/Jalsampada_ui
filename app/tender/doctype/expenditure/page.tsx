@@ -199,7 +199,10 @@ export default function DoctypePage() {
           <h2>{title}</h2>
           <p>Manage Expenditure records</p> {/* Updated description */}
         </div>
-        <button className="btn btn--primary">
+        <button 
+          className="btn btn--primary"
+          onClick={() => router.push('/tender/doctype/expenditure/new')}
+        >
           <i className="fas fa-plus"></i> Add {title}
         </button>
       </div>

@@ -14,32 +14,36 @@ import { toast } from "sonner";
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 /* -------------------------------------------------
-   1. Work Subtype data interface
+   1. Draft Tender Paper data interface
 ------------------------------------------------- */
 
-interface WorkSubtypeData {
+interface DraftTenderPaperData {
   name: string;
   modified: string;
   docstatus: 0 | 1 | 2;
 
-  // Main fields
-  work_type?: string;        // Link to Work Type
-  work_subtype?: string;     // Data field
+  // Main fields from your CSV
+  tendor_name?: string;
+  tendor_number?: string;
+  fiscal_year?: string;     // Link
+  lis_name?: string;        // Link
+  stage?: string;           // Link
+  description?: string;     // Text (long text)
 }
 
 /* -------------------------------------------------
    2. Page component
 ------------------------------------------------- */
 
-export default function WorkSubtypeDetailPage() {
+export default function DraftTenderPaperDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
   const docname = params.id as string;
-  const doctypeName = "Work Subtype";
+  const doctypeName = "Draft Tender Paper";
 
-  const [record, setRecord] = React.useState<WorkSubtypeData | null>(null);
+  const [record, setRecord] = React.useState<DraftTenderPaperData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -69,7 +73,7 @@ export default function WorkSubtypeDetailPage() {
           maxContentLength: Infinity,
         });
 
-        setRecord(resp.data.data as WorkSubtypeData);
+        setRecord(resp.data.data as DraftTenderPaperData);
       } catch (err: any) {
         console.error("API Error:", err);
         setError(
@@ -100,32 +104,56 @@ export default function WorkSubtypeDetailPage() {
         defaultValue:
           f.name in record
             ? // @ts-ignore
-              record[f.name as keyof WorkSubtypeData]
+              record[f.name as keyof DraftTenderPaperData]
             : f.defaultValue,
       }));
 
     const mainFields: FormField[] = withDefaults([
+
       {
-        name: "work_type",
-        label: "Work Type",
-        type: "Link",
-        required: true,
-        linkTarget: "Work Type", // Important: tells DynamicForm which doctype to link to
-        // You can also add if your DynamicForm supports it:
-        // searchFields: ["work_type_name"],
-        // displayField: "work_type_name"
-      },
-      {
-        name: "work_subtype",
-        label: "Work Subtype",
+        name: "tendor_name",
+        label: "Tendor Name",
         type: "Data",
         required: true,
+      },
+      {
+        name: "tendor_number",
+        label: "Tendor Number",
+        type: "Data",
+        required: true,
+      },
+      {
+        name: "fiscal_year",
+        label: "Fiscal Year",
+        type: "Link",
+        linkTarget: "Fiscal Year",
+        required: true,
+      },
+      {
+        name: "lis_name",
+        label: "LIS Name",
+        type: "Link",
+        linkTarget: "Lift Irrigation Scheme",
+        required: true,
+      },
+      {
+        name: "stage",
+        label: "Stage",
+        type: "Link",
+        linkTarget: "Stage No",
+        required: true,
+      },
+      {
+        name: "description",
+        label: "Description",
+        type: "Text",
+        required: false, // not marked mandatory in CSV
       },
     ]);
 
     return [
       {
-        name: "Details",
+        name: "Main",
         fields: mainFields,
       },
     ];
@@ -154,36 +182,22 @@ export default function WorkSubtypeDetailPage() {
     setIsSaving(true);
 
     try {
-      // Deep copy
-      const payload: any = JSON.parse(JSON.stringify(data));
+      const payload = JSON.parse(JSON.stringify(data));
 
-      // Remove non-data fields (if your form has any)
-      const nonDataFields = new Set<string>();
-      formTabs.forEach((tab) => {
-        tab.fields.forEach((field) => {
-          if (
-            field.type === "Section Break" ||
-            field.type === "Column Break" ||
-            field.type === "Button" ||
-            field.type === "Read Only"
-          ) {
-            nonDataFields.add(field.name);
-          }
-        });
-      });
+      // Filter out layout fields (Section Break, Column Break)
+      const layoutFields = new Set(["tendor_details_section"]);
 
       const finalPayload: any = {};
       for (const key in payload) {
-        if (!nonDataFields.has(key)) {
+        if (!layoutFields.has(key)) {
           finalPayload[key] = payload[key];
         }
       }
 
-      // Preserve important metadata
+      // Preserve Frappe metadata
       finalPayload.modified = record.modified;
       finalPayload.docstatus = record.docstatus;
 
-      // Update via Frappe REST
       const resp = await axios.put(
         `${API_BASE_URL}/${doctypeName}/${docname}`,
         finalPayload,
@@ -201,11 +215,10 @@ export default function WorkSubtypeDetailPage() {
       toast.success("Changes saved!");
 
       if (resp.data?.data) {
-        setRecord(resp.data.data as WorkSubtypeData);
+        setRecord(resp.data.data as DraftTenderPaperData);
       }
 
-      // Optional: redirect to clean url
-      router.push(`/tender/doctype/work-subtype/${docname}`);
+      router.push(`/tender/doctype/draft-tender-paper/${docname}`);
     } catch (err: any) {
       console.error("Save error:", err);
 
@@ -227,13 +240,13 @@ export default function WorkSubtypeDetailPage() {
   const handleCancel = () => router.back();
 
   /* -------------------------------------------------
-     6. Loading / Error states
+     6. UI states
   ------------------------------------------------- */
 
   if (loading) {
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
-        <p>Loading Work Subtype details...</p>
+        <p>Loading Draft Tender Paper details...</p>
       </div>
     );
   }
@@ -258,7 +271,7 @@ export default function WorkSubtypeDetailPage() {
   }
 
   /* -------------------------------------------------
-     7. Main render
+     7. Render form
   ------------------------------------------------- */
 
   return (
@@ -266,7 +279,7 @@ export default function WorkSubtypeDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit Work Subtype ${record.name}`}
+      title={`Edit Draft Tender Paper ${record.name}`}
       description={`Update details for record ID ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save Changes"}
       cancelLabel="Cancel"

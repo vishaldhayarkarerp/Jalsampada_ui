@@ -14,32 +14,31 @@ import { toast } from "sonner";
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 /* -------------------------------------------------
-   1. Work Subtype data interface
+   1. Fund Head data interface
 ------------------------------------------------- */
 
-interface WorkSubtypeData {
+interface FundHeadData {
   name: string;
   modified: string;
   docstatus: 0 | 1 | 2;
 
-  // Main fields
-  work_type?: string;        // Link to Work Type
-  work_subtype?: string;     // Data field
+  // Main field
+  procurement_type?: string;
 }
 
 /* -------------------------------------------------
    2. Page component
 ------------------------------------------------- */
 
-export default function WorkSubtypeDetailPage() {
+export default function FundHeadDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
   const docname = params.id as string;
-  const doctypeName = "Work Subtype";
+  const doctypeName = "Fund Head";
 
-  const [record, setRecord] = React.useState<WorkSubtypeData | null>(null);
+  const [record, setRecord] = React.useState<FundHeadData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -69,7 +68,7 @@ export default function WorkSubtypeDetailPage() {
           maxContentLength: Infinity,
         });
 
-        setRecord(resp.data.data as WorkSubtypeData);
+        setRecord(resp.data.data as FundHeadData);
       } catch (err: any) {
         console.error("API Error:", err);
         setError(
@@ -100,24 +99,14 @@ export default function WorkSubtypeDetailPage() {
         defaultValue:
           f.name in record
             ? // @ts-ignore
-              record[f.name as keyof WorkSubtypeData]
+              record[f.name as keyof FundHeadData]
             : f.defaultValue,
       }));
 
     const mainFields: FormField[] = withDefaults([
       {
-        name: "work_type",
-        label: "Work Type",
-        type: "Link",
-        required: true,
-        linkTarget: "Work Type", // Important: tells DynamicForm which doctype to link to
-        // You can also add if your DynamicForm supports it:
-        // searchFields: ["work_type_name"],
-        // displayField: "work_type_name"
-      },
-      {
-        name: "work_subtype",
-        label: "Work Subtype",
+        name: "procurement_type",
+        label: "Procurement Type",
         type: "Data",
         required: true,
       },
@@ -154,10 +143,10 @@ export default function WorkSubtypeDetailPage() {
     setIsSaving(true);
 
     try {
-      // Deep copy
+      // Deep copy form data
       const payload: any = JSON.parse(JSON.stringify(data));
 
-      // Remove non-data fields (if your form has any)
+      // Clean non-data fields (if any exist in future)
       const nonDataFields = new Set<string>();
       formTabs.forEach((tab) => {
         tab.fields.forEach((field) => {
@@ -179,11 +168,11 @@ export default function WorkSubtypeDetailPage() {
         }
       }
 
-      // Preserve important metadata
+      // Preserve metadata
       finalPayload.modified = record.modified;
       finalPayload.docstatus = record.docstatus;
 
-      // Update via Frappe REST
+      // Update record
       const resp = await axios.put(
         `${API_BASE_URL}/${doctypeName}/${docname}`,
         finalPayload,
@@ -201,11 +190,10 @@ export default function WorkSubtypeDetailPage() {
       toast.success("Changes saved!");
 
       if (resp.data?.data) {
-        setRecord(resp.data.data as WorkSubtypeData);
+        setRecord(resp.data.data as FundHeadData);
       }
 
-      // Optional: redirect to clean url
-      router.push(`/tender/doctype/work-subtype/${docname}`);
+      router.push(`/tender/doctype/fund-head/${docname}`);
     } catch (err: any) {
       console.error("Save error:", err);
 
@@ -233,7 +221,7 @@ export default function WorkSubtypeDetailPage() {
   if (loading) {
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
-        <p>Loading Work Subtype details...</p>
+        <p>Loading Fund Head details...</p>
       </div>
     );
   }
@@ -266,7 +254,7 @@ export default function WorkSubtypeDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit Work Subtype ${record.name}`}
+      title={`Edit Fund Head ${record.name}`}
       description={`Update details for record ID ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save Changes"}
       cancelLabel="Cancel"

@@ -106,13 +106,6 @@ export default function RecordDetailPage() {
     // Details tab
     const detailsFields: FormField[] = withDefaults([
       {
-        name: "name",
-        label: "ID",
-        type: "Data",
-        required: false,
-        readOnlyValue: record.name || "",
-      },
-      {
         name: "work_type_name",
         label: "Work Type Name",
         type: "Data",

@@ -377,15 +377,10 @@ export default function AssetDetailPage() {
                 <p>Purchase Date</p>
                 <strong>
                   {asset.purchase_date
-                    ? new Date(asset.purchase_date).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric"
-                    })
+                    ? new Date(asset.purchase_date).toLocaleDateString("en-GB").replaceAll("-", " ")
                     : "—"}
                 </strong>
               </div>
-
               <div className="test-info-box !text-left">
                 <p>Last Updated</p>
                 <strong>

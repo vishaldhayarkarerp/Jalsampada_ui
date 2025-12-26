@@ -189,7 +189,10 @@ export default function DoctypePage() {
           <h2>{title}</h2>
           <p>Manage Equipement Make master</p> {/* <-- CHANGED */}
         </div>
-        <button className="btn btn--primary">
+        <button 
+          className="btn btn--primary"
+          onClick={() => router.push('/lis-management/doctype/equipment-make/new')}
+        >
           <i className="fas fa-plus"></i> Add {title}
         </button>
       </div>

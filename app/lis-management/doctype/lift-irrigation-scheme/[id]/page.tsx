@@ -116,12 +116,6 @@ export default function RecordDetailPage() {
             type: "Data",
             required: true
           },
-          { 
-            name: "name", 
-            label: "ID", 
-            type: "Read Only",
-            readOnlyValue: scheme.name
-          },
         ]),
       },
     ];

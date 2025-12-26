@@ -6,20 +6,20 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 
-const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
+const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
-interface DraftTenderPaper {
+interface FundHead {
   name: string;
 }
 
 type ViewMode = "grid" | "list";
 
-export default function DoctypePage() {
+export default function FundHeadPage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-  const doctypeName = "Draft Tender Paper";
+  const doctypeName = "Fund Head";
 
-  const [records, setRecords] = React.useState<DraftTenderPaper[]>([]);
+  const [records, setRecords] = React.useState<FundHead[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -37,9 +37,7 @@ export default function DoctypePage() {
         setError(null);
 
         const params = {
-          fields: JSON.stringify([
-            "name",
-          ]),
+          fields: JSON.stringify(["name"]),
           limit_page_length: "20",
           order_by: "creation desc"
         };
@@ -53,7 +51,7 @@ export default function DoctypePage() {
         });
 
         const raw = resp.data?.data ?? [];
-        const mapped: DraftTenderPaper[] = raw.map((r: any) => ({
+        const mapped: FundHead[] = raw.map((r: any) => ({
           name: r.name,
         }));
 
@@ -70,19 +68,18 @@ export default function DoctypePage() {
       }
     };
 
-    if (doctypeName === "Draft Tender Paper") fetchRecords();
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
+    fetchRecords();
+  }, [apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-  const title = "Draft Tender Paper";
+  const title = "Fund Head";
 
   const handleCardClick = (id: string) => {
-    router.push(`/tender/doctype/Draft Tender Paper/${id}`);
+    router.push(`/tender/doctype/fund-head/${id}`);
   };
 
-  const getFieldsForRecord = (record: DraftTenderPaper): RecordCardField[] => {
-    const fields: RecordCardField[] = [];
-    fields.push({ label: "ID", value: record.name });
-    return fields;
+  const getFieldsForRecord = (record: FundHead): RecordCardField[] => {
+    return [{ label: "ID", value: record.name }];
+    // You can also use: return [{ label: "Name", value: record.name }];
   };
 
   const renderListView = () => (
@@ -143,14 +140,25 @@ export default function DoctypePage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
+        <p style={{ color: "var(--color-error)" }}>{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="module active">
       <div className="module-header">
         <div>
           <h2>{title}</h2>
-          <p>Manage Draft Tender Paper records</p>
+          <p>Manage Fund Head records</p>
         </div>
-        <button className="btn btn--primary">
+        <button
+          className="btn btn--primary"
+          onClick={() => router.push("/tender/doctype/fund-head/new")}
+        >
           <i className="fas fa-plus"></i> Add {title}
         </button>
       </div>

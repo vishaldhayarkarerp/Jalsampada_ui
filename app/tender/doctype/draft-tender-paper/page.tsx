@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
-interface ProcurementType {
+interface DraftTenderPaper {
   name: string;
 }
 
@@ -17,9 +17,9 @@ type ViewMode = "grid" | "list";
 export default function DoctypePage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-  const doctypeName = "Procurement Type";
+  const doctypeName = "Draft Tender Paper";
 
-  const [records, setRecords] = React.useState<ProcurementType[]>([]);
+  const [records, setRecords] = React.useState<DraftTenderPaper[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -53,7 +53,7 @@ export default function DoctypePage() {
         });
 
         const raw = resp.data?.data ?? [];
-        const mapped: ProcurementType[] = raw.map((r: any) => ({
+        const mapped: DraftTenderPaper[] = raw.map((r: any) => ({
           name: r.name,
         }));
 
@@ -70,16 +70,16 @@ export default function DoctypePage() {
       }
     };
 
-    if (doctypeName === "Procurement Type") fetchRecords();
+    if (doctypeName === "Draft Tender Paper") fetchRecords();
   }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-  const title = "Procurement Type";
+  const title = "Draft Tender Paper";
 
   const handleCardClick = (id: string) => {
-    router.push(`/tender/doctype/procurement-type/${id}`);
+    router.push(`/tender/doctype/draft-tender-paper/${id}`);
   };
 
-  const getFieldsForRecord = (record: ProcurementType): RecordCardField[] => {
+  const getFieldsForRecord = (record: DraftTenderPaper): RecordCardField[] => {
     const fields: RecordCardField[] = [];
     fields.push({ label: "ID", value: record.name });
     return fields;
@@ -148,9 +148,12 @@ export default function DoctypePage() {
       <div className="module-header">
         <div>
           <h2>{title}</h2>
-          <p>Manage Procurement Type records</p>
+          <p>Manage Draft Tender Paper records</p>
         </div>
-        <button className="btn btn--primary">
+        <button 
+          className="btn btn--primary"
+          onClick={() => router.push('/tender/doctype/draft-tender-paper/new')}
+        >
           <i className="fas fa-plus"></i> Add {title}
         </button>
       </div>

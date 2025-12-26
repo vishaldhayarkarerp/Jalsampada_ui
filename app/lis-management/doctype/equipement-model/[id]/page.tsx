@@ -9,6 +9,7 @@ import {
   FormField,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
@@ -98,13 +99,7 @@ export default function RecordDetailPage() {
             label: "Equipement Model",
             type: "Data",
             required: true
-          },
-          { 
-            name: "name", 
-            label: "ID", 
-            type: "Read Only",
-            readOnlyValue: model.name
-          },
+          }
         ]),
       },
     ];
@@ -129,11 +124,16 @@ export default function RecordDetailPage() {
         withCredentials: true,
       });
 
-      alert("Changes saved!");
-      router.push(`/lis-management/doctype/${doctypeName}`);
+      toast.success("Changes saved successfully!");
+      const modelName = model?.equipement_model || model?.name;
+      if (modelName) {
+        router.push(`/lis-management/doctype/equipement-model/${modelName}`);
+      } else {
+        router.push(`/lis-management/doctype/equipement-model`);
+      }
     } catch (err) {
       console.error("Save error:", err);
-      alert("Failed to save. Check console for details.");
+      toast.error("Failed to save. Check console for details.");
     } finally {
       setIsSaving(false);
     }

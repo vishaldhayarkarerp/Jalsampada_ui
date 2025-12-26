@@ -1,0 +1,16 @@
+2025-12-25T16:08:16: 
+2025-12-25T16:08:16: > jalsampada-frontend@1.0.0 start
+2025-12-25T16:08:16: > next start -p 4000
+2025-12-25T16:08:16: 
+2025-12-25T16:08:16:    ▲ Next.js 15.5.9
+2025-12-25T16:08:16:    - Local:        http://localhost:4000
+2025-12-25T16:08:16:    - Network:      http://192.168.1.30:4000
+2025-12-25T16:08:16: 
+2025-12-25T16:08:16:  ✓ Starting...
+2025-12-25T16:08:16:  ⚠ Invalid next.config.js options detected: 
+2025-12-25T16:08:16:  ⚠     Unrecognized key(s) in object: 'hostname', 'port'
+2025-12-25T16:08:16:  ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+2025-12-25T16:08:16:  ⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+2025-12-25T16:08:16:  ✓ Ready in 190ms
+2025-12-25T16:41:30: [Error: Failed to find Server Action "x". This request might be from an older or newer deployment.
+2025-12-25T16:41:30: Read more: https://nextjs.org/docs/messages/failed-to-find-server-action]

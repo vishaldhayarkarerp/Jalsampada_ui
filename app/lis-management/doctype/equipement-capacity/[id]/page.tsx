@@ -9,6 +9,7 @@ import {
   FormField,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
@@ -98,13 +99,7 @@ export default function RecordDetailPage() {
             label: "Equipement Capacity",
             type: "Data",
             required: true
-          },
-          { 
-            name: "name", 
-            label: "ID", 
-            type: "Read Only",
-            readOnlyValue: capacity.name
-          },
+          }
         ]),
       },
     ];
@@ -129,11 +124,16 @@ export default function RecordDetailPage() {
         withCredentials: true,
       });
 
-      alert("Changes saved!");
-      router.push(`/lis-management/doctype/${doctypeName}`);
+      toast.success("Changes saved successfully!");
+      const capacityName = capacity?.equipement_capacity || capacity?.name;
+      if (capacityName) {
+        router.push(`/lis-management/doctype/equipement-capacity/${capacityName}`);
+      } else {
+        router.push(`/lis-management/doctype/equipement-capacity`);
+      }
     } catch (err) {
       console.error("Save error:", err);
-      alert("Failed to save. Check console for details.");
+      toast.error("Failed to save. Check console for details.");
     } finally {
       setIsSaving(false);
     }

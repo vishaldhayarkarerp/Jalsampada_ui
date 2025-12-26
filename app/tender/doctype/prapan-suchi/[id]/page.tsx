@@ -131,7 +131,7 @@ export default function PrapanSuchiDetailPage() {
                 name: "stage",
                 label: "Stage",
                 type: "Link",
-                linkTarget: "Stage Multiselect",
+                linkTarget: "Stage No",
               },
             ],
           },

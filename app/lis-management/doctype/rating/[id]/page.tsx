@@ -9,6 +9,7 @@ import {
   FormField,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
@@ -122,11 +123,18 @@ export default function RecordDetailPage() {
         withCredentials: true,
       });
 
-      alert("Changes saved!");
-      router.push(`/lis-management/doctype/${doctypeName}`);
+      toast.success("Changes saved successfully!");
+      const ratingValue = ratingDoc?.rating;
+      const docName = ratingDoc?.name;
+      const navigationId = ratingValue ? String(ratingValue) : docName;
+      if (navigationId) {
+        router.push(`/lis-management/doctype/rating/${navigationId}`);
+      } else {
+        router.push(`/lis-management/doctype/rating`);
+      }
     } catch (err) {
       console.error("Save error:", err);
-      alert("Failed to save. Check console for details.");
+      toast.error("Failed to save. Check console for details.");
     } finally {
       setIsSaving(false);
     }
