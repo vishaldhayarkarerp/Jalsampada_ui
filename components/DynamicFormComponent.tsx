@@ -47,7 +47,8 @@ export type FieldType =
   | "Table MultiSelect"
   | "Percent"
   | "Rating"
-  | "Attach";
+  | "Attach"
+  "Text Editor";
 
 export interface FormField {
   name: string;
@@ -69,6 +70,9 @@ export interface FormField {
   readOnlyValue?: string;
   pattern?: RegExp | string;
   patternMessage?: string;
+  filters?: ((getValue: (name: string) => any) => Record<string, any>);
+  filterMapping?: { sourceField: string; targetField: string }[];
+  displayDependsOn?: string; // Frappe-style display depends on condition
 }
 
 // Tabbed layout
@@ -86,6 +90,86 @@ export interface DynamicFormProps {
   description?: string;
   submitLabel?: string;
   cancelLabel?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: Evaluate display depends on conditions (Frappe-style)
+// ─────────────────────────────────────────────────────────────────────────────
+function evaluateDisplayDependsOn(condition: string, getValue: (name: string) => any): boolean {
+  try {
+    // Split by operators and evaluate
+    const parts = condition.split(/(\&\&|\|\|)/).map(c => c.trim()).filter(c => c);
+    const conditions = parts.filter(p => p !== '&&' && p !== '||');
+    const operators = parts.filter(p => p === '&&' || p === '||');
+    
+    // Evaluate each condition
+    const results = conditions.map(cond => {
+      const [field, op, value] = cond.split(/([=!<>]=?)/);
+      if (!field || !op || value === undefined) return true;
+      
+      const fieldValue = getValue(field.trim());
+      let compareValue: any = value.trim();
+      
+      // Parse value types
+      if (compareValue === 'true') compareValue = true;
+      else if (compareValue === 'false') compareValue = false;
+      else if (/^\d+$/.test(compareValue)) compareValue = parseInt(compareValue, 10);
+      else if (/^\d+\.\d+$/.test(compareValue)) compareValue = parseFloat(compareValue);
+      else compareValue = compareValue.replace(/^['"]|['"]$/g, '');
+      
+      // Evaluate condition
+      switch (op) {
+        case '==': return fieldValue == compareValue;
+        case '!=': return fieldValue != compareValue;
+        case '>': return (fieldValue ?? 0) > (compareValue ?? 0);
+        case '<': return (fieldValue ?? 0) < (compareValue ?? 0);
+        case '>=': return (fieldValue ?? 0) >= (compareValue ?? 0);
+        case '<=': return (fieldValue ?? 0) <= (compareValue ?? 0);
+        default: return true;
+      }
+    });
+    
+    // Apply logical operators
+    return results.reduce((acc, result, i) => {
+      const op = operators[i - 1];
+      return op === '&&' ? acc && result : op === '||' ? acc || result : result;
+    });
+  } catch (e) {
+    console.error('Display depends on error:', condition, e);
+    return true;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: Build dynamic filters for Link fields
+// ─────────────────────────────────────────────────────────────────────────────
+function buildDynamicFilters(
+  field: FormField, 
+  getValue: (name: string) => any
+): Record<string, any> {
+  const filters: Record<string, any> = {};
+  
+  // Handle filterMapping - maps source fields to target fields
+  if (field.filterMapping?.length) {
+    field.filterMapping.forEach(mapping => {
+      const sourceValue = getValue(mapping.sourceField);
+      if (sourceValue) {
+        filters[mapping.targetField] = sourceValue;
+      }
+    });
+  } else if (typeof field.filters === 'function') {
+    // Handle dynamic filter function
+    Object.assign(filters, field.filters(getValue));
+  }
+  
+  console.log(`buildDynamicFilters for ${field.name}:`, {
+    fieldName: field.name,
+    filterMapping: field.filterMapping,
+    hasFilterFunction: typeof field.filters === 'function',
+    filters: filters
+  });
+  
+  return filters;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -179,6 +263,30 @@ export function DynamicForm({
 }: DynamicFormProps) {
   // ── TAB STATE ─────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = React.useState(0);
+
+  // ── FORM REF ─────────────────────────────────────────────────────────────
+  const formRef = React.useRef<HTMLFormElement>(null);
+
+  // ── KEYBOARD SHORTCUT (Ctrl+S) ─────────────────────────────────────
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Ctrl+S or Cmd+S (Mac)
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault();
+        
+        // Find and click the submit button
+        const submitButton = formRef.current?.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+        if (submitButton) {
+          submitButton.click();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // ── ALL FIELDS (for defaultValues) ───────────────────────────────────────
   const allFields = React.useMemo(() => tabs.flatMap((t) => t.fields), [tabs]);
@@ -565,92 +673,117 @@ const renderCheckbox = (field: FormField) => {
 
   // ── MAIN FIELD SWITCH ─────────────────────────────────────────────────────
   const renderField = (field: FormField, idx: number) => {
-    switch (field.type) {
-      case "Data":
-      case "Small Text":
-      case "Text":
-        return renderInput(field, "text");
-      case "Long Text":
-      case "Markdown Editor":
-        return renderTextarea(field, field.rows ?? 4);
-      case "Code":
-        return renderTextarea(field, field.rows ?? 6);
-      case "Password":
-        return renderInput(field, "password");
-      case "Int":
-        return renderInput(field, "number");
-      case "Float":
-      case "Currency":
-      case "Percent":
-        return renderInput(field, "number");
-      case "Color":
-        return renderColor(field);
-      case "Date":
-        return renderDateLike(field, "date");
-      case "DateTime":
-        return renderDateLike(field, "datetime-local");
-      case "Time":
-        return renderDateLike(field, "time");
-      case "Duration":
-        return renderDuration(field);
-      case "Check":
-        return renderCheckbox(field);
-      case "Select":
-        return renderSelect(field);
-      case "Link":
-        return (
-          <LinkField
-            key={field.name}
-            field={field}
-            control={control}
-            error={(errors as FieldErrors<Record<string, any>>)[field.name]}
-          />
-        );
-      case "Barcode":
-        return renderInput(field, "text");
-      case "Read Only":
-        return renderReadOnly(field);
-      case "Rating":
-        return renderRating(field);
-      case "Table":
-      case "Table MultiSelect":
-        return (
-          <TableField
-            key={field.name}
-            field={field}
-            control={control}
-            register={reg}
-            errors={errors}
-          />
-        );
-      case "Button":
-        return renderButton(field);
-      case "Attach":
-        return renderAttachment(field);
+    // Check display condition and determine if hidden
+    const isHidden = field.displayDependsOn && !evaluateDisplayDependsOn(field.displayDependsOn, watch);
 
-      case "Section Break":
-        return (
-          <div
-            className="form-group"
-            style={{ gridColumn: "1 / -1", marginTop: 8 }}
-          >
-            <hr style={{ borderColor: "var(--color-border)" }} />
-            <h3 style={{ marginTop: 12 }}>{field.label}</h3>
-            <FieldHelp text={field.description} />
-          </div>
-        );
-      case "Column Break":
-        return <div aria-hidden />;
-      default:
-        return null;
+    const fieldContent = () => {
+      switch (field.type) {
+        case "Data":
+        case "Small Text":
+        case "Text":
+          return renderInput(field, "text");
+        case "Long Text":
+        case "Markdown Editor":
+          return renderTextarea(field, field.rows ?? 4);
+        case "Code":
+          return renderTextarea(field, field.rows ?? 6);
+        case "Password":
+          return renderInput(field, "password");
+        case "Int":
+          return renderInput(field, "number");
+        case "Float":
+        case "Currency":
+        case "Percent":
+          return renderInput(field, "number");
+        case "Color":
+          return renderColor(field);
+        case "Date":
+          return renderDateLike(field, "date");
+        case "DateTime":
+          return renderDateLike(field, "datetime-local");
+        case "Time":
+          return renderDateLike(field, "time");
+        case "Duration":
+          return renderDuration(field);
+        case "Check":
+          return renderCheckbox(field);
+        case "Select":
+          return renderSelect(field);
+        case "Link": {
+          const getValue = (name: string) => watch(name);
+          const filtersToPass = buildDynamicFilters(field, getValue);
+          
+          // Create a key that includes filter values to force re-render when they change
+          const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
+          
+          return (
+            <LinkField
+              key={filterKey}
+              field={field}
+              control={control}
+              error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+              filters={filtersToPass}
+            />
+          );
+        }
+        case "Barcode":
+          return renderInput(field, "text");
+        case "Read Only":
+          return renderReadOnly(field);
+        case "Rating":
+          return renderRating(field);
+        case "Table":
+        case "Table MultiSelect":
+          return (
+            <TableField
+              key={field.name}
+              field={field}
+              control={control}
+              register={reg}
+              errors={errors}
+            />
+          );
+        case "Button":
+          return renderButton(field);
+        case "Attach":
+          return renderAttachment(field);
+
+        case "Section Break":
+          return (
+            <div
+              className="form-group"
+              style={{ gridColumn: "1 / -1", marginTop: 8 }}
+            >
+              <hr style={{ borderColor: "var(--color-border)" }} />
+              <h3 style={{ marginTop: 12 }}>{field.label}</h3>
+              <FieldHelp text={field.description} />
+            </div>
+          );
+        case "Column Break":
+          return <div aria-hidden />;
+        default:
+          return null;
+      }
+    };
+
+    // Wrap field content with hidden class if needed
+    const content = fieldContent();
+    if (isHidden && content) {
+      return (
+        <div key={`${field.name}-${idx}`} className="hidden md:col-span-1">
+          {content}
+        </div>
+      );
     }
+    
+    return content;
   };
 
   // ── RENDER ───────────────────────────────────────────────────────────────
   return (
     <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(onFormSubmit)}>
-        <div className="card" style={{ padding: 16 }}>
+      <form ref={formRef} onSubmit={handleSubmit(onFormSubmit)} style={{ overflow: 'visible' }}>
+        <div className="card" style={{ padding: 16, overflow: 'visible' }}>
           {/* Header */}
           <div
             style={{
@@ -698,26 +831,27 @@ const renderCheckbox = (field: FormField) => {
             ))}
           </div>
 
-          {/* Dynamic grid: 2 columns normally, 1 column for Table fields */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-  {activeTabFields.map((field, idx) => {
-    const isTable = field.type === "Table" || field.type === "Table MultiSelect";
-    const isSectionBreak = field.type === "Section Break";
+        {/* Dynamic grid: 2 columns normally, 1 column for Table fields */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6" style={{ overflow: 'visible' }}>
+        {activeTabFields.map((field, idx) => {
+          const isTable = field.type === "Table" || field.type === "Table MultiSelect";
+          const isSectionBreak = field.type === "Section Break";
 
-    return (
-      <div
-        key={`${field.name}-${idx}`}
-        className={
-          isTable || isSectionBreak
-            ? "md:col-span-3"  // Full width on md+ screens
-            : "md:col-span-1"  // Normal half width
-        }
-      >
-        {renderField(field, idx)}
+          return (
+            <div
+              key={`${field.name}-${idx}`}
+              className={
+                isTable || isSectionBreak
+                  ? "md:col-span-3"  // Full width on md+ screens
+                  : "md:col-span-1"  // Normal half width
+              }
+              style={{ overflow: 'visible' }}
+            >
+              {renderField(field, idx)}
+            </div>
+          );
+        })}
       </div>
-    );
-  })}
-</div>
 
           {/* Footer */}
           <hr

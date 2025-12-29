@@ -8,6 +8,20 @@ import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
+// ── Debounce Hook ────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 /* -------------------------------------------------
  1. Minimal LIS type
  ------------------------------------------------- */
@@ -30,6 +44,17 @@ export default function DoctypePage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  // Filter schemes client-side for instant results
+  const filteredSchemes = React.useMemo(() => {
+    if (!searchTerm) return schemes;
+    return schemes.filter(scheme =>
+      scheme.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      scheme.lis_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [schemes, searchTerm]);
 
   /* -------------------------------------------------
   3. FETCH
@@ -107,13 +132,13 @@ export default function DoctypePage() {
       <table className="stock-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>ID (Name)</th>
+            <th>LIS Name</th>
+            <th>ID</th>
           </tr>
         </thead>
         <tbody>
-          {schemes.length ? ( // <-- CHANGED
-            schemes.map((scheme) => ( // <-- CHANGED
+          {filteredSchemes.length ? (
+            filteredSchemes.map((scheme) => (
               <tr
                 key={scheme.name}
                 onClick={() => handleCardClick(scheme.name)}
@@ -140,8 +165,8 @@ export default function DoctypePage() {
   ------------------------------------------------- */
   const renderGridView = () => (
     <div className="equipment-grid">
-      {schemes.length ? ( // <-- CHANGED
-        schemes.map((scheme) => ( // <-- CHANGED
+      {filteredSchemes.length ? (
+        filteredSchemes.map((scheme) => (
           <RecordCard
             key={scheme.name}
             title={scheme.lis_name} // Show the descriptive name
@@ -212,6 +237,8 @@ export default function DoctypePage() {
             placeholder={`Search ${title}...`}
             className="form-control"
             style={{ width: 240 }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   DynamicForm,
   TabbedLayout,
@@ -14,35 +14,72 @@ const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
 export default function NewRecordPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
   const [isSaving, setIsSaving] = React.useState(false);
 
   const doctypeName = "Lift Irrigation Scheme";
 
+  // Parse duplicate data from URL parameters
+  const duplicateData = React.useMemo(() => {
+    const duplicateParam = searchParams.get('duplicate');
+    if (!duplicateParam) return null;
+    
+    try {
+      const decodedData = JSON.parse(atob(decodeURIComponent(duplicateParam)));
+      console.log("Parsed duplicate data:", decodedData);
+      return decodedData;
+    } catch (error) {
+      console.error("Error parsing duplicate data:", error);
+      toast.error("Failed to parse duplicate data");
+      return null;
+    }
+  }, [searchParams]);
+
+  // Show notification if we have duplicate data (only once)
+  const notificationShown = React.useRef(false);
+  React.useEffect(() => {
+    if (duplicateData && !notificationShown.current) {
+      toast.success("Form populated with duplicate data. Modify as needed and save.");
+      notificationShown.current = true;
+    }
+  }, [duplicateData]);
+
   /* -------------------------------------------------
-     1. Define the BLANK form structure
+     1. Define the form structure with duplicate data support
      ------------------------------------------------- */
-  const formTabs: TabbedLayout[] = [
-    {
-      name: "Details",
-      fields: [
-        {
-          name: "lis_name",
-          label: "Lift Irrigation Scheme Name",
-          type: "Data",
-          required: true,
-          description: "This name will be used as the ID for the new record."
-        },
-      ],
-    },
-  ];
+  const formTabs: TabbedLayout[] = React.useMemo(() => {
+    // Helper function to get value from duplicate data or fallback to default
+    const getValue = (fieldName: string, defaultValue: any = undefined) => {
+      return duplicateData?.[fieldName] ?? defaultValue;
+    };
+
+    return [
+      {
+        name: "Details",
+        fields: [
+          {
+            name: "lis_name",
+            label: "Lift Irrigation Scheme Name",
+            type: "Data",
+            required: true,
+            description: "This name will be used as the ID for the new record.",
+            defaultValue: getValue("lis_name"),
+          },
+        ],
+      },
+    ];
+  }, [duplicateData]);
 
   /* -------------------------------------------------
      2. SUBMIT (Create) - Using 'fetch' and CSRF Token
      ------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     
-    if (!isDirty) {
+    // Check if we have valid data to submit (either dirty changes or duplicate data)
+    const hasValidData = isDirty || (duplicateData && data.lis_name);
+    
+    if (!hasValidData) {
       toast.info("Please fill out the form.");
       return;
     }
@@ -94,9 +131,17 @@ export default function NewRecordPage() {
     } catch (err: any) {
       console.error("Save error:", err);
       console.log("Full server error message:", err.message); 
-      toast.error("Failed to create document", {
-        description: err.message || "Check the browser console (F12) for details."
-      });
+      
+      // Handle duplicate entry error specifically
+      if (err.response?.data?.exc_type === "DuplicateEntryError") {
+        toast.error("Duplicate Entry Error", {
+          description: "A Lift Irrigation Scheme with this name already exists. Please use a different name."
+        });
+      } else {
+        toast.error("Failed to create document", {
+          description: err.message || "Check the browser console (F12) for details."
+        });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -114,7 +159,7 @@ export default function NewRecordPage() {
       onCancel={handleCancel}
       title="New Lift Irrigation Scheme"
       description="Create a new LIS record"
-      submitLabel={isSaving ? "Creating..." : "Create"}
+      submitLabel={isSaving ? "Saving..." : "New"}
       cancelLabel="Cancel"
     />
   );

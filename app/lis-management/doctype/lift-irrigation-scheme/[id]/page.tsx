@@ -192,6 +192,53 @@ export default function RecordDetailPage() {
   const handleCancel = () => router.back();
 
   /* -------------------------------------------------
+  6. DUPLICATE FUNCTIONALITY (Shift+D)
+  ------------------------------------------------- */
+  const handleDuplicate = React.useCallback(() => {
+    if (!scheme) {
+      toast.error("Lift Irrigation Scheme data not loaded. Cannot duplicate.");
+      return;
+    }
+
+    // Prepare data for duplication - exclude fields that should not be copied
+    const duplicateData: Record<string, any> = {};
+    
+    // Fields to exclude from duplication
+    const excludeFields = [
+      'name', 'naming_series', 'docstatus', 'modified', 'creation',
+      'owner', 'modified_by', 'idx'
+    ];
+
+    // Copy all other fields
+    Object.keys(scheme).forEach(key => {
+      if (!excludeFields.includes(key) && scheme[key as keyof LisData] !== undefined) {
+        duplicateData[key] = scheme[key as keyof LisData];
+      }
+    });
+
+    // Encode the data for URL transmission
+    const encodedData = btoa(JSON.stringify(duplicateData));
+    
+    // Navigate to new page with duplicate data
+    router.push(`/lis-management/doctype/lift-irrigation-scheme/new?duplicate=${encodeURIComponent(encodedData)}`);
+    
+    toast.success("Lift Irrigation Scheme data copied! Creating duplicate...");
+  }, [scheme, router]);
+
+  // Add keyboard event listener for Shift+D
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.shiftKey && event.key === 'D') {
+        event.preventDefault();
+        handleDuplicate();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleDuplicate]);
+
+  /* -------------------------------------------------
   6. UI STATES
   ------------------------------------------------- */
   if (loading) {

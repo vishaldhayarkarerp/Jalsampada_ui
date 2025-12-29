@@ -11,10 +11,6 @@ interface AuthContextType {
   setPosProfile: (profile: string) => void;
   login: (apiKey: string, apiSecret: string) => void;
   logout: () => void;
-  checkOpenPOS: (posProfile: string, user: string) => Promise<boolean>;
-  checkAnyOpenPOS: (
-    posProfile: string
-  ) => Promise<{ isOpen: boolean; entryName?: string; userName?: string } | null>;
   getCurrentUser: () => Promise<string | null>;
   isInitialized: boolean;
   csrfToken: string | null;
@@ -139,71 +135,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const checkOpenPOS = async (
-    posProfile: string,
-    user: string
-  ): Promise<boolean> => {
-    if (!apiKey || !apiSecret) return false;
+  
 
-    try {
-      const encodedProfile = encodeURIComponent(posProfile);
-      const encodedUser = encodeURIComponent(user);
+ 
 
-      const response = await fetch(
-        `http://103.219.1.138:4412//api/resource/POS%20Opening%20Entry?filters=[["pos_profile","=","${encodedProfile}"],["status","=","Open"],["user","=","${encodedUser}"]]`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `token ${apiKey}:${apiSecret}`,
-          },
-        }
-      );
 
-      const responseData = await response.json();
-      return response.ok && responseData.data && responseData.data.length > 0;
-    } catch (error) {
-      console.error("Error checking POS Opening Entry:", error);
-      return false;
-    }
-  };
-
-  const checkAnyOpenPOS = async (
-    posProfile: string
-  ): Promise<{ isOpen: boolean; entryName?: string; userName?: string } | null> => {
-    if (!apiKey || !apiSecret) return null;
-
-    try {
-      const encodedProfile = encodeURIComponent(posProfile);
-
-      const response = await fetch(
-        `http://103.219.1.138:4412//api/resource/POS%20Opening%20Entry?filters=[["pos_profile","=","${encodedProfile}"],["status","=","Open"]]&fields=["name","user"]`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `token ${apiKey}:${apiSecret}`,
-          },
-        }
-      );
-
-      const responseData = await response.json();
-
-      if (response.ok && responseData.data && responseData.data.length > 0) {
-        const openEntry = responseData.data[0];
-        return {
-          isOpen: true,
-          entryName: openEntry.name,
-          userName: openEntry.user,
-        };
-      }
-
-      return { isOpen: false };
-    } catch (error) {
-      console.error("Error checking any open POS Opening Entry:", error);
-      return null;
-    }
-  };
 
   const contextValue: AuthContextType = {
     isAuthenticated,
@@ -214,8 +150,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setPosProfile,
     login,
     logout,
-    checkOpenPOS,
-    checkAnyOpenPOS,
     getCurrentUser,
     isInitialized,
     csrfToken,

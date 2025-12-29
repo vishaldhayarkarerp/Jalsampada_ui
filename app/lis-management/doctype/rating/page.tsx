@@ -7,7 +7,6 @@ import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import {
-  Search,
   Plus,
   List,
   LayoutGrid,
@@ -66,6 +65,15 @@ export default function RatingPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
+  // Filter ratings client-side for instant results
+  const filteredRows = React.useMemo(() => {
+    if (!searchTerm) return rows;
+    return rows.filter(row =>
+      row.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (row.rating !== undefined && row.rating !== null && String(row.rating).toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [rows, searchTerm]);
+
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
     direction: "dsc",
@@ -109,13 +117,6 @@ export default function RatingPage() {
           order_by: "modified desc",
         };
 
-        if (debouncedSearch) {
-          params.or_filters = JSON.stringify({
-            name: ["like", `%${debouncedSearch}%`],
-            rating: ["like", `%${debouncedSearch}%`],
-          });
-        }
-
         const resp = await axios.get(
           `${API_BASE_URL}/${encodeURIComponent(doctypeName)}`,
           {
@@ -142,13 +143,13 @@ export default function RatingPage() {
     };
 
     fetchEntries();
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
   /* -------------------------------------------------
      4. SORTING LOGIC
      ------------------------------------------------- */
   const sortedRows = React.useMemo(() => {
-    const sortable = [...rows];
+    const sortable = [...filteredRows];
     sortable.sort((a, b) => {
       const aValue = String(a[sortConfig.key] ?? "");
       const bValue = String(b[sortConfig.key] ?? "");
@@ -156,7 +157,7 @@ export default function RatingPage() {
       return sortConfig.direction === "asc" ? compare : -compare;
     });
     return sortable;
-  }, [rows, sortConfig]);
+  }, [filteredRows, sortConfig]);
 
   const requestSort = (key: keyof RatingRow) => {
     let direction: SortDirection = "asc";
@@ -246,8 +247,8 @@ export default function RatingPage() {
 
   const renderGridView = () => (
     <div className="equipment-grid">
-      {rows.length ? (
-        rows.map((row) => (
+      {filteredRows.length ? (
+        filteredRows.map((row) => (
           <RecordCard
             key={row.name}
             title={row.name}
@@ -262,14 +263,14 @@ export default function RatingPage() {
     </div>
   );
 
-  if (loading && rows.length === 0)
+  if (loading && filteredRows.length === 0)
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
         Loading ratings...
       </div>
     );
 
-  if (error && rows.length === 0)
+  if (error && filteredRows.length === 0)
     return (
       <div className="module active" style={{ padding: "2rem" }}>
         {error}
@@ -311,7 +312,7 @@ export default function RatingPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             aria-label="Search Rating"
           />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
+         
         </div>
 
         {/* Right: Sort Pill + View Switcher */}

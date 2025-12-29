@@ -119,7 +119,7 @@ export default function NewWorkTypePage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new work type"
-      submitLabel={isSaving ? "Creating..." : "Create Work Type"}
+      submitLabel={isSaving ? "Saving..." : "New Work Type"}
       cancelLabel="Cancel"
     />
   );

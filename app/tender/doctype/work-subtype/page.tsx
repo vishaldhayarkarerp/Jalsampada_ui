@@ -8,6 +8,20 @@ import { useAuth } from "@/context/AuthContext";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
+// ── Debounce Hook ────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 interface WorkSubtype {
   name: string;
 }
@@ -23,6 +37,16 @@ export default function DoctypePage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  // Filter records client-side for instant results
+  const filteredRecords = React.useMemo(() => {
+    if (!searchTerm) return records;
+    return records.filter(record =>
+      record.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [records, searchTerm]);
 
   React.useEffect(() => {
     const fetchRecords = async () => {
@@ -94,8 +118,8 @@ export default function DoctypePage() {
           </tr>
         </thead>
         <tbody>
-          {records.length ? (
-            records.map((record) => (
+          {filteredRecords.length ? (
+            filteredRecords.map((record) => (
               <tr
                 key={record.name}
                 onClick={() => handleCardClick(record.name)}
@@ -118,8 +142,8 @@ export default function DoctypePage() {
 
   const renderGridView = () => (
     <div className="equipment-grid">
-      {records.length ? (
-        records.map((record) => (
+      {filteredRecords.length ? (
+        filteredRecords.map((record) => (
           <RecordCard
             key={record.name}
             title={record.name}
@@ -173,6 +197,8 @@ export default function DoctypePage() {
             placeholder={`Search ${title}...`}
             className="form-control"
             style={{ width: 240 }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 

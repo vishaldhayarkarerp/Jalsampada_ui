@@ -109,6 +109,9 @@ export default function NewTenderPage() {
         label: "Name of Work",
         type: "Link",
         linkTarget: "Prapan Suchi",
+        filterMapping: [
+              { sourceField: "custom_lis_name", targetField: "lis_name" },
+            ]
       },
       {
         name: "custom_tender_id",
@@ -160,6 +163,57 @@ export default function NewTenderPage() {
         label: "Is Extension",
         type: "Check",
       },
+      {
+        name: "custom_tender_extension_history",
+        label: "Tender Extension Details",
+        type: "Table",
+        options:"Extension Period Details",
+        columns: [
+              { name: "extension_count", label: "Extension Count", type: "Data" },
+              { name: "extension_upto", label: "Extension Upto", type: "Date" },
+              { name: "sanction_letter", label: "Sanction Letter", type: "Small Text" },
+              { name: "attach", label: "Attach", type: "Attach" },
+            ],
+        displayDependsOn: "custom_is_extension==1"
+      },
+      {
+        name: "section_break0",
+        label: "Tender Description",
+        type: "Section Break",
+      },
+       {
+        name: "notes",
+        label: "Description",
+        type: "Long Text",
+      },
+      {
+        name: "custom_tender_extension_history",
+        label: "Contractor Details",
+        type: "Section Break",
+      },
+      {
+        name: "custom_contractor_name",
+        label: "Contractor Name",
+        type: "Link",
+        linkTarget: "Supplier",
+      },
+      {
+        name: "custom_mobile_no",
+        label: "Mobile No",
+        type: "Data",
+      },
+      {
+        name: "custom_supplier_address",
+        label: "Contractor Address",
+        type: "Data",
+      },
+      {
+        name: "custom_email_id",
+        label: "Email ID",
+        type: "Data",
+      },
+
+
     ];
 
     // Documents Attachment tab (from Fields-1.csv – Tab Break) [file:6]
@@ -378,7 +432,7 @@ export default function NewTenderPage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new tender/project"
-      submitLabel={isSaving ? "Creating..." : "Create Tender"}
+      submitLabel={isSaving ? "Saving..." : "New Tender"}
       cancelLabel="Cancel"
     />
   );

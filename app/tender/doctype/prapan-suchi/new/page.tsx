@@ -189,7 +189,7 @@ export default function NewPrapanSuchiPage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new prapan suchi"
-      submitLabel={isSaving ? "Creating..." : "Create Prapan Suchi"}
+      submitLabel={isSaving ? "Saving..." : "New Prapan Suchi"}
       cancelLabel="Cancel"
     />
   );

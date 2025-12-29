@@ -204,26 +204,63 @@ export default function RecordDetailPage() {
             {
                 name: "Details",
                 fields: fields([
-                   
+
                     { name: "status", label: "Status", type: "Read Only" },
                     { name: "asset_name", label: "Asset Name", type: "Text", required: true },
                     { name: "company", label: "Company", type: "Link", required: true, linkTarget: "Company" },
                     { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
-                    
+
                     { name: "custom_asset_no", label: "Asset No", type: "Data" },
                     { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location" },
                     { name: "custom_lis_name", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme" },
                     { name: "custom_stage_no", label: "Stage No.", type: "Link", linkTarget: "Stage No" },
                     { name: "custom_serial_number", label: "Serial Number", type: "Data" },
-                    { name: "is_existing_asset", label: "Is Existing Asset", type: "Check" },
-                    { name: "is_composite_asset", label: "Is Composite Asset", type: "Check" },
-                    { name: "is_composite_component", label: "Is Composite Component", type: "Check" },
+                    {
+                        name: "is_existing_asset",
+                        label: "Is Existing Asset",
+                        type: "Check",
+                        displayDependsOn: "is_composite_asset==0 && is_composite_component==0 && custom_obsolete==0",
+                    },
+                    {
+                        name: "is_composite_asset",
+                        label: "Is Composite Asset",
+                        type: "Check",
+                        displayDependsOn: "is_existing_asset==0 && is_composite_component==0 && custom_obsolete==0",
+                    },
+                    {
+                        name: "is_composite_component",
+                        label: "Is Composite Component",
+                        type: "Check",
+                        displayDependsOn: "is_composite_asset==0 && is_existing_asset==0 && custom_obsolete==0",
+                    },
+                    {
+                        name: "custom_obsolete",
+                        label: "Is Obsolete",
+                        type: "Check",
+                        displayDependsOn: "is_composite_asset==0 && is_existing_asset==0 && is_composite_component==0",
+                    },
+
                     { name: "section_purchase", label: "Purchase Details", type: "Section Break" },
-                    { name: "purchase_date", label: "Purchase Date", type: "Date" },
+
+                    {
+                        name: "purchase_date",
+                        label: "Purchase Date",
+                        type: "Date",
+                        required: true,
+                        displayDependsOn: "is_existing_asset==1 || is_composite_asset==1",
+                    },
+
                     { name: "gross_purchase_amount", label: "Net Purchase Amount", type: "Currency", required: true },
+
                     { name: "asset_quantity", label: "Asset Quantity", type: "Int", min: 1 },
-                    { name: "additional_asset_cost", label: "Additional Asset Cost", type: "Currency" },
-                    { name: "total_asset_cost", label: "Total Asset Cost", type: "Read Only" },
+
+                    {
+                        name: "available_for_use_date",
+                        label: "Commisioning Date",
+                        type: "Date",
+                        displayDependsOn: "is_existing_asset==1 || is_composite_asset==1",
+                    },
+
                 ]),
             },
 
@@ -256,9 +293,12 @@ export default function RecordDetailPage() {
                         name: "custom_condition",
                         label: "Condition",
                         type: "Select",
-                        options: [{ label: "Working", value: "Working" },{ label: "Under Repair", value: "Under Repair", }],
+                        options: [{ label: "Working", value: "Working" }, { label: "Under Repair", value: "Under Repair", }],
                     },
-                    { name: "custom_description", label: "Description", type: "Small Text" },
+                    { name: "custom_description", label: "Description", type: "Small Text",
+                        displayDependsOn: "custom_condition=='Under Repair'",
+
+                     },
 
                     { name: "section_specifications", label: "Specification of Asset", type: "Section Break" },
                     {
@@ -266,8 +306,8 @@ export default function RecordDetailPage() {
                         label: "Asset Specifications",
                         type: "Table",
                         columns: [
-                            { name: "specification_type", label: "Specification Type", type: "Text" },
-                            { name: "details", label: "Details", type: "Text" },
+                            { name: "specification_type", label: "Specification Type", type: "Link", linkTarget: "Specifications" },
+                            { name: "details", label: "Details", type: "Data" },
                         ],
                     },
                 ]),
@@ -288,7 +328,7 @@ export default function RecordDetailPage() {
                 ]),
             },
 
-            
+
         ];
     }, [asset]);
 
@@ -427,6 +467,53 @@ export default function RecordDetailPage() {
     };
 
     const handleCancel = () => router.back();
+
+    /* -------------------------------------------------
+       5. DUPLICATE FUNCTIONALITY (Shift+D)
+       ------------------------------------------------- */
+    const handleDuplicate = React.useCallback(() => {
+        if (!asset) {
+            toast.error("Asset data not loaded. Cannot duplicate.");
+            return;
+        }
+
+        // Prepare data for duplication - exclude fields that should not be copied
+        const duplicateData: Record<string, any> = {};
+
+        // Fields to exclude from duplication
+        const excludeFields = [
+            'name', 'naming_series', 'docstatus', 'modified', 'creation',
+            'owner', 'modified_by', 'idx', 'status'
+        ];
+
+        // Copy all other fields
+        Object.keys(asset).forEach(key => {
+            if (!excludeFields.includes(key) && asset[key as keyof AssetData] !== undefined) {
+                duplicateData[key] = asset[key as keyof AssetData];
+            }
+        });
+
+        // Encode the data for URL transmission
+        const encodedData = btoa(JSON.stringify(duplicateData));
+
+        // Navigate to new page with duplicate data
+        router.push(`/lis-management/doctype/asset/new?duplicate=${encodeURIComponent(encodedData)}`);
+
+        toast.success("Asset data copied! Creating duplicate...");
+    }, [asset, router]);
+
+    // Add keyboard event listener for Shift+D
+    React.useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.shiftKey && event.key === 'D') {
+                event.preventDefault();
+                handleDuplicate();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleDuplicate]);
 
     /* -------------------------------------------------
        6. UI STATES

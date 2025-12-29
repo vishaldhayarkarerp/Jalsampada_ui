@@ -132,7 +132,7 @@ export default function NewWorkSubtypePage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new work subtype"
-      submitLabel={isSaving ? "Creating..." : "Create Work Subtype"}
+      submitLabel={isSaving ? "Saving..." : "New Work Subtype"}
       cancelLabel="Cancel"
     />
   );

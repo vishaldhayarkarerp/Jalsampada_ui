@@ -176,7 +176,7 @@ export default function NewDraftTenderPaperPage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new draft tender paper"
-      submitLabel={isSaving ? "Creating..." : "Create Draft Tender Paper"}
+      submitLabel={isSaving ? "Saving..." : "New Draft Tender Paper"}
       cancelLabel="Cancel"
     />
   );

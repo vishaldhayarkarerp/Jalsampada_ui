@@ -8,6 +8,20 @@ import { useAuth } from "@/context/AuthContext";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
+// ── Debounce Hook ────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 /* -------------------------------------------------
  1. Minimal Make type
  ------------------------------------------------- */
@@ -30,6 +44,17 @@ export default function DoctypePage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  // Filter makes client-side for instant results
+  const filteredMakes = React.useMemo(() => {
+    if (!searchTerm) return makes;
+    return makes.filter(make =>
+      make.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      make.equipement_make.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [makes, searchTerm]);
 
   /* -------------------------------------------------
   3. FETCH
@@ -107,12 +132,12 @@ export default function DoctypePage() {
         <thead>
           <tr>
             <th>Equipement Make</th>
-            <th>ID (Name)</th>
+            <th>ID</th>
           </tr>
         </thead>
         <tbody>
-          {makes.length ? ( // <-- CHANGED
-            makes.map((make) => ( // <-- CHANGED
+          {filteredMakes.length ? (
+            filteredMakes.map((make) => (
               <tr
                 key={make.name}
                 onClick={() => handleCardClick(make.name)}
@@ -139,12 +164,12 @@ export default function DoctypePage() {
   ------------------------------------------------- */
   const renderGridView = () => (
     <div className="equipment-grid">
-      {makes.length ? ( // <-- CHANGED
-        makes.map((make) => ( // <-- CHANGED
+      {filteredMakes.length ? (
+        filteredMakes.map((make) => (
           <RecordCard
             key={make.name}
-            title={make.equipement_make} // Show the make
-            subtitle={make.name} // Show the ID
+            title={make.equipement_make} // Show make
+            subtitle={make.name} // Show ID
             fields={getFieldsForMake(make)}
             onClick={() => handleCardClick(make.name)}
           />
@@ -212,6 +237,8 @@ export default function DoctypePage() {
             placeholder={`Search ${title}...`}
             className="form-control"
             style={{ width: 240 }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 

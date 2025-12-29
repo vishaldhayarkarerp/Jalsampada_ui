@@ -6,7 +6,7 @@ import { Workspace, Doctype } from "@/components/Workspace";
 import {
   FileText,     
   ClipboardList, 
-  DollarSign,    
+  IndianRupee,    
   Settings,      
 } from "lucide-react";
 
@@ -22,7 +22,7 @@ const tenderDoctypes: Doctype[] = [
   { name: "fund-head", title: "Fund Head", icon: Settings },
 
   // 3. Financial / Expenditure
-  { name: "expenditure",    title: "Expenditure",    icon: DollarSign },
+  { name: "expenditure",    title: "Expenditure",    icon: IndianRupee },
 ];
 
 export default function TenderPage() {

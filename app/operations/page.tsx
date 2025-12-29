@@ -21,13 +21,13 @@ import {
 
 
 const operationsDoctypes: Doctype[] = [
-  { name: "temperature", title: "Temperature", icon: Thermometer },
-  { name: "gate", title: "Gate", icon: DoorOpen },
   { name: "item", title: "Item", icon: Box },
-  { name: "warehouse", title: "Warehouse", icon: Warehouse },
   { name: "logbook", title: "Log Book", icon: Book },
+  { name: "warehouse", title: "Warehouse", icon: Warehouse },
   { name: "logsheet", title: "Log Sheet", icon: FileText },
+  { name: "temperature", title: "Temperature", icon: Thermometer },
   { name: "gate-operation-logbook", title: "Gate Operation Logbook", icon: ClipboardList },
+  { name: "gate", title: "Gate", icon: DoorOpen },
   { name: "repair-work-requirement", title: "Repair Work Requirement", icon: Wrench },
   { name: "lis-incident-record", title: "LIS Incident Record", icon: AlertTriangle },
   { name: "spare-indent", title: "Spare Indent", icon: FilePlus },

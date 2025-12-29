@@ -8,6 +8,20 @@ import { useAuth } from "@/context/AuthContext";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
+// ── Debounce Hook ────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 /* -------------------------------------------------
  1. Minimal Model type
  ------------------------------------------------- */
@@ -30,6 +44,17 @@ export default function DoctypePage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  // Filter models client-side for instant results
+  const filteredModels = React.useMemo(() => {
+    if (!searchTerm) return models;
+    return models.filter(model =>
+      model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      model.equipement_model.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [models, searchTerm]);
 
   /* -------------------------------------------------
   3. FETCH
@@ -107,12 +132,12 @@ export default function DoctypePage() {
         <thead>
           <tr>
             <th>Equipement Model</th>
-            <th>ID (Name)</th>
+            <th>ID</th>
           </tr>
         </thead>
         <tbody>
-          {models.length ? ( // <-- CHANGED
-            models.map((model) => ( // <-- CHANGED
+          {filteredModels.length ? (
+            filteredModels.map((model) => (
               <tr
                 key={model.name}
                 onClick={() => handleCardClick(model.name)}
@@ -139,12 +164,12 @@ export default function DoctypePage() {
   ------------------------------------------------- */
   const renderGridView = () => (
     <div className="equipment-grid">
-      {models.length ? ( // <-- CHANGED
-        models.map((model) => ( // <-- CHANGED
+      {filteredModels.length ? (
+        filteredModels.map((model) => (
           <RecordCard
             key={model.name}
-            title={model.equipement_model} // Show the model
-            subtitle={model.name} // Show the ID
+            title={model.equipement_model} // Show model
+            subtitle={model.name} // Show ID
             fields={getFieldsForModel(model)}
             onClick={() => handleCardClick(model.name)}
           />
@@ -212,6 +237,8 @@ export default function DoctypePage() {
             placeholder={`Search ${title}...`}
             className="form-control"
             style={{ width: 240 }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 

@@ -112,7 +112,7 @@ export default function NewStageNoPage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new stage number for Lift Irrigation Scheme"
-      submitLabel={isSaving ? "Creating..." : "Create Stage No"}
+      submitLabel={isSaving ? "Saving..." : "New Stage No"}
       cancelLabel="Cancel"
     />
   );

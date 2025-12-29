@@ -8,6 +8,20 @@ import { useAuth } from "@/context/AuthContext";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
+// ── Debounce Hook ────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 
 interface AssetCategory {
   name: string;
@@ -26,6 +40,17 @@ export default function DoctypePage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Filter categories client-side for instant results
+  const filteredCategories = React.useMemo(() => {
+    if (!searchTerm) return categories;
+    return categories.filter(cat =>
+      cat.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [categories, searchTerm]);
+
   React.useEffect(() => {
     const fetchCategories = async () => { // <-- CHANGED
       if (!isInitialized) return;
@@ -39,7 +64,7 @@ export default function DoctypePage() {
         setError(null);
 
         // --- TODO: Update these fields to match your DocType ---
-        const params = {
+        const params: any = {
           fields: JSON.stringify([
             "name",
             // "parent_asset_category",
@@ -112,8 +137,8 @@ export default function DoctypePage() {
           </tr>
         </thead>
         <tbody>
-          {categories.length ? ( // <-- CHANGED
-            categories.map((cat) => ( // <-- CHANGED
+          {filteredCategories.length ? (
+            filteredCategories.map((cat) => (
               <tr
                 key={cat.name}
                 onClick={() => handleCardClick(cat.name)}
@@ -140,13 +165,13 @@ export default function DoctypePage() {
   ------------------------------------------------- */
   const renderGridView = () => (
     <div className="equipment-grid">
-      {categories.length ? ( // <-- CHANGED
-        categories.map((cat) => ( // <-- CHANGED
+      {filteredCategories.length ? (
+        filteredCategories.map((cat) => (
           <RecordCard
             key={cat.name}
             title={cat.name}
             // subtitle={cat.parent_asset_category} // <-- TODO
-            fields={getFieldsForCategory(cat)} // <-- CHANGED
+            fields={getFieldsForCategory(cat)}
             onClick={() => handleCardClick(cat.name)}
           />
         ))
@@ -203,6 +228,8 @@ export default function DoctypePage() {
             placeholder={`Search ${title}...`}
             className="form-control"
             style={{ width: 240 }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 

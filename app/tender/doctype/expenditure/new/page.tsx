@@ -465,7 +465,7 @@ export default function NewExpenditurePage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new expenditure record"
-      submitLabel={isSaving ? "Creating..." : "Create Expenditure"}
+      submitLabel={isSaving ? "Saving..." : "New Expenditure"}
       cancelLabel="Cancel"
     />
   );

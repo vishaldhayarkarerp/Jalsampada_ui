@@ -120,7 +120,7 @@ export default function NewFundHeadPage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new fund head"
-      submitLabel={isSaving ? "Creating..." : "Create Fund Head"}
+      submitLabel={isSaving ? "Saving..." : "New Fund Head"}
       cancelLabel="Cancel"
     />
   );

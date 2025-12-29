@@ -8,6 +8,20 @@ import { useAuth } from "@/context/AuthContext";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
+// ── Debounce Hook ────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 interface Tender {
   name: string;              // id
   status?: string;           // from custom_tender_status
@@ -25,6 +39,18 @@ export default function DoctypePage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  // Filter tenders client-side for instant results
+  const filteredTenders = React.useMemo(() => {
+    if (!searchTerm) return tenders;
+    return tenders.filter(tender =>
+      tender.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tender.tender_name && tender.tender_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (tender.status && tender.status.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [tenders, searchTerm]);
 
   React.useEffect(() => {
     const fetchTenders = async () => {
@@ -108,8 +134,8 @@ export default function DoctypePage() {
           </tr>
         </thead>
         <tbody>
-          {tenders.length ? (
-            tenders.map((t) => (
+          {filteredTenders.length ? (
+            filteredTenders.map((t) => (
               <tr
                 key={t.name}
                 onClick={() => handleCardClick(t.name)}
@@ -134,8 +160,8 @@ export default function DoctypePage() {
 
   const renderGridView = () => (
     <div className="equipment-grid">
-      {tenders.length ? (
-        tenders.map((t) => (
+      {filteredTenders.length ? (
+        filteredTenders.map((t) => (
           <RecordCard
             key={t.name}
             title={t.tender_name || t.name}
@@ -196,6 +222,8 @@ export default function DoctypePage() {
             placeholder={`Search ${title}...`}
             className="form-control"
             style={{ width: 240 }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="view-switcher">

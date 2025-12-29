@@ -102,7 +102,7 @@ export default function NewRatingPage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new rating"
-      submitLabel={isSaving ? "Creating..." : "Create Rating"}
+      submitLabel={isSaving ? "Saving..." : "New Rating"}
       cancelLabel="Cancel"
     />
   );

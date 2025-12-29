@@ -100,7 +100,7 @@ export default function NewEquipmentCapacityPage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new equipment capacity"
-      submitLabel={isSaving ? "Creating..." : "Create Equipment Capacity"}
+      submitLabel={isSaving ? "Saving..." : "New Equipment Capacity"}
       cancelLabel="Cancel"
     />
   );

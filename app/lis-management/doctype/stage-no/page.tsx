@@ -8,6 +8,20 @@ import { useAuth } from "@/context/AuthContext";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
+// ── Debounce Hook ────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 /* -------------------------------------------------
  1. Minimal Stage No type
  ------------------------------------------------- */
@@ -31,6 +45,18 @@ export default function DoctypePage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  // Filter stages client-side for instant results
+  const filteredStages = React.useMemo(() => {
+    if (!searchTerm) return stages;
+    return stages.filter(stage =>
+      stage.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      stage.stage_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (stage.lis_name && stage.lis_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [stages, searchTerm]);
 
   /* -------------------------------------------------
   3. FETCH
@@ -114,12 +140,12 @@ export default function DoctypePage() {
           <tr>
             <th>Stage No</th>
             <th>LIS Name</th>
-            <th>ID (Name)</th>
+            <th>ID</th>
           </tr>
         </thead>
         <tbody>
-          {stages.length ? ( // <-- CHANGED
-            stages.map((stage) => ( // <-- CHANGED
+          {filteredStages.length ? (
+            filteredStages.map((stage) => (
               <tr
                 key={stage.name}
                 onClick={() => handleCardClick(stage.name)}
@@ -147,13 +173,13 @@ export default function DoctypePage() {
   ------------------------------------------------- */
   const renderGridView = () => (
     <div className="equipment-grid">
-      {stages.length ? ( // <-- CHANGED
-        stages.map((stage) => ( // <-- CHANGED
+      {filteredStages.length ? (
+        filteredStages.map((stage) => (
           <RecordCard
             key={stage.name}
-            title={stage.stage_no} // Show the stage number
-            subtitle={stage.lis_name} // Show the LIS name
-            fields={[]} // No extra fields, title/subtitle are enough
+            title={stage.stage_no} // Show as stage number
+            subtitle={stage.lis_name} // Show as LIS name
+            fields={getFieldsForStage(stage)}
             onClick={() => handleCardClick(stage.name)}
           />
         ))
@@ -220,6 +246,8 @@ export default function DoctypePage() {
             placeholder={`Search ${title}...`}
             className="form-control"
             style={{ width: 240 }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 

@@ -10,13 +10,8 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
-/* -------------------------------------------------
- 1. Asset Category type – mirrors the API
- ------------------------------------------------- */
-// Updated to match your screenshots
 interface AssetCategoryData {
   name: string;
   asset_category_name?: string; // Frappe often has a 'asset_category_name' field
@@ -100,7 +95,6 @@ export default function RecordDetailPage() {
       {
         name: "Details",
         fields: fields([
-          // In Frappe, 'name' is often the ID, 'asset_category_name' is the editable field
           { name: "asset_category_name", label: "Category Name", type: "Data", required: true, defaultValue: category.name },
           {
             name: "custom_specifications", // This is the field name for the child table
@@ -153,6 +147,53 @@ export default function RecordDetailPage() {
   };
 
   const handleCancel = () => router.back();
+
+  /* -------------------------------------------------
+  5. DUPLICATE FUNCTIONALITY (Shift+D)
+  ------------------------------------------------- */
+  const handleDuplicate = React.useCallback(() => {
+    if (!category) {
+      toast.error("Asset Category data not loaded. Cannot duplicate.");
+      return;
+    }
+
+    // Prepare data for duplication - exclude fields that should not be copied
+    const duplicateData: Record<string, any> = {};
+    
+    // Fields to exclude from duplication
+    const excludeFields = [
+      'name', 'naming_series', 'docstatus', 'modified', 'creation',
+      'owner', 'modified_by', 'idx'
+    ];
+
+    // Copy all other fields
+    Object.keys(category).forEach(key => {
+      if (!excludeFields.includes(key) && category[key as keyof AssetCategoryData] !== undefined) {
+        duplicateData[key] = category[key as keyof AssetCategoryData];
+      }
+    });
+
+    // Encode the data for URL transmission
+    const encodedData = btoa(JSON.stringify(duplicateData));
+    
+    // Navigate to new page with duplicate data
+    router.push(`/lis-management/doctype/asset-category/new?duplicate=${encodeURIComponent(encodedData)}`);
+    
+    toast.success("Asset Category data copied! Creating duplicate...");
+  }, [category, router]);
+
+  // Add keyboard event listener for Shift+D
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.shiftKey && event.key === 'D') {
+        event.preventDefault();
+        handleDuplicate();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleDuplicate]);
 
   /* -------------------------------------------------
   6. UI STATES

@@ -186,9 +186,9 @@ export default function AssetDetailPage() {
             </button>
           </Link>
 
-          <button onClick={() => setShowWorkOrderModal(true)} className="btn-header-secondary">
+          {/* <button onClick={() => setShowWorkOrderModal(true)} className="btn-header-secondary">
             <Clipboard size={18} /> Create Work Order
-          </button>
+          </button> */}
 
           <button onClick={handleDownloadReport} className="btn-header-secondary">
             <Download size={18} /> Download Report

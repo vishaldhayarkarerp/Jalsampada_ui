@@ -100,7 +100,7 @@ export default function NewEquipmentModelPage() {
       onCancel={handleCancel}
       title={`New ${doctypeName}`}
       description="Create a new equipment model"
-      submitLabel={isSaving ? "Creating..." : "Create Equipment Model"}
+      submitLabel={isSaving ? "Saving..." : "New Equipment Model"}
       cancelLabel="Cancel"
     />
   );
