@@ -251,12 +251,13 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
         shouldUnregister={false}
         rules={{ required: field.required ? `${field.label} is required` : false }}
         render={({ field: { onChange, onBlur, value } }) => {
-          // Initialize searchTerm with current value
+          // Handle both initialization and updates in a single useEffect
           React.useEffect(() => {
-            if (value && !searchTerm) {
-              setSearchTerm(value);
+            if (value !== searchTerm) {
+              console.log(`LinkField ${field.name}: Updating searchTerm:`, value);
+              setSearchTerm(value || "");
             }
-          }, [value]);
+          }, [value, searchTerm]);
 
           const handleInputChangeWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
             const newValue = e.target.value;
@@ -272,6 +273,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
 
           const handleOptionSelectWrapper = (option: LinkFieldOption) => {
             handleOptionSelect(option);
+            console.log(`LinkField ${field.name}: onChange called with value:`, option.value);
             onChange(option.value);
           };
 

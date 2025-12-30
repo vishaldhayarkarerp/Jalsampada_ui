@@ -124,8 +124,8 @@ export default function RecordDetailPage() {
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-            ? "Unauthorized"
-            : `Failed to load ${doctypeName}`
+              ? "Unauthorized"
+              : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -148,7 +148,7 @@ export default function RecordDetailPage() {
         defaultValue:
           f.name in record
             ? // @ts-ignore
-              record[f.name as keyof TenderProjectData]
+            record[f.name as keyof TenderProjectData]
             : f.defaultValue,
       }));
 
@@ -171,6 +171,9 @@ export default function RecordDetailPage() {
         label: "Name of Work",
         type: "Link",
         linkTarget: "Prapan Suchi",
+        filterMapping: [
+          { sourceField: "custom_lis_name", targetField: "lis_name" },
+        ]
       },
       {
         name: "custom_tender_id",
@@ -226,16 +229,16 @@ export default function RecordDetailPage() {
         name: "custom_tender_extension_history",
         label: "Tender Extension Details",
         type: "Table",
-        options:"Extension Period Details",
+        options: "Extension Period Details",
         columns: [
-              { name: "extension_count", label: "Extension Count", type: "Data" },
-              { name: "extension_upto", label: "Extension Upto", type: "Date" },
-              { name: "sanction_letter", label: "Sanction Letter", type: "Small Text" },
-              { name: "attach", label: "Attach", type: "Attach" },
-            ],
+          { name: "extension_count", label: "Extension Count", type: "Data" },
+          { name: "extension_upto", label: "Extension Upto", type: "Date" },
+          { name: "sanction_letter", label: "Sanction Letter", type: "Small Text" },
+          { name: "attach", label: "Attach", type: "Attach" },
+        ],
         displayDependsOn: "custom_is_extension==1"
       },
-      
+
     ]);
 
     // Documents Attachment tab (from Fields-1.csv – Tab Break) [file:6]

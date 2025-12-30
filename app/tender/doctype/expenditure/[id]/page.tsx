@@ -273,6 +273,11 @@ export default function RecordDetailPage() {
             label: "Lift Irrigation Scheme",
             type: "Link",
             linkTarget: "Lift Irrigation Scheme",
+            fetchFrom: {
+              sourceField: "tender_number",
+              targetDoctype: "Project",
+              targetField: "custom_lis_name"
+            }
           },
           {
             name: "stage",

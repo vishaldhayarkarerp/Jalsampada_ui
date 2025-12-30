@@ -117,193 +117,53 @@ export default function NewExpenditurePage() {
       {
         name: "Details",
         fields: [
-          {
-            name: "fiscal_year",
-            label: "Fiscal Year",
-            type: "Link",
-            linkTarget: "Fiscal Year",
-          },
-          {
-            name: "prev_bill_no",
-            label: "Previous Bill Number",
-            type: "Data",
-          },
-          {
-            name: "bill_upto",
-            label: "Bill Upto Amount",
-            type: "Currency",
-          },
-
-          {
-            name: "tender_number",
-            label: "Tender Number",
-            type: "Link",
-            linkTarget: "Project",
-          },
-          {
-            name: "bill_number",
-            label: "Bill Number",
-            type: "Data",
-          },
-          {
-            name: "remaining_amount",
-            label: "Remaining Amount",
-            type: "Currency",
-          },
-
-          {
-            name: "tender_amount",
-            label: "Tender Amount",
-            type: "Currency",
-          },
-          {
-            name: "prev_bill_amt",
-            label: "Previous Bill Amount",
-            type: "Currency",
-          },
-          {
-            name: "bill_type",
-            label: "Bill Type",
-            type: "Select",
-            options: [
-              { label: "Select Type", value: "Select Type" },
-              { label: "Running", value: "Running" },
-              { label: "Final", value: "Final" },
-            ],
-          },
-
-          {
-            name: "posting_date",
-            label: "Bill Date",
-            type: "Date",
-          },
-          {
-            name: "bill_amount",
-            label: "Bill Amount",
-            type: "Currency",
-          },
-          {
-            name: "page_no",
-            label: "Page No",
-            type: "Data",
-          },
-          {
-            name: "mb_no",
-            label: "MB No",
-            type: "Data",
-          },
-
+          { name: "fiscal_year", label: "Fiscal Year", type: "Link", linkTarget: "Fiscal Year" },
+          { name: "tender_number", label: "Tender Number", type: "Link", linkTarget: "Project" },
+          { name: "tender_amount", label: "Tender Amount", type: "Currency" },
+          { name: "posting_date", label: "Bill Date", type: "Date" },
+          { name: "prev_bill_no", label: "Previous Bill Number", type: "Data" },
+          { name: "bill_number", label: "Bill Number", type: "Data" },
+          { name: "prev_bill_amt", label: "Previous Bill Amount", type: "Currency" },
+          { name: "bill_amount", label: "Bill Amount", type: "Currency" },
+          { name: "bill_upto", label: "Bill Upto Amount", type: "Currency" },
+          { name: "remaining_amount", label: "Remaining Amount", type: "Currency" },
+          { name: "bill_type", label: "Bill Type", type: "Select", options: [{ label: "Running", value: "Running" }, { label: "Final", value: "Final" }] },
+          { name: "page_no", label: "Page No", type: "Data" },
+          { name: "mb_no", label: "MB No", type: "Data" },
           {
             name: "lift_irrigation_scheme",
             label: "Lift Irrigation Scheme",
             type: "Link",
             linkTarget: "Lift Irrigation Scheme",
+            fetchFrom: {
+              sourceField: "tender_number",
+              targetDoctype: "Project",
+              targetField: "custom_lis_name"
+            }
           },
+          { name: "stage", label: "Stage/ Sub Scheme", type: "Table MultiSelect", linkTarget: "Stage Multiselect" },
           {
-            name: "stage",
-            label: "Stage/ Sub Scheme",
-            type: "Table MultiSelect",
-            linkTarget: "Stage Multiselect",
+            name: "expenditure_details", label: "Expenditure Details", type: "Table", columns: [
+              { name: "name_of_work", label: "Name of Work", type: "Text" },
+              { name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No" },
+              { name: "work_type", label: "Work Type", type: "Link", linkTarget: "Work Type" },
+              { name: "asset", label: "Asset", type: "Link", linkTarget: "Asset" },
+              { name: "work_subtype", label: "Work Subtype", type: "Link", linkTarget: "Work Subtype" },
+              { name: "asset_name", label: "Asset Name", type: "Data" },
+              { name: "bill_amount", label: "Expenditure Amount", type: "Currency" },
+              { name: "have_asset", label: "Have Asset", type: "Check" },
+              { name: "asset_no", label: "Asset No", type: "Data" },
+              { name: "from_date", label: "From Date", type: "Date" },
+              { name: "attach", label: "Attach", type: "Attach" },
+              { name: "to_date", label: "To Date", type: "Date" },
+              { name: "invoice_number", label: "Invoice Number", type: "Data" },
+              { name: "expenditure_date", label: "Invoice Date", type: "Date" },
+              { name: "remarks", label: "Work Details", type: "Text" }
+            ]
           },
+          { name: "saved_amount", label: "Saved Amount", type: "Currency" },
+          { name: "work_description", label: "Work Description", type: "Long Text" }
 
-          
-          {
-            name: "expenditure_details",
-            label: "Expenditure Details",
-            type: "Table",
-            columns: [
-              {
-                name: "name_of_work",
-                label: "Name of Work",
-                type: "Text",
-              },
-              {
-                name: "stage",
-                label: "Stage",
-                type: "Link",
-                linkTarget: "Stage No",
-              },
-              {
-                name: "work_type",
-                label: "Work Type",
-                type: "Link",
-                linkTarget: "Work Type",
-              },
-              {
-                name: "asset",
-                label: "Asset",
-                type: "Link",
-                linkTarget: "Asset",
-              },
-              {
-                name: "work_subtype",
-                label: "Work Subtype",
-                type: "Link",
-                linkTarget: "Work Subtype",
-              },
-              {
-                name: "asset_name",
-                label: "Asset Name",
-                type: "Data",
-              },
-              {
-                name: "bill_amount",
-                label: "Expenditure Amount",
-                type: "Currency",
-              },
-              {
-                name: "have_asset",
-                label: "Have Asset",
-                type: "Check",
-              },
-              {
-                name: "asset_no",
-                label: "Asset No",
-                type: "Data",
-              },
-              {
-                name: "from_date",
-                label: "From Date",
-                type: "Date",
-              },
-              {
-                name: "attach",
-                label: "Attach",
-                type: "Attach",
-              },
-              {
-                name: "to_date",
-                label: "To Date",
-                type: "Date",
-              },
-              {
-                name: "invoice_number",
-                label: "Invoice Number",
-                type: "Data",
-              },
-              {
-                name: "expenditure_date",
-                label: "Invoice Date",
-                type: "Date",
-              },
-              {
-                name: "remarks",
-                label: "Work Details",
-                type: "Text",
-              },
-            ],
-          },
-
-          {
-            name: "saved_amount",
-            label: "Saved Amount",
-            type: "Currency",
-          },
-          {
-            name: "work_description",
-            label: "Work Description",
-            type: "Text",
-          },
         ],
       },
     ];
@@ -439,7 +299,7 @@ export default function NewExpenditurePage() {
       } else {
         router.push(`/tender/doctype/expenditure`);
       }
-      
+
     } catch (err: any) {
       console.error("Create error:", err);
       console.log("Full server error:", err.response?.data);
@@ -463,7 +323,7 @@ export default function NewExpenditurePage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`New ${doctypeName}`}
+      title="New Expenditure"
       description="Create a new expenditure record"
       submitLabel={isSaving ? "Saving..." : "New Expenditure"}
       cancelLabel="Cancel"

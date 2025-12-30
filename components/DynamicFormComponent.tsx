@@ -12,6 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button";
 import { Upload, X } from "lucide-react";
 import { useRef } from "react";
+import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 
 import { TableField } from "./TableField"; 
 import { LinkField } from "./LinkField";
@@ -47,8 +49,7 @@ export type FieldType =
   | "Table MultiSelect"
   | "Percent"
   | "Rating"
-  | "Attach"
-  "Text Editor";
+  | "Attach";
 
 export interface FormField {
   name: string;
@@ -73,6 +74,11 @@ export interface FormField {
   filters?: ((getValue: (name: string) => any) => Record<string, any>);
   filterMapping?: { sourceField: string; targetField: string }[];
   displayDependsOn?: string; // Frappe-style display depends on condition
+  fetchFrom?: {
+    sourceField: string;      // Field to watch for changes
+    targetDoctype: string;     // Doctype to fetch from
+    targetField: string;       // Field to fetch from target doctype
+  };
 }
 
 // Tabbed layout
@@ -90,6 +96,49 @@ export interface DynamicFormProps {
   description?: string;
   submitLabel?: string;
   cancelLabel?: string;
+}
+
+async function fetchFieldValue(
+  sourceValue: string,
+  targetDoctype: string,
+  targetField: string,
+  apiKey: string,
+  apiSecret: string
+): Promise<any> {
+  try {
+    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+    const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
+    
+    console.log(`Making API call to: ${url}`);
+    console.log(`With params: fields=${JSON.stringify([targetField])}`);
+    
+    const resp = await axios.get(url, {
+      params: {
+        fields: JSON.stringify([targetField]) // Only fetch the specific field
+      },
+      headers: {
+        Authorization: `token ${apiKey}:${apiSecret}`,
+        "Content-Type": "application/json",
+      },
+      withCredentials: true,
+    });
+
+    console.log(`API Response:`, resp.data);
+    
+    const fieldValue = resp.data.data?.[targetField];
+    console.log(`Extracted field value:`, fieldValue);
+    
+    return fieldValue || null;
+  } catch (e: any) {
+    console.error(`Failed to fetch ${targetField} from ${targetDoctype}:`, e);
+    console.error('Error details:', {
+      message: e.message,
+      status: e.response?.status,
+      statusText: e.response?.statusText,
+      data: e.response?.data
+    });
+    return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -261,6 +310,8 @@ export function DynamicForm({
   submitLabel = "Submit",
   cancelLabel = "Cancel",
 }: DynamicFormProps) {
+  // Get API credentials from AuthContext
+  const { apiKey, apiSecret } = useAuth();
   // ── TAB STATE ─────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = React.useState(0);
 
@@ -334,6 +385,100 @@ export function DynamicForm({
   );
 
   const onFormSubmit = (data: Record<string, any>) => onSubmit(data, isDirty);
+
+  // ── FETCH FROM FUNCTIONALITY ─────────────────────────────────────────────
+  React.useEffect(() => {
+    if (!apiKey || !apiSecret) return;
+
+    // Get all fields with fetchFrom property
+    const fieldsWithFetchFrom = tabs.flatMap(tab => tab.fields).filter(field => field.fetchFrom);
+    
+    // Create a map of source fields to the fields that depend on them
+    const sourceFieldMap = new Map<string, FormField[]>();
+    fieldsWithFetchFrom.forEach(field => {
+      if (field.fetchFrom) {
+        const sourceField = field.fetchFrom.sourceField;
+        if (!sourceFieldMap.has(sourceField)) {
+          sourceFieldMap.set(sourceField, []);
+        }
+        sourceFieldMap.get(sourceField)?.push(field);
+      }
+    });
+
+    // Track previous values to detect actual changes
+    const previousValues = new Map<string, any>();
+
+    // Handle fetching for a specific source field
+    const handleFetchForSource = async (sourceFieldName: string) => {
+      const sourceValue = watch(sourceFieldName);
+      const previousValue = previousValues.get(sourceFieldName);
+      
+      // Only proceed if the value actually changed
+      if (sourceValue !== previousValue) {
+        previousValues.set(sourceFieldName, sourceValue);
+        
+        const dependentFields = sourceFieldMap.get(sourceFieldName) || [];
+        
+        for (const field of dependentFields) {
+          if (!field.fetchFrom) continue;
+          
+          // Always fetch when source field changes, even if target field has a value
+          // This allows updating the target field when user changes the source selection
+          if (sourceValue) {
+            try {
+              console.log(`Fetching ${field.name} from ${field.fetchFrom.targetDoctype}.${field.fetchFrom.targetField} for source ${sourceFieldName}=${sourceValue}`);
+              
+              const fetchedValue = await fetchFieldValue(
+                sourceValue,
+                field.fetchFrom.targetDoctype,
+                field.fetchFrom.targetField,
+                apiKey,
+                apiSecret
+              );
+              
+              console.log(`Fetched value for ${field.name}:`, fetchedValue);
+              
+              if (fetchedValue !== null && fetchedValue !== undefined) {
+                console.log(`Setting ${field.name} to: ${fetchedValue}`);
+                setValue(field.name, fetchedValue, { shouldDirty: true });
+              } else {
+                console.log(`No value found for ${field.name}, keeping current value`);
+              }
+            } catch (e) {
+              console.error(`Failed to fetch ${field.name}:`, e);
+            }
+          } else {
+            // Clear the target field when source field is cleared
+            console.log(`Clearing ${field.name} because source ${sourceFieldName} is empty`);
+            setValue(field.name, "", { shouldDirty: true });
+          }
+        }
+      }
+    };
+
+    // Initialize previous values and set up watchers
+    const sourceFields = Array.from(sourceFieldMap.keys());
+    sourceFields.forEach(sourceField => {
+      previousValues.set(sourceField, watch(sourceField));
+    });
+
+    // Initial fetch for all source fields that have values
+    sourceFields.forEach(handleFetchForSource);
+
+    // Set up a single watcher for all source fields
+    const subscription = watch((value, { name, type }) => {
+      if (name && sourceFieldMap.has(name)) {
+        console.log(`Field ${name} changed, type: ${type}, new value:`, value[name]);
+        // Small delay to ensure the form value is updated
+        setTimeout(() => handleFetchForSource(name), 100);
+      }
+    });
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [tabs, watch, setValue, apiKey, apiSecret]);
   
   // ── RENDER HELPERS (no hooks inside) ─────────────────────────────────────
   const renderInput = (field: FormField, type: string = "text") => {
