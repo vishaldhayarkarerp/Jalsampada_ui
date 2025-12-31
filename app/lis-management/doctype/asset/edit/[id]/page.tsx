@@ -295,7 +295,7 @@ export default function RecordDetailPage() {
                         type: "Select",
                         options: [{ label: "Working", value: "Working" }, { label: "Under Repair", value: "Under Repair", }],
                     },
-                    { name: "custom_description", label: "Description", type: "Small Text",
+                    { name: "custom_description", label: "Description", type: "Long Text",
                         displayDependsOn: "custom_condition=='Under Repair'",
 
                      },

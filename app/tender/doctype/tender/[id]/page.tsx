@@ -190,6 +190,11 @@ export default function RecordDetailPage() {
         name: "custom_prapan_suchi_amount",
         label: "Prapan Suchi Amount",
         type: "Currency",
+        fetchFrom: {
+          sourceField: "custom_prapan_suchi",
+          targetDoctype: "Prapan Suchi",
+          targetField: "amount"
+        }
       },
       {
         name: "expected_start_date",
@@ -232,8 +237,8 @@ export default function RecordDetailPage() {
         options: "Extension Period Details",
         columns: [
           { name: "extension_count", label: "Extension Count", type: "Data" },
-          { name: "extension_upto", label: "Extension Upto", type: "Date" },
-          { name: "sanction_letter", label: "Sanction Letter", type: "Small Text" },
+          { name: "extension_upto", label: "Extension Upto", type: "Text", },
+          { name: "sanction_letter", label: "Sanction Letter", type: "Data" },
           { name: "attach", label: "Attach", type: "Attach" },
         ],
         displayDependsOn: "custom_is_extension==1"

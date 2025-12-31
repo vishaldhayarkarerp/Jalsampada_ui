@@ -110,8 +110,8 @@ export default function NewTenderPage() {
         type: "Link",
         linkTarget: "Prapan Suchi",
         filterMapping: [
-              { sourceField: "custom_lis_name", targetField: "lis_name" },
-            ]
+          { sourceField: "custom_lis_name", targetField: "lis_name" },
+        ]
       },
       {
         name: "custom_tender_id",
@@ -128,6 +128,11 @@ export default function NewTenderPage() {
         name: "custom_prapan_suchi_amount",
         label: "Prapan Suchi Amount",
         type: "Currency",
+        fetchFrom: {
+          sourceField: "custom_prapan_suchi",
+          targetDoctype: "Prapan Suchi",
+          targetField: "amount"
+        }
       },
       {
         name: "expected_start_date",
@@ -167,13 +172,13 @@ export default function NewTenderPage() {
         name: "custom_tender_extension_history",
         label: "Tender Extension Details",
         type: "Table",
-        options:"Extension Period Details",
+        options: "Extension Period Details",
         columns: [
-              { name: "extension_count", label: "Extension Count", type: "Data" },
-              { name: "extension_upto", label: "Extension Upto", type: "Date" },
-              { name: "sanction_letter", label: "Sanction Letter", type: "Small Text" },
-              { name: "attach", label: "Attach", type: "Attach" },
-            ],
+          { name: "extension_count", label: "Extension Count", type: "Data" },
+          { name: "extension_upto", label: "Extension Upto", type: "Date" },
+          { name: "sanction_letter", label: "Sanction Letter", type: "Small Text" },
+          { name: "attach", label: "Attach", type: "Attach" },
+        ],
         displayDependsOn: "custom_is_extension==1"
       },
       {
@@ -181,7 +186,7 @@ export default function NewTenderPage() {
         label: "Tender Description",
         type: "Section Break",
       },
-       {
+      {
         name: "notes",
         label: "Description",
         type: "Long Text",
@@ -400,7 +405,7 @@ export default function NewTenderPage() {
       } else {
         router.push(`/tender/doctype/tender`);
       }
-      
+
     } catch (err: any) {
       console.error("Create error:", err);
       const serverData = err.response?.data;

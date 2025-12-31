@@ -69,15 +69,8 @@ export default function NewPrapanSuchiPage() {
           {
             name: "stage",
             label: "Stage/Sub Scheme",
-            type: "Table",
-            columns: [
-              {
-                name: "stage",
-                label: "Stage",
-                type: "Link",
-                linkTarget: "Stage No",
-              },
-            ],
+            type: "Table MultiSelect",
+            linkTarget: "Stage Multiselect",
           },
           {
             name: "work_name",
@@ -87,7 +80,7 @@ export default function NewPrapanSuchiPage() {
           {
             name: "description",
             label: "Description",
-            type: "Text",
+            type: "Long Text",
           },
         ],
       },
@@ -163,7 +156,7 @@ export default function NewPrapanSuchiPage() {
       } else {
         router.push(`/tender/doctype/prapan-suchi`);
       }
-      
+
     } catch (err: any) {
       console.error("Create error:", err);
       console.log("Full server error:", err.response?.data);

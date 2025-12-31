@@ -323,10 +323,11 @@ export default function NewExpenditurePage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title="New Expenditure"
+      title={`New ${doctypeName}`}
       description="Create a new expenditure record"
       submitLabel={isSaving ? "Saving..." : "New Expenditure"}
       cancelLabel="Cancel"
+    
     />
   );
 }
