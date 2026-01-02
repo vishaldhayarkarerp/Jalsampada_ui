@@ -21,7 +21,7 @@ export default function Home() {
     // We only return the single module for the Dashboard.
     // The <main> tag is already in layout.tsx.
     <div className="module active">
-      <div className="module-header">
+      <div className="module-header mb-8">
         <div>
           <h2>Dashboard Overview</h2>
           <p>Real-time system status and key metrics</p>

@@ -335,10 +335,8 @@ export default function DoctypePage() {
         className="search-filter-section"
         style={{
           display: "flex",
-          flexWrap: "wrap",
           gap: "8px",
-          alignItems: "center",
-          marginTop: "1rem",
+          alignItems: "center"
         }}
       >
         {/* Filters Container */}
@@ -479,7 +477,7 @@ export default function DoctypePage() {
       )}
 
       {/* Content */}
-      <div className="view-container" style={{ marginTop: "1.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
       </div>
     </div>

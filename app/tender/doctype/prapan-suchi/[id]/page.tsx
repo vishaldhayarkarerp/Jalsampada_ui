@@ -270,7 +270,7 @@ export default function PrapanSuchiDetailPage() {
       onCancel={handleCancel}
       title={`Edit Prapan Suchi: ${record.name}`}
       description={`Update details for record ID: ${docname}`}
-      submitLabel={isSaving ? "Saving..." : "Save Changes"}
+      submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
     />
   );

@@ -287,7 +287,7 @@ export default function MaterialRequestDetailPage() {
 
         } catch (err: any) {
             console.error("Save error:", err);
-            toast.error("Failed to save changes", {
+            toast.error("Failed to Save", {
                 description: err.response?.data?.message || err.message || "Unknown error"
             });
         } finally {
@@ -319,7 +319,7 @@ export default function MaterialRequestDetailPage() {
             onCancel={handleCancel}
             title={`Edit Material Request: ${record.name}`}
             description={`Record ID: ${docname}`}
-            submitLabel={isSaving ? "Saving..." : "Save Changes"}
+            submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"
         />
     );

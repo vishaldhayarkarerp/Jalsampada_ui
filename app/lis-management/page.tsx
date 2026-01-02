@@ -18,6 +18,7 @@ const assetsDoctypes: Doctype[] = [
   { name: "asset", title: "Asset", icon: Database },
   { name: "asset-category", title: "Asset Category", icon: Database },
   { name: "lift-irrigation-scheme", title: "Lift Irrigation Scheme", icon: Droplets },
+  { name: "lis-phases", title: "LIS Phases", icon: Layers },
   { name: "stage-no", title: "Stage No", icon: Layers },
   { name: "equipment-make", title: "Equipement Make", icon: Factory },
   { name: "equipement-model", title: "Equipement Model", icon: Package },
@@ -30,7 +31,7 @@ export default function AssetsWorkspacePage() {
     <Workspace
       title="Assets Workspace"
       description="Select a doctype to view or manage records."
-      buttonText="Add Workspace"
+      // buttonText="Add Workspace"
       doctypes={assetsDoctypes}
       basePath="/lis-management/doctype"
     />

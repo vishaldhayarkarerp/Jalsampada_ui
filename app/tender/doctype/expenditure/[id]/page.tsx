@@ -578,7 +578,7 @@ export default function RecordDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      submitLabel={isSaving ? "Saving..." : "Save Changes"}
+      submitLabel={isSaving ? "Saving..." : "Save"}
     />
   );
 }

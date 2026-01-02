@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -16,7 +15,6 @@ export interface Doctype {
 interface WorkspaceProps {
   title: string;
   description: string;
-  buttonText: string;
   doctypes: Doctype[];
   basePath: string; 
 }
@@ -25,25 +23,29 @@ interface WorkspaceProps {
 export function Workspace({
   title,
   description,
-  buttonText,
+
   doctypes,
   basePath,
 }: WorkspaceProps) {
   
   return (
     <div className="module active">
-      <div className="module-header">
+      {/* FIX: Added 'mb-8' (margin-bottom: 2rem/32px).
+          Since 'module-header' has the border-bottom, this pushes the 
+          doctype list away from the line.
+      */}
+      <div className="module-header mb-8">
         <div>
           {/* Use the props for dynamic text */}
           <h2>{title}</h2>
           <p>{description}</p>
         </div>
-        <button className="btn btn--primary">
+        {/* <button className="btn btn--primary">
           <i className="fas fa-plus"></i> {buttonText}
-        </button>
+        </button> */}
       </div>
 
-      <div className="doctype-list-container ">
+      <div className="doctype-list-container">
         {doctypes.map((doc) => (
           <Button
             key={doc.name}

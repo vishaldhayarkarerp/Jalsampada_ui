@@ -41,7 +41,7 @@ export default function OperationsWorkspacePage() {
     <Workspace
       title="Operations Workspace"
       description="Select a doctype to view or manage records."
-      buttonText="Add Workspace"
+      // buttonText="Add Workspace"
       doctypes={operationsDoctypes}
       basePath="/operations/doctype"
     />

@@ -19,7 +19,7 @@ export default function AdminWorkspace() {
     <Workspace
       title="Admin Workspace"
       description="Manage system settings and configurations."
-      buttonText="Add Setting"
+      // buttonText="Add Setting"
       doctypes={assetsDoctypes}
       basePath="/admin/doctype"
     />

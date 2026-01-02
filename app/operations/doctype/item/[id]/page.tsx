@@ -236,7 +236,7 @@ export default function ItemDetailPage() {
       onCancel={handleCancel}
       title={`Edit Item: ${item.item_code || item.name}`}
       description={`Update basic information for item ${item.item_code || docname}`}
-      submitLabel={isSaving ? "Saving..." : "Save Changes"}
+      submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
     />
   );

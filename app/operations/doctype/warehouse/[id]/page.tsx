@@ -226,7 +226,7 @@ export default function WarehouseDetailPage() {
       onCancel={handleCancel}
       title={`Edit Warehouse: ${warehouse.name}`}
       description={`Update basic warehouse information`}
-      submitLabel={isSaving ? "Saving..." : "Save Changes"}
+      submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
     />
   );

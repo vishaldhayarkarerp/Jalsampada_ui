@@ -254,7 +254,7 @@ export default function DoctypePage() {
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "1.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
       </div>
     </div>

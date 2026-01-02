@@ -30,7 +30,7 @@ export default function TenderPage() {
     <Workspace
       title="Tender Management"
       description="Manage tenders, work orders, fund heads, and expenditure records."
-      buttonText="Create New"
+      // buttonText="Create New"
       doctypes={tenderDoctypes}
       // This ensures clicks go to /tender/doctype/[name]
       basePath="/tender/doctype"

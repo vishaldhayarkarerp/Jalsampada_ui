@@ -66,6 +66,8 @@ export default function NewRecordPage() {
           { name: "company", label: "Company", type: "Link", required: true, linkTarget: "Company", defaultValue: getValue("company") },
           { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location", defaultValue: getValue("location") },
           { name: "custom_lis_name", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme", defaultValue: getValue("custom_lis_name") },
+          { name: "custom_lis_phase", label: "LIS Phase", type: "Link", linkTarget: "LIS Phases" },
+
           {
             name: "custom_stage_no", label: "Stage No.", type: "Link", linkTarget: "Stage No", defaultValue: getValue("custom_stage_no"),
             filterMapping: [
@@ -278,15 +280,10 @@ export default function NewRecordPage() {
         'Content-Type': 'application/json',
         'Authorization': `token ${apiKey}:${apiSecret}`,
       };
-
-      // --- THIS IS THE FIX ---
-      // Get the CSRF token from local storage
       const storedCsrfToken = localStorage.getItem('csrfToken');
       if (storedCsrfToken) {
         headers['X-Frappe-CSRF-Token'] = storedCsrfToken;
       }
-      // We have REMOVED the 'frappe.csrf_token' line that caused the crash
-      // -----------------------
 
       const resp = await fetch(`${API_BASE_URL}/${doctypeName}`, {
         method: 'POST',
@@ -311,13 +308,14 @@ export default function NewRecordPage() {
       console.log("Full server error message:", err.message);
 
       // Handle duplicate entry error specifically
-      if (err.response?.data?.exc_type === "DuplicateEntryError") {
-        toast.error("Duplicate Entry Error", {
-          description: "An asset with this identifier already exists. Please change the asset details and try again."
+      if (err.response?.data?.exc_type === "DuplicateEntryError" || err.message?.includes("DuplicateEntryError")) {
+        const duplicateMessage = `Asset with the same LIS, Stage, Asset Category and Asset No already exists`;
+        toast.error("Duplicate Asset", {
+          description: duplicateMessage
         });
       } else {
         toast.error("Failed to create Asset", {
-          description: err.message || "Check the browser console (F12) for the full server error."
+          description: err.message || "Check the browser console for the full server error."
         });
       }
     } finally {

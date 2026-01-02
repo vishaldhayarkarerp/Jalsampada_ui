@@ -263,7 +263,7 @@ export default function GateOperationLogbookDetailPage() {
 
         } catch (err: any) {
             console.error("Save error:", err);
-            toast.error("Failed to save changes", {
+            toast.error("Failed to Save", {
                 description: err.response?.data?.message || err.message || "Unknown error"
             });
         } finally {
@@ -297,7 +297,7 @@ export default function GateOperationLogbookDetailPage() {
             onCancel={handleCancel}
             title={`Edit Gate Operation Logbook: ${record.name}`}
             description={`Record ID: ${docname}`}
-            submitLabel={isSaving ? "Saving..." : "Save Changes"}
+            submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"
         />
     );

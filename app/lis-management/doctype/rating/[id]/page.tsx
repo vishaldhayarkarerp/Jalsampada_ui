@@ -182,7 +182,7 @@ export default function RecordDetailPage() {
       onCancel={handleCancel}
       title={`Edit ${doctypeName}: ${ratingDoc.rating}`}
       description={`Update details for record ID: ${docname}`}
-      submitLabel={isSaving ? "Saving..." : "Save Changes"}
+      submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
     />
   );

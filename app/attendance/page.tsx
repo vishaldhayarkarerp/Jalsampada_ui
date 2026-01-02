@@ -20,7 +20,7 @@ export default function MaintenancePage() {
     <Workspace
       title="Attendance"
       description="Manage employees, designations, and attendance records."
-      buttonText="Create New"
+      // buttonText="Create New"
       doctypes={attendanceDoctypes}
       basePath="/attendance/doctype"
     />

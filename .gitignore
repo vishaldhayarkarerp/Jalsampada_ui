@@ -12,7 +12,7 @@
 
 # Production
 /build
-logs
+*.logs
 # Misc
 .DS_Store
 *.pem

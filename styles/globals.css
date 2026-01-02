@@ -838,7 +838,7 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 45px;
   background: linear-gradient(135deg, #1e88e5 0%, #0d47a1 100%);
   color: var(--color-white);
   box-shadow: var(--shadow-md);
@@ -885,10 +885,10 @@ body {
 /* Sidebar Navigation */
 .sidebar {
   position: fixed;
-  top: 60px;
+  top: 45px;
   left: 0;
-  width: 250px;
-  height: calc(100vh - 60px);
+  width: 230px;
+  height: calc(100vh - 45px);
   background-color: var(--color-surface);
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
@@ -896,7 +896,7 @@ body {
 }
 
 .nav-items {
-  padding: var(--space-16);
+  padding: var(--space-10);
 }
 
 .nav-item {
@@ -930,10 +930,10 @@ body {
 
 /* Main Content */
 .main-content {
-  margin-left: 250px;
-  margin-top: 60px;
+  margin-left: 230px;
+  margin-top: 45px;
   min-height: calc(100vh - 60px);
-  padding: var(--space-24);
+  padding: 10px 0px;
 }
 
 /* Modules */
@@ -949,8 +949,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--space-24);
-  padding-bottom: var(--space-16);
+  padding-bottom: 5px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1047,7 +1046,6 @@ body {
 .search-filter-section {
   display: flex;
   gap: var(--space-16);
-  margin-bottom: var(--space-24);
 }
 
 .search-filter-section .form-control {
@@ -1250,7 +1248,7 @@ body {
 
 .stock-table th {
   background-color: var(--color-bg-1);
-  padding: var(--space-12) var(--space-16);
+  padding: var(--space-6) var(--space-10);
   text-align: left;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
@@ -1258,9 +1256,11 @@ body {
 }
 
 .stock-table td {
-  padding: var(--space-12) var(--space-16);
+  padding: var(--space-6) var(--space-10);
   border-bottom: 1px solid var(--color-card-border-inner);
   color: var(--color-text);
+  font-size: small;
+  vertical-align: top;
 }
 
 .stock-table tr:hover {
@@ -1508,7 +1508,6 @@ body {
   border-top: 1px solid var(--color-border);
   padding: var(--space-16);
   text-align: center;
-  margin-left: 250px;
   margin-top: var(--space-32);
 }
 
@@ -1662,12 +1661,12 @@ body {
 }
 
 .sidebar {
-  width: 250px;
+  width: 220px;
   transition: width 0.3s ease;
 }
 
 .main-content {
-  margin-left: 250px;
+  margin-left: 230px;
   transition: margin-left 0.3s ease;
 }
 
@@ -1684,7 +1683,7 @@ body {
 }
 
 .app-container.sidebar-collapsed .main-content {
-  margin-left: 80px;
+  margin-left: 90px;
 }
 
 /* === Keep/Update this in styles/globals.css === */
@@ -1708,7 +1707,7 @@ body {
   /* 14px */
   font-weight: 500;
   color: #6f806b;
-  margin-bottom: 8px;
+  margin-bottom: 3px;
 }
 
 .btn--tab {
@@ -1802,7 +1801,7 @@ body {
   border: none;
   text-decoration: none;
   position: relative;
-  
+
   /* Override specific styles */
   background-color: #ffffff;
   color: var(--color-primary);
@@ -1833,7 +1832,7 @@ body {
   border: none;
   text-decoration: none;
   position: relative;
-  
+
   /* Override specific styles */
   background-color: transparent;
   color: #ffffff;
@@ -2344,6 +2343,7 @@ body {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
+
 /* In your globals.css or assets.css */
 .sidebar {
   /* ... existing styles ... */
@@ -2354,9 +2354,13 @@ body {
 
 .nav-item {
   /* ... existing styles ... */
-  display: flex; /* Ensure icons and text are in a row */
-  align-items: center; /* Vertically align them */
-  gap: 1rem; /* Adjust space between icon and text */
-  padding: 0.75rem 1.5rem; /* Example padding */
+  display: flex;
+  /* Ensure icons and text are in a row */
+  align-items: center;
+  /* Vertically align them */
+  gap: 1rem;
+  /* Adjust space between icon and text */
+  padding: 7px 15px;
+  /* Example padding */
   /* ... more existing styles ... */
 }

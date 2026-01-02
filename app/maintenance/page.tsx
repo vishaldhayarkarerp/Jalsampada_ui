@@ -22,7 +22,7 @@ export default function MaintenancePage() {
     <Workspace
       title="Maintenance"
       description="Manage maintenance checklists, schedules, and logs."
-      buttonText="Create New"
+      // buttonText="Create New"
       doctypes={maintenanceDoctypes}
       basePath="/maintenance/doctype"
     />

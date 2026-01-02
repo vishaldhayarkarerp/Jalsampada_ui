@@ -205,7 +205,6 @@ export default function RecordDetailPage() {
                 name: "Details",
                 fields: fields([
 
-                    { name: "status", label: "Status", type: "Read Only" },
                     { name: "asset_name", label: "Asset Name", type: "Text", required: true },
                     { name: "company", label: "Company", type: "Link", required: true, linkTarget: "Company" },
                     { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
@@ -213,6 +212,7 @@ export default function RecordDetailPage() {
                     { name: "custom_asset_no", label: "Asset No", type: "Data" },
                     { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location" },
                     { name: "custom_lis_name", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme" },
+                    { name: "custom_lis_phase", label: "LIS Phase", type: "Link", linkTarget: "LIS Phases" },
                     { name: "custom_stage_no", label: "Stage No.", type: "Link", linkTarget: "Stage No" },
                     { name: "custom_serial_number", label: "Serial Number", type: "Data" },
                     {
@@ -295,10 +295,11 @@ export default function RecordDetailPage() {
                         type: "Select",
                         options: [{ label: "Working", value: "Working" }, { label: "Under Repair", value: "Under Repair", }],
                     },
-                    { name: "custom_description", label: "Description", type: "Long Text",
+                    {
+                        name: "custom_description", label: "Description", type: "Long Text",
                         displayDependsOn: "custom_condition=='Under Repair'",
 
-                     },
+                    },
 
                     { name: "section_specifications", label: "Specification of Asset", type: "Section Break" },
                     {
@@ -453,7 +454,7 @@ export default function RecordDetailPage() {
                 setAsset(resp.data.data);
             }
 
-            router.push(`/lis-management/doctype/asset/${docname}`);
+            router.push(`/lis-management/doctype/asset/edit/${docname}`);
 
         } catch (err: any) {
             console.error("Save error:", err);
@@ -554,8 +555,8 @@ export default function RecordDetailPage() {
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             title={`Edit Asset: ${asset.name}`}
-            description={`Update details for record ID: ${docname}`}
-            submitLabel={isSaving ? "Saving..." : "Save Changes"}
+            description={`Status: ${asset?.status || 'Unknown'}`}
+            submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"
         />
     );
