@@ -3,7 +3,7 @@
 "use client";
 
 import * as React from "react";
-import { Workspace, Doctype } from "@/components/Workspace";
+import { Workspace, Doctype, DoctypeGroup } from "@/components/Workspace";
 import {
   DoorOpen,
   Box,
@@ -35,6 +35,13 @@ const operationsDoctypes: Doctype[] = [
   // { name: "stock-reconciliation", title: "Stock Reconciliation", icon: ListChecks }
 ];
 
+const operationsDoctypeGroups: DoctypeGroup[] = [
+  {
+    title: "Operations",
+    doctypes: operationsDoctypes
+  }
+];
+
 
 export default function OperationsWorkspacePage() {
   return (
@@ -42,7 +49,7 @@ export default function OperationsWorkspacePage() {
       title="Operations Workspace"
       description="Select a doctype to view or manage records."
       // buttonText="Add Workspace"
-      doctypes={operationsDoctypes}
+      doctypeGroups={operationsDoctypeGroups}
       basePath="/operations/doctype"
     />
   );

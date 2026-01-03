@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Download, QrCode, Clipboard, BarChart3, History, Settings, X } from "lucide-react";
+import { ArrowLeft, Download, QrCode, Clipboard, BarChart3, History, Settings, X, Pencil, Package, MapPin } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -16,7 +16,7 @@ const SAMPLE_MACHINE = {
   health_status: "Healthy",
   machine_type: "CNC Lathe",
   model_number: "PRO-500X",
-  manufacturer: "Haas Automation",
+  manufacturer: "H Automation",
   installation_date: "2023-08-15",
   status: "Operational",
   next_maintenance_date: "2025-12-01",
@@ -84,51 +84,83 @@ export default function TestPage() {
   const latestReading = SAMPLE_MACHINE.latest_reading;
 
   return (
-    // Page container
-    <div className="p-4 md:p-6 test-module-page">
-
-      {/* Back Button */}
-      <Link href="/" className="back-link">
-        <ArrowLeft size={20} /> Back to Dashboard
-      </Link>
-
-      {/* Header Section (Blue Gradient) */}
-      <div className="test-module-header">
-        <div className="flex flex-row items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">{SAMPLE_MACHINE.machine_name}</h1>
-            <p className="text-blue-100 text-lg mt-1">{SAMPLE_MACHINE.machine_id}</p>
-            <p className="text-blue-100 text-sm mt-1">{SAMPLE_MACHINE.location}</p>
+    <div className="p-3 md:p-4 test-module-page">
+      {/* Compact Header Section - Single Line */}
+      <div className="test-module-header py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <h1 className="text-2xl font-bold truncate">{SAMPLE_MACHINE.machine_name}</h1>
+            <span className={`status-badge text-xs whitespace-nowrap ${SAMPLE_MACHINE.health_status === 'Healthy' ? 'status-badge-draft' : 'bg-gray-500'
+              }`}>
+              {SAMPLE_MACHINE.health_status}
+            </span>
+            <span className="flex items-center gap-1 text-sm text-blue-100 whitespace-nowrap">
+              <Package size={14} /> {SAMPLE_MACHINE.machine_id}
+            </span>
+            <span className="flex items-center gap-1 text-sm text-blue-100 whitespace-nowrap">
+              <MapPin size={14} /> {SAMPLE_MACHINE.location}
+            </span>
           </div>
-          <div className="status-badge-healthy">
-            {SAMPLE_MACHINE.health_status}
+
+          <div className="flex gap-2 flex-shrink-0">
+            <button onClick={() => setShowWorkOrderModal(true)} className="btn-header-primary-asset bg-green-600 hover:bg-green-700 text-sm">
+              <Clipboard size={16} /> Work Order
+            </button>
+            <button onClick={handleDownloadReport} className="btn-header-secondary-asset text-sm">
+              <Download size={16} /> Report
+            </button>
+            <button onClick={handleShowQR} className="btn-header-secondary-asset text-sm">
+              <QrCode size={16} /> QR
+            </button>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button onClick={() => setShowWorkOrderModal(true)} className="btn-header-primary">
-            <Clipboard size={18} /> Create Work Order
-          </button>
-          <button onClick={handleDownloadReport} className="btn-header-secondary">
-            <Download size={18} /> Download Report
-          </button>
-          <button onClick={handleShowQR} className="btn-header-secondary">
-            <QrCode size={18} /> Show QR Code
-          </button>
         </div>
       </div>
 
-      {/* --- TABS (IndustriSense Style) --- */}
-      {/* This section now uses a dedicated CSS class */}
-      <div className="test-module-tab-bar">
+      {/* Compact Info Bar - Always Visible */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+        <div className="test-info-box !py-2">
+          <p className="text-sm">Machine Type</p>
+          <span className="text-base font-bold">{SAMPLE_MACHINE.machine_type}</span>
+        </div>
+        <div className="test-info-box !py-2">
+          <p className="text-sm">Model</p>
+          <span className="text-base font-bold text-blue-600">{SAMPLE_MACHINE.model_number}</span>
+        </div>
+        <div className="test-info-box !py-2">
+          <p className="text-sm">Manufacturer</p>
+          <span className="text-base font-bold text-green-600">{SAMPLE_MACHINE.manufacturer}</span>
+        </div>
+        <div className="test-info-box !py-2">
+          <p className="text-sm">Status</p>
+          <span className="text-base font-bold">{SAMPLE_MACHINE.status}</span>
+        </div>
+        <div className="test-info-box !py-2">
+          <p className="text-sm">Install Date</p>
+          <span className="text-base font-bold">
+            {new Date(SAMPLE_MACHINE.installation_date).toLocaleDateString("en-GB")}
+          </span>
+        </div>
+        <div className="test-info-box !py-2">
+          <p className="text-sm">Next Maintenance</p>
+          <span className="text-base font-bold text-orange-600">
+            {SAMPLE_MACHINE.next_maintenance_date
+              ? new Date(SAMPLE_MACHINE.next_maintenance_date).toLocaleDateString("en-GB")
+              : "Not scheduled"}
+          </span>
+        </div>
+      </div>
+
+      {/* Compact Tab Navigation */}
+      <div className="test-module-tab-bar mb-4">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`test-module-tab ${activeTab === tab.id ? "active" : ""}`}
+              className={`test-module-tab text-sm py-2 ${activeTab === tab.id ? "active" : ""}`}
             >
-              <Icon size={18} />
+              <Icon size={16} />
               <span>{tab.label}</span>
             </button>
           );
@@ -136,77 +168,34 @@ export default function TestPage() {
       </div>
       {/* --- END OF TABS --- */}
 
+      {/* Single Column Content */}
+      <div className="space-y-4">
 
-      {/* Tab Content Area (2-column grid) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-
-        {/* === Left Column === */}
-        <div className="lg:col-span-2 space-y-6">
-
-          {activeTab === "overview" && (
-            <>
-              {/* Current Status Card */}
-              <div className="test-card">
-                <h2 className="test-card-title">Current Status</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="test-info-box">
-                    <p>Temperature</p>
-                    <span className="text-4xl font-bold text-orange-600">{latestReading.temperature}°C</span>
-                  </div>
-                  <div className="test-info-box">
-                    <p>Vibration Level</p>
-                    <span className="text-4xl font-bold text-blue-600">{latestReading.vibration_level}</span><br>
-                    </br>
-                    <span className="text-xs text-green-600">(Normal)</span>
-                  </div>
-                  <div className="test-info-box">
-                    <p>Oil Pressure</p>
-                    <span className="text-4xl font-bold text-green-600">{latestReading.oil_pressure} PSI</span>
-                  </div>
+        {activeTab === "overview" && (
+          <>
+            {/* Current Status Card */}
+            <div className="test-card !p-4">
+              <h2 className="test-card-title text-lg mb-3">Current Status</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="test-info-box !text-left">
+                  <p className="text-sm">Temperature</p>
+                  <span className="text-2xl font-bold text-orange-600">{latestReading.temperature}°C</span>
+                </div>
+                <div className="test-info-box !text-left">
+                  <p className="text-sm">Vibration Level</p>
+                  <span className="text-2xl font-bold text-blue-600">{latestReading.vibration_level}</span>
+                  <span className="text-xs text-green-600 block mt-1">(Normal)</span>
+                </div>
+                <div className="test-info-box !text-left">
+                  <p className="text-sm">Oil Pressure</p>
+                  <span className="text-2xl font-bold text-green-600">{latestReading.oil_pressure} PSI</span>
                 </div>
               </div>
+            </div>
 
-              {/* Recent Readings (Uses your stock-table) */}
-              <div className="test-card">
-                <h2 className="test-card-title">Recent Readings</h2>
-                <div className="stock-table-container">
-                  <table className="stock-table">
-                    <thead>
-                      <tr>
-                        <th>Date & Time</th>
-                        <th>Temp (°C)</th>
-                        <th>Vibration</th>
-                        <th>Pressure</th>
-                        <th>Anomaly</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {SAMPLE_READINGS.slice(0, 6).map((reading) => (
-                        <tr key={reading.id}>
-                          <td>{new Date(reading.timestamp).toLocaleString()}</td>
-                          <td>{reading.temperature}</td>
-                          <td>{reading.vibration_level}</td>
-                          <td>{reading.oil_pressure}</td>
-                          <td>
-                            {reading.is_anomaly ? (
-                              <span className="anomaly-yes">Yes</span>
-                            ) : (
-                              <span className="anomaly-no">No</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* === READINGS TAB === */}
-          {activeTab === "readings" && (
-            <div className="test-card">
-              <h2 className="test-card-title">All Sensor Readings</h2>
+            {/* Recent Readings */}
+            <div className="test-card !p-4">
+              <h2 className="test-card-title text-lg mb-3">Recent Readings</h2>
               <div className="stock-table-container">
                 <table className="stock-table">
                   <thead>
@@ -219,9 +208,9 @@ export default function TestPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {SAMPLE_READINGS.map((reading) => (
+                    {SAMPLE_READINGS.slice(0, 6).map((reading) => (
                       <tr key={reading.id}>
-                        <td>{new Date(reading.timestamp).toLocaleString()}</td>
+                        <td className="text-sm">{new Date(reading.timestamp).toLocaleString()}</td>
                         <td>{reading.temperature}</td>
                         <td>{reading.vibration_level}</td>
                         <td>{reading.oil_pressure}</td>
@@ -238,133 +227,143 @@ export default function TestPage() {
                 </table>
               </div>
             </div>
-          )}
-          {/* === MAINTENANCE TAB === */}
-          {activeTab === "maintenance" && (
-            <div className="test-card">
-              <h2 className="test-card-title">Maintenance History</h2>
-              <div className="space-y-4">
-                {MAINTENANCE_HISTORY.map((record, idx) => (
-                  <div key={idx} className="test-info-box-row">
-                    <div>
-                      <p className="font-semibold text-lg">{record.type}</p>
-                      <p className="text-md">{new Date(record.date).toLocaleDateString("en-IN")}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-green-600">{record.status}</p>
-                      <p className="text-md">{record.cost}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* === SPECIFICATIONS TAB === */}
-          {activeTab === "specs" && (
-            <div className="test-card">
-              <h2 className="test-card-title">Machine Specifications</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {SPECIFICATIONS.map((spec, idx) => (
-                  <div key={idx} className="test-info-box !text-left">
-                    <p>{spec.label}</p>
-                    <strong>{spec.value}</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          </>
+        )}
 
-        {/* === Right Column (Sidebar) === */}
-        <div className="lg:col-span-1">
-          <div className="test-card sticky top-20">
-            <h3 className="test-card-title">Quick Info</h3>
-            <div className="space-y-5">
-              <div className="test-info-box !text-left">
-                <p>Machine Type</p>
-                <strong>{SAMPLE_MACHINE.machine_type}</strong>
-              </div>
-              <div className="test-info-box !text-left">
-                <p>Operational Status</p>
-                <strong className="text-green-600">{SAMPLE_MACHINE.status}</strong>
-              </div>
-              <div className="test-info-box !text-left">
-                <p>Next Maintenance</p>
-                <strong>{new Date(SAMPLE_MACHINE.next_maintenance_date).toLocaleDateString("en-IN")}</strong>
-                <span className="text-sm text-orange-600 font-medium mt-1">in {SAMPLE_MACHINE.days_until_maintenance} days</span>
-              </div>
-              <div className="test-info-box !text-left">
-                <p>Last Maintenance</p>
-                <strong>{new Date(SAMPLE_MACHINE.last_maintenance_date).toLocaleDateString("en-IN")}</strong>
-              </div>
+        {/* === READINGS TAB === */}
+        {activeTab === "readings" && (
+          <div className="test-card !p-4">
+            <h2 className="test-card-title text-lg mb-3">All Sensor Readings</h2>
+            <div className="stock-table-container">
+              <table className="stock-table">
+                <thead>
+                  <tr>
+                    <th>Date & Time</th>
+                    <th>Temp (°C)</th>
+                    <th>Vibration</th>
+                    <th>Pressure</th>
+                    <th>Anomaly</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {SAMPLE_READINGS.map((reading) => (
+                    <tr key={reading.id}>
+                      <td className="text-sm">{new Date(reading.timestamp).toLocaleString()}</td>
+                      <td>{reading.temperature}</td>
+                      <td>{reading.vibration_level}</td>
+                      <td>{reading.oil_pressure}</td>
+                      <td>
+                        {reading.is_anomaly ? (
+                          <span className="anomaly-yes">Yes</span>
+                        ) : (
+                          <span className="anomaly-no">No</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
+        )}
+        {/* === MAINTENANCE TAB === */}
+        {activeTab === "maintenance" && (
+          <div className="test-card !p-4">
+            <h2 className="test-card-title text-lg mb-3">Maintenance History</h2>
+            <div className="space-y-3">
+              {MAINTENANCE_HISTORY.map((record, idx) => (
+                <div key={idx} className="test-info-box-row">
+                  <div>
+                    <p className="font-semibold">{record.type}</p>
+                    <p className="text-sm text-gray-600">{new Date(record.date).toLocaleDateString("en-IN")}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">{record.status}</p>
+                    <p className="text-sm">{record.cost}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* === SPECIFICATIONS TAB === */}
+        {activeTab === "specs" && (
+          <div className="test-card !p-4">
+            <h2 className="test-card-title text-lg mb-3">Machine Specifications</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {SPECIFICATIONS.map((spec, idx) => (
+                <div key={idx} className="test-info-box !text-left !py-2">
+                  <p className="text-lg">{spec.label}</p>
+                  <strong className="text-xl font-bold">{spec.value}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ... Modals (No changes needed) ... */}
       {/* (Copy/Paste the modal JSX from your original file here) */}
-      {/* QR Code Modal */}
+      {/* QR Modal */}
       {showQR && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowQR(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md w-full shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Machine QR Code</h3>
-              <button onClick={() => setShowQR(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
-                <X size={24} />
-              </button>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Machine QR</h3>
+              <button onClick={() => setShowQR(false)}><X size={20} /></button>
             </div>
-            <div className="flex justify-center mb-6 bg-gray-50 dark:bg-gray-900 p-8 rounded-xl border border-dashed border-gray-300 dark:border-gray-600">
-              <div className="w-64 h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
-              </div>
+            <div className="flex justify-center mb-4 bg-gray-50 p-6 rounded-xl border border-dashed">
+              <QrCode size={100} className="text-gray-800" />
             </div>
-            <p className="text-center text-gray-600 dark:text-gray-400">Scan to view machine details instantly</p>
+            <div className="text-center font-mono font-bold text-sm">{SAMPLE_MACHINE.machine_id}</div>
           </div>
         </div>
       )}
 
       {/* Work Order Modal */}
-      {showWorkOrderModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-lg w-full shadow-lg">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Create New Work Order</h3>
-              <button onClick={() => setShowWorkOrderModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
-                <X size={24} />
-              </button>
+      {
+        showWorkOrderModal && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-lg w-full shadow-lg">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Create New Work Order</h3>
+                <button onClick={() => setShowWorkOrderModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
+                  <X size={24} />
+                </button>
+              </div>
+              <form onSubmit={handleCreateWorkOrder} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Title</label>
+                  <input name="title" required placeholder="e.g., Replace spindle bearing" className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Description</label>
+                  <textarea name="description" required rows={4} placeholder="Describe the issue or task..." className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700"></textarea>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Priority</label>
+                    <select name="priority" required className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700">
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                      <option value="CRITICAL">Critical</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Scheduled Date</label>
+                    <input name="scheduled_date" type="date" required className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700" />
+                  </div>
+                </div>
+                <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold text-lg hover:bg-blue-700 transition shadow-md">
+                  Create Work Order
+                </button>
+              </form>
             </div>
-            <form onSubmit={handleCreateWorkOrder} className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Title</label>
-                <input name="title" required placeholder="e.g., Replace spindle bearing" className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Description</label>
-                <textarea name="description" required rows={4} placeholder="Describe the issue or task..." className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700"></textarea>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Priority</label>
-                  <select name="priority" required className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700">
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="CRITICAL">Critical</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Scheduled Date</label>
-                  <input name="scheduled_date" type="date" required className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700" />
-                </div>
-              </div>
-              <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold text-lg hover:bg-blue-700 transition shadow-md">
-                Create Work Order
-              </button>
-            </form>
           </div>
-        </div>
-      )}
+        )
+      }
 
-    </div>
+    </div >
   );
 }

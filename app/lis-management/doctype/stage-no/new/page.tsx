@@ -47,6 +47,14 @@ export default function NewStageNoPage() {
             required: true
           },
           {
+            name: "lis_phase",
+            label: "LIS Phase",
+            type: "Link", // Assuming this links to the LIS doctype
+            required: true,
+            linkTarget: "LIS Phases", // Specify the target doctype
+            description: "Links to Lift Irrigation Scheme"
+          },
+          {
             name: "lis_name",
             label: "Lift Irrigation Scheme",
             type: "Link", // Assuming this links to the LIS doctype
@@ -73,6 +81,7 @@ export default function NewStageNoPage() {
       const payload = {
         stage_no: data.stage_no,
         lis_name: data.lis_name,
+        lis_phase: data.lis_phase || null,
       };
 
       const response = await axios.post(`${API_BASE_URL}/${doctypeName}`, payload, {
@@ -84,13 +93,11 @@ export default function NewStageNoPage() {
       });
 
       toast.success("Stage No created successfully!");
-      
-      // Navigate to the newly created record using lis_name-stage_no format
-      const lisName = response.data.data.lis_name || '';
-      const stageNo = response.data.data.stage_no || response.data.data.name;
-      const navigationId = lisName && stageNo ? `${lisName}-${stageNo}` : stageNo;
-      router.push(`/lis-management/doctype/stage-no/${navigationId}`);
-      
+
+      // Navigate to the newly created record using the document name
+      const docName = response.data.data.name;
+      router.push(`/lis-management/doctype/stage-no/${docName}`);
+
     } catch (err: any) {
       console.error("Create error:", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || "Failed to create Stage No. Check console for details.";

@@ -17,9 +17,14 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
+  Loader2,
 } from "lucide-react";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+
+// 🟢 CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
 
 // ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -73,9 +78,14 @@ export default function DoctypePage() {
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
   const doctypeName = "Asset";
 
+  // Data States
   const [assets, setAssets] = React.useState<Asset[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+  
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -87,7 +97,6 @@ export default function DoctypePage() {
   });
 
   const [categories, setCategories] = React.useState<AssetCategoryOption[]>([]);
-
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
@@ -97,7 +106,7 @@ export default function DoctypePage() {
       asset_category: ""
     }
   });
-  
+
   const selectedCategory = watch("asset_category");
 
   // Close sort menu on outside click
@@ -136,9 +145,9 @@ export default function DoctypePage() {
     fetchCategories();
   }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
-  // ── Fetch Assets ─────────────────────────────────────────────────
-  React.useEffect(() => {
-    const fetchAssets = async () => {
+  // ── 🟢 Fetch Logic (Refactored for Pagination) ───────────────────
+  const fetchData = React.useCallback(
+    async (start = 0, isReset = false) => {
       if (!isInitialized) return;
       if (!isAuthenticated || !apiKey || !apiSecret) {
         setLoading(false);
@@ -146,8 +155,14 @@ export default function DoctypePage() {
       }
 
       try {
-        setLoading(true);
-        setError(null);
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
+        }
+
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
 
         const params: any = {
           fields: JSON.stringify([
@@ -159,21 +174,18 @@ export default function DoctypePage() {
             "status",
             "modified",
           ]),
-          limit_page_length: "20",
+          limit_start: start,
+          limit_page_length: limit,
           order_by: `${sortConfig.key} ${sortConfig.direction}`,
         };
 
-        // Build filters array (Frappe style)
         const filters: any[] = [];
-
         if (debouncedSearch) {
           filters.push(["Asset", "name", "like", `%${debouncedSearch}%`]);
         }
-
         if (selectedCategory) {
           filters.push(["Asset", "asset_category", "=", selectedCategory]);
         }
-
         if (filters.length > 0) {
           params.filters = JSON.stringify(filters);
         }
@@ -195,48 +207,42 @@ export default function DoctypePage() {
           modified: r.modified,
         }));
 
-        setAssets(mapped);
+        if (isReset) {
+          setAssets(mapped);
+        } else {
+          setAssets((prev) => [...prev, ...mapped]);
+        }
+
+        if (mapped.length < limit) {
+          setHasMore(false);
+        } else {
+          setHasMore(true);
+        }
+
       } catch (err: any) {
         console.error("API error:", err);
-        setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch assets");
+        if (isReset) {
+          setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch assets");
+        }
       } finally {
         setLoading(false);
+        setIsLoadingMore(false);
       }
-    };
+    },
+    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedCategory, sortConfig]
+  );
 
-    if (doctypeName === "Asset") fetchAssets();
-  }, [
-    doctypeName,
-    apiKey,
-    apiSecret,
-    isAuthenticated,
-    isInitialized,
-    debouncedSearch,
-    selectedCategory,
-    sortConfig.key,
-    sortConfig.direction,
-  ]);
+  React.useEffect(() => {
+    fetchData(0, true);
+  }, [fetchData]);
 
-  // ── Sorting Logic (client-side) ──────────────────────────────────
-  const sortedAssets = React.useMemo(() => {
-    const sortableAssets = [...assets];
-    sortableAssets.sort((a, b) => {
-      const aValue = a[sortConfig.key] || "";
-      const bValue = b[sortConfig.key] || "";
-      const compare = aValue.localeCompare(bValue, undefined, { numeric: true });
-      return sortConfig.direction === "asc" ? compare : -compare;
-    });
-    return sortableAssets;
-  }, [assets, sortConfig]);
-
-  const requestSort = (key: keyof Asset) => {
-    let direction: SortDirection = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchData(assets.length, false);
     }
-    setSortConfig({ key, direction });
   };
 
+  // ── Helpers ──────────────────────────────────────────────────────
   const currentSortLabel = SORT_OPTIONS.find((opt) => opt.key === sortConfig.key)?.label || "Sort By";
 
   const getFieldsForAsset = (a: Asset): RecordCardField[] => {
@@ -259,17 +265,17 @@ export default function DoctypePage() {
       <table className="stock-table">
         <thead>
           <tr>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("name")}>ID</th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("status")}>Status</th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("asset_category")}>Category</th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("custom_lis_name")}>LIS</th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("custom_stage_no")}>Stage</th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("location")}>Location</th>
+            <th style={{ cursor: "pointer" }} onClick={() => setSortConfig({ key: "name", direction: sortConfig.key === "name" && sortConfig.direction === "asc" ? "desc" : "asc" })}>ID</th>
+            <th>Status</th>
+            <th>Category</th>
+            <th>LIS</th>
+            <th>Stage</th>
+            <th>Location</th>
           </tr>
         </thead>
         <tbody>
-          {sortedAssets.length ? (
-            sortedAssets.map((a) => (
+          {assets.length ? (
+            assets.map((a) => (
               <tr key={a.name} onClick={() => handleCardClick(a.name)} style={{ cursor: "pointer" }}>
                 <td>{a.name}</td>
                 <td>{a.status || "—"}</td>
@@ -282,7 +288,7 @@ export default function DoctypePage() {
           ) : (
             <tr>
               <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
-                No records found.
+                {!loading && "No records found."}
               </td>
             </tr>
           )}
@@ -304,7 +310,7 @@ export default function DoctypePage() {
           />
         ))
       ) : (
-        <p style={{ color: "var(--color-text-secondary)" }}>No records found.</p>
+        !loading && <p style={{ color: "var(--color-text-secondary)" }}>No records found.</p>
       )}
     </div>
   );
@@ -320,8 +326,7 @@ export default function DoctypePage() {
     <div className="module active">
       <div className="module-header">
         <div>
-          <h2>Asset</h2>
-          <p>Equipment locations and stages</p>
+          <h2 className="mt-1">Asset</h2>
         </div>
         <Link href="/lis-management/doctype/asset/new" passHref>
           <button className="btn btn--primary flex items-center gap-2">
@@ -339,9 +344,7 @@ export default function DoctypePage() {
           alignItems: "center"
         }}
       >
-        {/* Filters Container */}
         <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
-          {/* Search */}
           <div style={{ minWidth: "200px" }}>
             <input
               type="text"
@@ -353,13 +356,11 @@ export default function DoctypePage() {
             />
           </div>
 
-          {/* Category Filter */}
           <div style={{ minWidth: "200px" }}>
             <Controller
               control={control}
               name="asset_category"
               render={({ field: { onChange, value } }) => {
-                // Create a mock field object for LinkField
                 const mockField = {
                   name: "asset_category",
                   label: "",
@@ -369,13 +370,14 @@ export default function DoctypePage() {
                   required: false,
                   defaultValue: ""
                 };
-                
+
                 return (
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <LinkField
                       control={control}
                       field={{ ...mockField, defaultValue: value }}
                       error={null}
+                      className="[&>label]:hidden"
                     />
                   </div>
                 );
@@ -384,16 +386,7 @@ export default function DoctypePage() {
           </div>
         </div>
 
-        {/* Sort + View Toggle */}
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            alignItems: "center",
-            marginLeft: "auto",
-          }}
-        >
-          {/* Sort Pill */}
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", marginLeft: "auto" }}>
           <div className="relative" ref={sortMenuRef}>
             <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
               <button
@@ -404,8 +397,6 @@ export default function DoctypePage() {
                     direction: prev.direction === "asc" ? "desc" : "asc",
                   }))
                 }
-                title={`Sort ${sortConfig.direction === "asc" ? "Descending" : "Ascending"}`}
-                aria-label={sortConfig.direction === "asc" ? "Sort Descending" : "Sort Ascending"}
               >
                 {sortConfig.direction === "asc" ? (
                   <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -413,19 +404,15 @@ export default function DoctypePage() {
                   <ArrowUpNarrowWide className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 )}
               </button>
-
               <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
               <button
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
                 onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                aria-label="Open Sort Options"
               >
                 {currentSortLabel}
                 <ChevronDown className="w-3 h-3 opacity-70" />
               </button>
             </div>
-
             {isSortMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
                 <div className="py-1">
@@ -433,11 +420,10 @@ export default function DoctypePage() {
                   {SORT_OPTIONS.map((option) => (
                     <button
                       key={option.key}
-                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                        sortConfig.key === option.key
-                          ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
-                          : "text-gray-700 dark:text-gray-200"
-                      }`}
+                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${sortConfig.key === option.key
+                        ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
+                        : "text-gray-700 dark:text-gray-200"
+                        }`}
                       onClick={() => {
                         setSortConfig((prev) => ({ ...prev, key: option.key }));
                         setIsSortMenuOpen(false);
@@ -451,19 +437,15 @@ export default function DoctypePage() {
               </div>
             )}
           </div>
-
-          {/* View Switcher */}
           <button
             className="btn btn--outline btn--sm flex items-center justify-center"
             onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
-            aria-label={view === "grid" ? "Switch to List View" : "Switch to Grid View"}
           >
             {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
           </button>
         </div>
       </div>
 
-      {/* Selected Category Link */}
       {selectedCategory && (
         <div style={{ marginTop: "0.75rem", fontSize: "0.875rem" }}>
           Viewing category:{" "}
@@ -477,8 +459,28 @@ export default function DoctypePage() {
       )}
 
       {/* Content */}
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+
+        {/* 🟢 LOAD MORE BUTTON - FIXED: Right aligned */}
+        {hasMore && assets.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              className="btn btn--secondary flex items-center gap-2 px-6 py-2"
+              style={{ minWidth: "140px" }}
+            >
+              {isLoadingMore ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                </>
+              ) : (
+                "Load More"
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

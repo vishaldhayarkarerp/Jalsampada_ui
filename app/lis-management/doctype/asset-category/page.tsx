@@ -203,9 +203,8 @@ export default function DoctypePage() {
       <div className="module-header">
         <div>
           <h2>{title}</h2>
-          <p>Manage categories for assets</p> {/* <-- CHANGED */}
         </div>
-        <button 
+        <button
           className="btn btn--primary"
           onClick={() => router.push('/lis-management/doctype/asset-category/new')}
         >

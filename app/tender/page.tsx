@@ -1,28 +1,35 @@
 "use client";
 
 import * as React from "react";
-import { Workspace, Doctype } from "@/components/Workspace";
+import { Workspace, Doctype, DoctypeGroup } from "@/components/Workspace";
 
 import {
-  FileText,     
-  ClipboardList, 
-  IndianRupee,    
-  Settings,      
+  FileText,
+  ClipboardList,
+  IndianRupee,
+  Settings,
 } from "lucide-react";
 
 const tenderDoctypes: Doctype[] = [
   // 1. Tender-related
-  { name: "prapan-suchi",   title: "Prapan Suchi",   icon: FileText },
-  { name: "tender",         title: "Tender",         icon: FileText },
+  { name: "prapan-suchi", title: "Prapan Suchi", icon: FileText },
+  { name: "tender", title: "Tender", icon: FileText },
   { name: "draft-tender-paper", title: "Draft Tender Paper", icon: FileText },
 
   // 2. Work Types / Procurement
-  { name: "work-type",      title: "Work Type",      icon: ClipboardList },
-  { name: "work-subtype",   title: "Work Subtype",   icon: ClipboardList },
+  { name: "work-type", title: "Work Type", icon: ClipboardList },
+  { name: "work-subtype", title: "Work Subtype", icon: ClipboardList },
   { name: "fund-head", title: "Fund Head", icon: Settings },
 
   // 3. Financial / Expenditure
-  { name: "expenditure",    title: "Expenditure",    icon: IndianRupee },
+  { name: "expenditure", title: "Expenditure", icon: IndianRupee },
+];
+
+const tenderDoctypeGroups: DoctypeGroup[] = [
+  {
+    title: "Tender Management",
+    doctypes: tenderDoctypes
+  }
 ];
 
 export default function TenderPage() {
@@ -31,7 +38,7 @@ export default function TenderPage() {
       title="Tender Management"
       description="Manage tenders, work orders, fund heads, and expenditure records."
       // buttonText="Create New"
-      doctypes={tenderDoctypes}
+      doctypeGroups={tenderDoctypeGroups}
       // This ensures clicks go to /tender/doctype/[name]
       basePath="/tender/doctype"
     />

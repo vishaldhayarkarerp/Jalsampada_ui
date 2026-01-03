@@ -102,6 +102,14 @@ export default function RecordDetailPage() {
             required: true
           },
           {
+            name: "lis_phase",
+            label: "LIS Phase",
+            type: "Link", // Assuming this links to the LIS doctype
+            required: true,
+            linkTarget: "LIS Phases", // Specify the target doctype
+            description: "Links to Lift Irrigation Scheme"
+          },
+          {
             name: "lis_name",
             label: "Lift Irrigation Scheme",
             type: "Link", // Assuming this links to the LIS doctype
@@ -124,6 +132,7 @@ export default function RecordDetailPage() {
       const payload = {
         stage_no: data.stage_no,
         lis_name: data.lis_name,
+        lis_phase: data.lis_phase
       };
 
       await axios.put(`${API_BASE_URL}/${doctypeName}/${docname}`, payload, {
@@ -135,14 +144,7 @@ export default function RecordDetailPage() {
       });
 
       toast.success("Changes saved successfully!");
-      const lisName = stage?.lis_name || '';
-      const stageNo = stage?.stage_no || stage?.name;
-      const navigationId = lisName && stageNo ? `${lisName}-${stageNo}` : stageNo;
-      if (navigationId) {
-        router.push(`/lis-management/doctype/stage-no/${navigationId}`);
-      } else {
-        router.push(`/lis-management/doctype/stage-no`);
-      }
+      router.push(`/lis-management/doctype/stage-no/${docname}`);
     } catch (err) {
       console.error("Save error:", err);
       toast.error("Failed to save. Check console for details.");

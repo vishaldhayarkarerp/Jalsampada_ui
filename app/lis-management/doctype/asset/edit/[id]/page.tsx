@@ -10,11 +10,39 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { 
+    Loader2, 
+    IndianRupee, 
+    FileText, 
+    LayoutGrid, 
+    List as ListIcon, 
+    Plus, 
+    Trash2, 
+    Upload, 
+    X,
+    Eye,
+    Image as ImageIcon
+} from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// Use RHF hooks for the custom editor component
+import { useFormContext, useFieldArray } from "react-hook-form";
+
+// Import UI Table Components (only for Expenditure)
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+const FRAPPE_BASE_URL = "http://103.219.1.138:4412";
+const API_BASE_URL = `${FRAPPE_BASE_URL}/api/resource`;
+const API_METHOD_URL = `${FRAPPE_BASE_URL}/api/method`;
 
 /* -------------------------------------------------
-   1. Asset type – mirrors the API exactly
+   1. Asset type
    ------------------------------------------------- */
 interface AssetData {
     name: string;
@@ -49,8 +77,9 @@ interface AssetData {
     modified: string;
     additional_asset_cost?: number;
     total_asset_cost?: number;
+    
+    custom_doctype_name?: string; 
 
-    // Insurance fields (may be missing)
     policy_number?: string;
     insurance_start_date?: string;
     insurer?: string;
@@ -58,7 +87,6 @@ interface AssetData {
     insured_value?: number;
     comprehensive_insurance?: 0 | 1;
 
-    // Other-info fields (may be missing)
     custodian?: string;
     department?: string;
     custom_equipement_make?: string;
@@ -67,8 +95,11 @@ interface AssetData {
     custom_equipement_capacity?: string;
     last_repair_date?: string;
     custom_equipement_rating?: string;
+    custom_description?: string;
+    custom_obsolete?: 0 | 1;
+    available_for_use_date?: string;
+    custom_lis_phase?: string;
 
-    // Child tables
     finance_books?: Array<{
         finance_book?: string;
         depreciation_method?: string;
@@ -76,7 +107,7 @@ interface AssetData {
     }>;
     custom_drawing_attachment?: Array<{
         name_of_document?: string;
-        attachment?: string | File; // Can be a string (URL) or a new File
+        attachment?: string | File; 
     }>;
     custom_asset_specifications?: Array<{
         specification_type: string;
@@ -84,11 +115,268 @@ interface AssetData {
     }>;
 }
 
-/**
- * --- NEW HELPER FUNCTION ---
- * Uploads a single file to Frappe's 'upload_file' method
- * and returns the server URL.
- */
+interface ExpenditureData {
+  work_type: string;
+  work_subtype: string;
+  bill_amount: number;
+  asset_id: string;
+  work_details: string;
+  expenditure_date: string;
+  fiscal_year: string;
+  expenditure_doc: string;
+}
+
+/* -------------------------------------------------
+   2. Helper: Check if URL is image
+   ------------------------------------------------- */
+const isImage = (url?: string | File) => {
+    if (!url) return false;
+    if (url instanceof File) {
+        return url.type.startsWith("image/");
+    }
+    const extension = url.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '');
+};
+
+/* -------------------------------------------------
+   3. Custom Component: Drawing Attachment Editor
+   ------------------------------------------------- */
+const DrawingAttachmentEditor = () => {
+    const { control, register, watch, setValue } = useFormContext();
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "custom_drawing_attachment"
+    });
+    
+    // Toggle State: Default list view
+    const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
+
+    // Watch fields to render previews correctly
+    const watchedFields = watch("custom_drawing_attachment");
+
+    // File Handler
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setValue(`custom_drawing_attachment.${index}.attachment`, file, { shouldDirty: true });
+        }
+    };
+
+    const handlePreview = (fileOrUrl: string | File) => {
+        if (!fileOrUrl) return;
+        if (fileOrUrl instanceof File) {
+            const url = URL.createObjectURL(fileOrUrl);
+            window.open(url, "_blank");
+        } else {
+            const fullUrl = fileOrUrl.startsWith("http") ? fileOrUrl : `${FRAPPE_BASE_URL}${fileOrUrl}`;
+            window.open(fullUrl, "_blank");
+        }
+    };
+
+    return (
+        <div className="form-group" style={{ marginTop: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <label className="form-label" style={{ margin: 0 }}>
+                    Drawing Attachments
+                </label>
+                
+                {/* Single Toggle Button */}
+                <button
+                    type="button"
+                    className="btn btn--outline btn--sm flex items-center justify-center"
+                    onClick={() => setViewMode((v) => (v === "grid" ? "list" : "grid"))}
+                    title={viewMode === "grid" ? "Switch to List View" : "Switch to Grid View"}
+                >
+                    {viewMode === "grid" ? <ListIcon className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+                </button>
+            </div>
+
+            {/* --- LIST VIEW --- */}
+            {viewMode === "list" && (
+                <div className="stock-table-container">
+                    <table className="stock-table child-form-table">
+                        <thead>
+                            <tr>
+                                <th>Name of Document</th>
+                                <th>Attachment</th>
+                                <th style={{ width: "50px", textAlign: "center" }}></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {fields.map((field, index) => {
+                                const attachmentValue = watchedFields?.[index]?.attachment;
+                                const isFile = attachmentValue instanceof File;
+                                const fileName = isFile ? attachmentValue.name : attachmentValue;
+
+                                return (
+                                    <tr key={field.id}>
+                                        <td style={{ verticalAlign: "top" }}>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Document Name"
+                                                {...register(`custom_drawing_attachment.${index}.name_of_document` as const)}
+                                            />
+                                        </td>
+                                        <td style={{ verticalAlign: "top" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                {/* Upload Button */}
+                                                <label className="btn btn--outline btn--sm" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+                                                    <Upload size={14} />
+                                                    {fileName ? "Replace" : "Upload"}
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        onChange={(e) => handleFileChange(e, index)}
+                                                    />
+                                                </label>
+
+                                                {/* Filename & Preview - Pure Text with Preview Icon */}
+                                                {fileName && (
+                                                    <div className="flex items-center gap-2 max-w-[250px]">
+                                                        {/* 🟢 UPDATED: Simple text, adaptive color */}
+                                                        <span 
+                                                            className="text-xs truncate text-gray-900 dark:text-gray-100" 
+                                                            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
+                                                        >
+                                                            {fileName}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handlePreview(attachmentValue)}
+                                                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                                            title="Preview File"
+                                                        >
+                                                            <Eye size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td style={{ textAlign: "center", verticalAlign: "top" }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => remove(index)}
+                                                className="btn btn--icon btn--danger"
+                                                style={{ padding: "4px" }}
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                    <button
+                        type="button"
+                        className="btn btn--outline btn--sm"
+                        style={{ marginTop: "8px" }}
+                        onClick={() => append({ name_of_document: "", attachment: null })}
+                    >
+                        + Add Row
+                    </button>
+                </div>
+            )}
+
+            {/* --- GRID VIEW (Visual Cards) --- */}
+            {viewMode === "grid" && (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {fields.map((field, index) => {
+                        const attachmentValue = watchedFields?.[index]?.attachment;
+                        const isFile = attachmentValue instanceof File;
+                        const isImg = isImage(attachmentValue);
+                        
+                        // Create preview URL
+                        const previewUrl = isFile 
+                            ? URL.createObjectURL(attachmentValue) 
+                            : attachmentValue?.startsWith("http") 
+                                ? attachmentValue 
+                                : `${FRAPPE_BASE_URL}${attachmentValue}`;
+
+                        return (
+                            <div key={field.id} className="group relative border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden bg-white dark:bg-gray-900 hover:shadow-md transition-all">
+                                {/* Remove Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => remove(index)}
+                                    className="absolute top-1 right-1 z-10 bg-white/80 dark:bg-black/60 text-red-500 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100"
+                                >
+                                    <X size={14} />
+                                </button>
+
+                                {/* Image/Icon Preview Area */}
+                                <div 
+                                    className="h-32 w-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 overflow-hidden relative cursor-pointer"
+                                    onClick={() => attachmentValue && handlePreview(attachmentValue)}
+                                >
+                                    {attachmentValue ? (
+                                        isImg ? (
+                                            <img
+                                                src={previewUrl}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                            />
+                                        ) : (
+                                            <FileText size={40} className="text-gray-400" />
+                                        )
+                                    ) : (
+                                        <div className="flex flex-col items-center text-gray-400 pointer-events-none">
+                                            <ImageIcon size={24} className="mb-1 opacity-50" />
+                                            <span className="text-[10px]">No File</span>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Upload Overlay */}
+                                    <label className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center cursor-pointer">
+                                        <div className="bg-white dark:bg-black text-xs px-3 py-1.5 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity font-medium flex items-center gap-1">
+                                            <Upload size={12} /> {attachmentValue ? "Change" : "Upload"}
+                                        </div>
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            onClick={(e) => e.stopPropagation()} // Prevent preview click
+                                            onChange={(e) => handleFileChange(e, index)}
+                                        />
+                                    </label>
+                                </div>
+
+                                {/* Input Area */}
+                                <div className="p-2 border-t border-gray-200 dark:border-gray-800">
+                                    <input
+                                        type="text"
+                                        className="w-full bg-transparent border-none text-xs font-medium focus:ring-0 p-0 placeholder:text-gray-400 focus:outline-none"
+                                        placeholder="Document Name..."
+                                        {...register(`custom_drawing_attachment.${index}.name_of_document` as const)}
+                                    />
+                                    {/* Filename display */}
+                                    <div className="mt-1 text-[10px] text-gray-400 truncate flex items-center gap-1 h-4">
+                                        {isFile ? attachmentValue.name : (attachmentValue || "No file selected")}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    
+                    {/* Add New Card (Grid Mode) */}
+                    <button
+                        type="button"
+                        onClick={() => append({ name_of_document: "", attachment: null })}
+                        className="flex flex-col items-center justify-center h-full min-h-[180px] border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all text-gray-400 hover:text-blue-500"
+                    >
+                        <Plus size={32} />
+                        <span className="text-xs font-medium mt-2">Add New</span>
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+/* -------------------------------------------------
+   4. Helper: Upload File
+   ------------------------------------------------- */
 async function uploadFile(
     file: File,
     apiKey: string,
@@ -97,23 +385,20 @@ async function uploadFile(
 ): Promise<string> {
     const formData = new FormData();
     formData.append("file", file, file.name);
-    formData.append("is_private", "0"); // 0 = Public, 1 = Private
+    formData.append("is_private", "0"); 
 
     try {
-        // Note: The base URL for this MUST be the root, not /api/resource
         const resp = await axios.post(
             `${methodUrl.replace("/api/resource", "")}/api/method/upload_file`,
             formData,
             {
-                headers: {
-                    Authorization: `token ${apiKey}:${apiSecret}`,
-                },
+                headers: { Authorization: `token ${apiKey}:${apiSecret}` },
                 withCredentials: true,
             }
         );
 
         if (resp.data && resp.data.message) {
-            return resp.data.message.file_url; // This is the /files/filename.jpg URL
+            return resp.data.message.file_url;
         } else {
             throw new Error("Invalid response from file upload");
         }
@@ -124,7 +409,7 @@ async function uploadFile(
 }
 
 /* -------------------------------------------------
-   2. Page component
+   5. Main Page Component
    ------------------------------------------------- */
 export default function RecordDetailPage() {
     const params = useParams();
@@ -139,9 +424,11 @@ export default function RecordDetailPage() {
     const [error, setError] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
 
-    /* -------------------------------------------------
-       3. FETCH ASSET
-       ------------------------------------------------- */
+    // Expenditure State
+    const [expenditureList, setExpenditureList] = React.useState<ExpenditureData[]>([]);
+    const [expenditureLoading, setExpenditureLoading] = React.useState(false);
+
+    /* --- Fetch Asset --- */
     React.useEffect(() => {
         const fetchAsset = async () => {
             if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret || !docname) {
@@ -159,20 +446,15 @@ export default function RecordDetailPage() {
                         "Content-Type": "application/json",
                     },
                     withCredentials: true,
-                    maxBodyLength: Infinity,
-                    maxContentLength: Infinity,
                 });
 
                 setAsset(resp.data.data);
-                // console.log("setAsset is called");
             } catch (err: any) {
                 console.error("API Error:", err);
                 setError(
                     err.response?.status === 404
                         ? "Asset not found"
-                        : err.response?.status === 403
-                            ? "Unauthorized"
-                            : "Failed to load asset"
+                        : "Failed to load asset"
                 );
             } finally {
                 setLoading(false);
@@ -182,20 +464,126 @@ export default function RecordDetailPage() {
         fetchAsset();
     }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
+    /* --- Fetch Expenditure --- */
+    React.useEffect(() => {
+        const fetchExpenditure = async () => {
+            if (!asset || !apiKey || !apiSecret) return;
+
+            const targetName = asset.custom_doctype_name || asset.name;
+            if (!targetName) return;
+
+            try {
+                setExpenditureLoading(true);
+                const methodPath = "quantlis_management.quantlis_utils.get_expenditure_details_for_asset";
+                const url = `${API_METHOD_URL}/${methodPath}`;
+
+                const expResp = await axios.get(url, {
+                    params: { custom_doctype_name: targetName },
+                    headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+                    withCredentials: true,
+                });
+
+                if (expResp.data.message) {
+                    setExpenditureList(expResp.data.message);
+                } else {
+                    setExpenditureList([]);
+                }
+            } catch (expErr) {
+                console.error("Failed to fetch expenditure details", expErr);
+            } finally {
+                setExpenditureLoading(false);
+            }
+        };
+
+        fetchExpenditure();
+    }, [asset, apiKey, apiSecret]);
+
+    /* --- Expenditure Table (Read Only) --- */
+    const ExpenditureTableComponent = React.useMemo(() => {
+        return (
+            <div className="form-group" style={{ marginTop: "1rem" }}>
+                <label className="form-label" style={{ fontWeight: 600, marginBottom: "8px", display: "block" }}>
+                    Expenditure History
+                </label>
+                
+                <div 
+                    className="stock-table-container" 
+                    style={{ 
+                        border: "1px solid var(--color-border)", 
+                        borderRadius: "var(--radius-base)", 
+                        overflow: "hidden",
+                        backgroundColor: "var(--color-surface)"
+                    }}
+                >
+                    {expenditureLoading ? (
+                        <div style={{ padding: "2rem", textAlign: "center" }}>
+                            <Loader2 className="animate-spin w-5 h-5 mx-auto mb-2 text-gray-500" />
+                            <span className="text-sm text-gray-500">Loading...</span>
+                        </div>
+                    ) : expenditureList.length > 0 ? (
+                        <table className="stock-table">
+                            <thead>
+                                <tr>
+                                    <th style={{ textAlign: "left", width: "15%" }}>Work Type</th>
+                                    <th style={{ textAlign: "left", width: "15%" }}>Subtype</th>
+                                    <th style={{ textAlign: "left", width: "30%" }}>Details</th>
+                                    <th style={{ textAlign: "center", width: "12%" }}>Date</th>
+                                    <th style={{ textAlign: "right", width: "15%" }}>Amount</th>
+                                    <th style={{ textAlign: "center", width: "13%" }}>Year</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {expenditureList.map((row, idx) => (
+                                    <tr key={idx}>
+                                        <td style={{ textAlign: "left", verticalAlign: "top" }}>{row.work_type}</td>
+                                        <td style={{ textAlign: "left", verticalAlign: "top" }}>{row.work_subtype}</td>
+                                        <td title={row.work_details} style={{ textAlign: "left", verticalAlign: "top", maxWidth: "250px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                            {row.work_details}
+                                        </td>
+                                        <td style={{ textAlign: "center", verticalAlign: "top" }}>
+                                            {row.expenditure_date ? new Date(row.expenditure_date).toLocaleDateString("en-IN") : "-"}
+                                        </td>
+                                        <td style={{ textAlign: "right", verticalAlign: "top", fontWeight: 500 }}>
+                                            {row.expenditure_doc ? (
+                                                <a
+                                                    href={`${FRAPPE_BASE_URL}/app/expenditure/${row.expenditure_doc}`}
+                                                    target="_blank"
+                                                    style={{ color: "var(--color-primary)", textDecoration: "none" }}
+                                                >
+                                                    ₹ {row.bill_amount?.toLocaleString("en-IN")}
+                                                </a>
+                                            ) : (
+                                                `₹ ${row.bill_amount?.toLocaleString("en-IN")}`
+                                            )}
+                                        </td>
+                                        <td style={{ textAlign: "center", verticalAlign: "top" }}>{row.fiscal_year}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div style={{ padding: "2rem", textAlign: "center", opacity: 0.7 }}>
+                            <FileText size={20} className="mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No expenditure records found</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }, [expenditureList, expenditureLoading]);
+
     /* -------------------------------------------------
-       4. Build tabs **once** when asset is ready
+       6. Form Configuration
        ------------------------------------------------- */
     const formTabs: TabbedLayout[] = React.useMemo(() => {
         if (!asset) return [];
-
-        const bool = (v?: 0 | 1) => v === 1;
 
         const fields = (list: FormField[]): FormField[] =>
             list.map((f) => ({
                 ...f,
                 defaultValue:
                     f.name in asset
-                        ? // @ts-ignore – asset has the key
+                        ? // @ts-ignore
                         asset[f.name as keyof AssetData]
                         : f.defaultValue,
             }));
@@ -204,11 +592,9 @@ export default function RecordDetailPage() {
             {
                 name: "Details",
                 fields: fields([
-
                     { name: "asset_name", label: "Asset Name", type: "Text", required: true },
                     { name: "company", label: "Company", type: "Link", required: true, linkTarget: "Company" },
                     { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
-
                     { name: "custom_asset_no", label: "Asset No", type: "Data" },
                     { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location" },
                     { name: "custom_lis_name", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme" },
@@ -239,9 +625,7 @@ export default function RecordDetailPage() {
                         type: "Check",
                         displayDependsOn: "is_composite_asset==0 && is_existing_asset==0 && is_composite_component==0",
                     },
-
                     { name: "section_purchase", label: "Purchase Details", type: "Section Break" },
-
                     {
                         name: "purchase_date",
                         label: "Purchase Date",
@@ -249,21 +633,24 @@ export default function RecordDetailPage() {
                         required: true,
                         displayDependsOn: "is_existing_asset==1 || is_composite_asset==1",
                     },
-
                     { name: "gross_purchase_amount", label: "Net Purchase Amount", type: "Currency", required: true },
-
                     { name: "asset_quantity", label: "Asset Quantity", type: "Int", min: 1 },
-
                     {
                         name: "available_for_use_date",
                         label: "Commisioning Date",
                         type: "Date",
                         displayDependsOn: "is_existing_asset==1 || is_composite_asset==1",
                     },
-
+                    // Expenditure Table
+                    { name: "section_expenditure", label: "Expenditure Information", type: "Section Break" },
+                    {
+                        name: "expenditure_table_display",
+                        label: "",
+                        type: "Custom",
+                        customElement: ExpenditureTableComponent
+                    }
                 ]),
             },
-
             {
                 name: "Insurance",
                 fields: fields([
@@ -275,7 +662,6 @@ export default function RecordDetailPage() {
                     { name: "comprehensive_insurance", label: "Comprehensive Insurance", type: "Check" },
                 ]),
             },
-
             {
                 name: "Other Info",
                 fields: fields([
@@ -298,9 +684,7 @@ export default function RecordDetailPage() {
                     {
                         name: "custom_description", label: "Description", type: "Long Text",
                         displayDependsOn: "custom_condition=='Under Repair'",
-
                     },
-
                     { name: "section_specifications", label: "Specification of Asset", type: "Section Break" },
                     {
                         name: "custom_asset_specifications",
@@ -313,31 +697,25 @@ export default function RecordDetailPage() {
                     },
                 ]),
             },
-
             {
                 name: "Drawing Attachment",
                 fields: fields([
+                    // 🟢 Replaced standard Table with Custom DrawingAttachmentEditor
                     {
                         name: "custom_drawing_attachment",
-                        label: "Drawing Attachment",
-                        type: "Table",
-                        columns: [
-                            { name: "name_of_document", label: "Name of Document", type: "Text" },
-                            { name: "attachment", label: "Attachment", type: "Attach" },
-                        ],
+                        label: "",
+                        type: "Custom",
+                        customElement: <DrawingAttachmentEditor />
                     },
                 ]),
             },
-
-
         ];
-    }, [asset]);
+    }, [asset, ExpenditureTableComponent]);
 
     /* -------------------------------------------------
-       5. SUBMIT – Now with File Uploading (Corrected Logic)
+       7. SUBMIT
        ------------------------------------------------- */
     const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-
         if (!isDirty) {
             toast.info("No changes to save.");
             return;
@@ -346,42 +724,25 @@ export default function RecordDetailPage() {
         setIsSaving(true);
 
         try {
-            // 1. Create a deep copy of the form data. This will be our FINAL payload.
             const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
 
-            // 2. Handle File Uploads
             if (payload.custom_drawing_attachment && apiKey && apiSecret) {
                 toast.info("Uploading attachments...");
-
-                // Use Promise.all to upload all new files in parallel
                 await Promise.all(
                     payload.custom_drawing_attachment.map(async (row: any, index: number) => {
-                        // Get the original value from the 'data' object (which has the File)
                         const originalFile = data.custom_drawing_attachment[index]?.attachment;
-
                         if (originalFile instanceof File) {
-                            // This is a new file that needs to be uploaded
                             try {
-                                // Pass the base URL, not the resource URL
                                 const fileUrl = await uploadFile(originalFile, apiKey, apiSecret, API_BASE_URL.replace("/api/resource", ""));
-
-                                // --- THIS IS THE CRITICAL CHANGE ---
-                                // We update the 'attachment' field *inside* our 'payload'
                                 row.attachment = fileUrl;
-                                // -----------------------------------
-
                             } catch (err) {
-                                // Throw an error to stop the save
                                 throw new Error(`Failed to upload file: ${originalFile.name}`);
                             }
                         }
-                        // If it's not a File, it's already a string URL (or null),
-                        // so we don't need an 'else' block. It's already correct in 'payload'.
                     })
                 );
             }
 
-            // 3. Clean the payload (remove virtual fields)
             const allFields = formTabs.flatMap(tab => tab.fields);
             const nonDataFields = new Set<string>();
             allFields.forEach(field => {
@@ -389,21 +750,25 @@ export default function RecordDetailPage() {
                     field.type === "Section Break" ||
                     field.type === "Column Break" ||
                     field.type === "Button" ||
-                    field.type === "Read Only"
+                    field.type === "Read Only" ||
+                    field.type === "Custom"
                 ) {
                     nonDataFields.add(field.name);
                 }
             });
 
-            // We create 'finalPayload' *from our modified payload*, not from 'data'
             const finalPayload: Record<string, any> = {};
             for (const key in payload) {
                 if (!nonDataFields.has(key)) {
                     finalPayload[key] = payload[key];
                 }
             }
+            
+            // 🟢 Explicitly include custom_drawing_attachment because it's a Custom field now
+            if (payload.custom_drawing_attachment) {
+                finalPayload.custom_drawing_attachment = payload.custom_drawing_attachment;
+            }
 
-            // 4. Add metadata
             if (!asset) {
                 alert("Error: Asset data not loaded. Cannot save.");
                 setIsSaving(false);
@@ -412,7 +777,6 @@ export default function RecordDetailPage() {
             finalPayload.modified = asset.modified;
             finalPayload.docstatus = asset.docstatus;
 
-            // 5. Conversions
             const boolFields = [
                 "is_existing_asset", "is_composite_asset", "is_composite_component",
                 "calculate_depreciation", "is_fully_depreciated",
@@ -432,12 +796,8 @@ export default function RecordDetailPage() {
                 finalPayload[f] = Number(finalPayload[f]) || 0;
             });
 
-            // 6. Delete "Set Only Once" fields
             delete finalPayload.naming_series;
 
-            console.log("Sending this PAYLOAD to Frappe:", finalPayload);
-
-            // 7. Send the final payload
             const resp = await axios.put(`${API_BASE_URL}/${doctypeName}/${docname}`, finalPayload, {
                 headers: {
                     Authorization: `token ${apiKey}:${apiSecret}`,
@@ -454,11 +814,8 @@ export default function RecordDetailPage() {
                 setAsset(resp.data.data);
             }
 
-            router.push(`/lis-management/doctype/asset/edit/${docname}`);
-
         } catch (err: any) {
             console.error("Save error:", err);
-            console.log("Full server error:", err.response?.data);
             toast.error("Failed to save", {
                 description: (err as Error).message || "Check the browser console (F12) for the full server error."
             });
@@ -470,40 +827,28 @@ export default function RecordDetailPage() {
     const handleCancel = () => router.back();
 
     /* -------------------------------------------------
-       5. DUPLICATE FUNCTIONALITY (Shift+D)
+       8. DUPLICATE 
        ------------------------------------------------- */
     const handleDuplicate = React.useCallback(() => {
         if (!asset) {
             toast.error("Asset data not loaded. Cannot duplicate.");
             return;
         }
-
-        // Prepare data for duplication - exclude fields that should not be copied
         const duplicateData: Record<string, any> = {};
-
-        // Fields to exclude from duplication
         const excludeFields = [
             'name', 'naming_series', 'docstatus', 'modified', 'creation',
             'owner', 'modified_by', 'idx', 'status'
         ];
-
-        // Copy all other fields
         Object.keys(asset).forEach(key => {
             if (!excludeFields.includes(key) && asset[key as keyof AssetData] !== undefined) {
                 duplicateData[key] = asset[key as keyof AssetData];
             }
         });
-
-        // Encode the data for URL transmission
         const encodedData = btoa(JSON.stringify(duplicateData));
-
-        // Navigate to new page with duplicate data
         router.push(`/lis-management/doctype/asset/new?duplicate=${encodeURIComponent(encodedData)}`);
-
         toast.success("Asset data copied! Creating duplicate...");
     }, [asset, router]);
 
-    // Add keyboard event listener for Shift+D
     React.useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.shiftKey && event.key === 'D') {
@@ -511,13 +856,12 @@ export default function RecordDetailPage() {
                 handleDuplicate();
             }
         };
-
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleDuplicate]);
 
     /* -------------------------------------------------
-       6. UI STATES
+       9. UI STATES
        ------------------------------------------------- */
     if (loading) {
         return (
@@ -547,7 +891,7 @@ export default function RecordDetailPage() {
     }
 
     /* -------------------------------------------------
-       7. RENDER FORM
+       10. RENDER FORM
        ------------------------------------------------- */
     return (
         <DynamicForm

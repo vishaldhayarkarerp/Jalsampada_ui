@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Workspace, Doctype } from "@/components/Workspace";
+import { Workspace, Doctype, DoctypeGroup } from "@/components/Workspace";
 
 import {
   ListChecks,
@@ -17,13 +17,20 @@ const maintenanceDoctypes: Doctype[] = [
   { name: "maintenance-log", title: "Maintenance Log", icon: FileText },
 ];
 
+const maintenanceDoctypeGroups: DoctypeGroup[] = [
+  {
+    title: "Maintenance",
+    doctypes: maintenanceDoctypes
+  }
+];
+
 export default function MaintenancePage() {
   return (
     <Workspace
       title="Maintenance"
       description="Manage maintenance checklists, schedules, and logs."
       // buttonText="Create New"
-      doctypes={maintenanceDoctypes}
+      doctypeGroups={maintenanceDoctypeGroups}
       basePath="/maintenance/doctype"
     />
   );

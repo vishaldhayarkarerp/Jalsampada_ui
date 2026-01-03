@@ -931,7 +931,7 @@ body {
 /* Main Content */
 .main-content {
   margin-left: 230px;
-  margin-top: 45px;
+  margin-top: 40px;
   min-height: calc(100vh - 60px);
   padding: 10px 0px;
 }
@@ -954,7 +954,7 @@ body {
 }
 
 .module-header h2 {
-  margin: 0;
+  margin-top: 2px;
   color: var(--color-text);
   font-size: var(--font-size-3xl);
 }
@@ -1764,7 +1764,7 @@ body {
   color: #ffffff;
   border-radius: var(--radius-lg, 8px);
   padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -1775,7 +1775,7 @@ body {
   color: white;
 }
 
-.status-badge-healthy {
+.status-badge-draft {
   background-color: #ffffff;
   color: var(--color-success, #15803d);
   /* Green */
@@ -1817,6 +1817,37 @@ body {
   /* Light gray hover */
 }
 
+.btn-header-primary-asset {
+  /* Inherit from base button styles */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-standard);
+  border: none;
+  text-decoration: none;
+  position: relative;
+
+  /* Override specific styles */
+  background-color: #ffffff;
+  color: var(--color-primary);
+  font-weight: 600;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-header-primary-asset:hover {
+  background-color: #f1f5f9;
+  /* Light gray hover */
+}
+
 .btn-header-secondary {
   /* Inherit from base button styles */
   display: inline-flex;
@@ -1848,6 +1879,36 @@ body {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
+.btn-header-secondary-asset {
+  /* Inherit from base button styles */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-standard);
+  border: none;
+  text-decoration: none;
+  position: relative;
+
+  /* Override specific styles */
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  font-weight: 600;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-header-secondary-asset:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
 
 /* --- Main Content Cards (The light ones) --- */
 .test-card {
@@ -1954,32 +2015,6 @@ body {
   text-decoration: underline;
 }
 
-/* --- Header Card --- */
-.test-module-header {
-  background-image: linear-gradient(to right, var(--color-primary, #007bff), var(--color-primary-dark, #025dbe));
-  color: #ffffff;
-  border-radius: var(--radius-lg, 8px);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.test-module-header h1 {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
-  color: white;
-}
-
-.status-badge-healthy {
-  background-color: #ffffff;
-  color: var(--color-success, #15803d);
-  font-weight: 700;
-  padding: 0.5rem 1.25rem;
-  border-radius: var(--radius-md, 6px);
-  font-size: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
 
 .btn-header-primary {
   /* Inherit from base button styles */
@@ -2129,33 +2164,6 @@ body {
   text-decoration: underline;
 }
 
-/* --- Header Card --- */
-.test-module-header {
-  background-image: linear-gradient(to right, var(--color-primary, #007bff), var(--color-primary-dark, #025dbe));
-  color: #ffffff;
-  border-radius: var(--radius-lg, 8px);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.test-module-header h1 {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
-  color: white;
-}
-
-.status-badge-healthy {
-  background-color: #ffffff;
-  color: var(--color-success, #15803d);
-  /* Green */
-  font-weight: 700;
-  padding: 0.5rem 1.25rem;
-  border-radius: var(--radius-md, 6px);
-  font-size: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
 
 .btn-header-primary {
   /* Inherit from base button styles */

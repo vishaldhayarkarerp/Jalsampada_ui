@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Workspace, Doctype } from "@/components/Workspace";
+import { Workspace, Doctype, DoctypeGroup } from "@/components/Workspace";
 
 import {
   User,
@@ -15,13 +15,20 @@ const attendanceDoctypes: Doctype[] = [
   { name: "attendance-sheet", title: "Attendance Sheet", icon: ClipboardCheck },
 ];
 
+const attendanceDoctypeGroups: DoctypeGroup[] = [
+  {
+    title: "Attendance",
+    doctypes: attendanceDoctypes
+  }
+];
+
 export default function MaintenancePage() {
   return (
     <Workspace
       title="Attendance"
       description="Manage employees, designations, and attendance records."
       // buttonText="Create New"
-      doctypes={attendanceDoctypes}
+      doctypeGroups={attendanceDoctypeGroups}
       basePath="/attendance/doctype"
     />
   );
