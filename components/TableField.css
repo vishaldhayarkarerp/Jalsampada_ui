@@ -1,0 +1,20 @@
+/* Table edit column sticky styles */
+.child-table-edit-cell {
+    border-left: 1px solid var(--color-border, #e5e7eb);
+}
+
+.stock-table-container {
+    overflow-x: auto;
+    position: relative;
+}
+
+/* Ensure the table maintains proper layout with sticky column */
+.stock-table.child-form-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Add box shadow to sticky column for better visual separation */
+.child-table-edit-cell {
+    box-shadow: -2px 0 4px rgba(0, 0, 0, 0.05);
+}

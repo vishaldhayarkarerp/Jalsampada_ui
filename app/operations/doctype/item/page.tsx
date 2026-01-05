@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const IMAGE_BASE_URL = "http://103.219.1.138:4412"; // 🟢 ADDED
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -40,6 +41,7 @@ interface ItemRow {
   item_group?: string;
   status?: string;     // computed from disabled
   modified?: string;
+  image?: string;      // 🟢 ADDED
 }
 
 type SortDirection = "asc" | "dsc";
@@ -112,6 +114,7 @@ export default function ItemPage() {
             "item_group",
             "disabled",  // use disabled instead of status
             "modified",
+            "image",     // 🟢 ADDED
           ]),
           limit_page_length: "20",
           order_by: "modified desc",
@@ -141,6 +144,7 @@ export default function ItemPage() {
           item_group: r.item_group,
           status: r.disabled === 1 ? "Disabled" : "Enabled",
           modified: r.modified,
+          image: r.image, // 🟢 ADDED
         }));
 
         setRows(mapped);
@@ -180,11 +184,29 @@ export default function ItemPage() {
   const currentSortLabel =
     SORT_OPTIONS.find((opt) => opt.key === sortConfig.key)?.label || "Sort By";
 
+  // Inside app/operations/doctype/item/page.tsx
+
   const getFieldsForRow = (row: ItemRow): RecordCardField[] => {
     const fields: RecordCardField[] = [];
-    if (row.item_name) fields.push({ label: "Item Name", value: row.item_name });
-    if (row.item_group) fields.push({ label: "Item Group", value: row.item_group });
-    if (row.status) fields.push({ label: "Status", value: row.status });
+
+    // 1. Status (Will now appear in the header automatically)
+    if (row.status) {
+      fields.push({
+        label: "Status",
+        value: row.status,
+        type: row.status === "Enabled" ? "success" : "danger",
+      });
+    }
+
+    // 2. Item Group (Will appear as a tag at the bottom)
+    if (row.item_group) {
+        fields.push({ 
+            label: "Group", 
+            value: row.item_group,
+            type: "default" 
+        }); 
+    }
+
     return fields;
   };
 
@@ -262,19 +284,26 @@ export default function ItemPage() {
   );
 
   const renderGridView = () => (
-    <div className="equipment-grid">
+    // 'gap-6' gives nice breathing room. 'p-1' prevents shadow clipping.
+    <div className="equipment-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-1">
       {rows.length ? (
         rows.map((row) => (
           <RecordCard
             key={row.name}
             title={row.item_name || row.name}
-            subtitle={row.item_group || "—"}
+            subtitle={row.name} // The ID goes here
+            image={row.image ? `${IMAGE_BASE_URL}${row.image}` : undefined}
             fields={getFieldsForRow(row)}
             onClick={() => handleCardClick(row.name)}
           />
         ))
       ) : (
-        <p style={{ color: "var(--color-text-secondary)" }}>No records found.</p>
+        <div className="col-span-full flex flex-col items-center justify-center py-16 text-zinc-400">
+           <div className="bg-zinc-100 rounded-full p-4 mb-3">
+             <LayoutGrid className="w-8 h-8 opacity-20" />
+           </div>
+           <p>No items found.</p>
+        </div>
       )}
     </div>
   );

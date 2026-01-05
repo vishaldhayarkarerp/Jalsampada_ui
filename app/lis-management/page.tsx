@@ -27,7 +27,7 @@ const masterDoctypes: Doctype[] = [
   { name: "equipement-capacity", title: "Equipement Capacity", icon: Ruler },
   { name: "district", title: "District", icon: MapPin },  // Change icon to represent a district location
   { name: "taluka", title: "Taluka", icon: Star },        // You could keep Star for Taluka as a general icon
-  { name: "village", title: "Village", icon: Home } 
+  { name: "village", title: "Village", icon: Home }
 ];
 
 const transactionDoctypes: Doctype[] = [
@@ -38,13 +38,14 @@ const transactionDoctypes: Doctype[] = [
 
 const doctypeGroups: DoctypeGroup[] = [
   {
+    title: "Transaction",
+    doctypes: transactionDoctypes
+  },
+  {
     title: "Master",
     doctypes: masterDoctypes
   },
-  {
-    title: "Transaction",
-    doctypes: transactionDoctypes
-  }
+
 ];
 
 export default function AssetsWorkspacePage() {

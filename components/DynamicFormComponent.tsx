@@ -28,6 +28,7 @@ import {
 
 import { TableField } from "./TableField";
 import { LinkField } from "./LinkField";
+import { cn } from "@/lib/utils"; // 🟢 1. Import 'cn' utility
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -62,7 +63,7 @@ export type FieldType =
   | "Percent"
   | "Rating"
   | "Attach"
-  | "Custom"; // 🟢 ADDED: Custom Type
+  | "Custom";
 
 export interface FormField {
   name: string;
@@ -78,6 +79,7 @@ export interface FormField {
   max?: number;
   step?: number;
   rows?: number;
+  showDownloadUpload?: boolean;
   columns?: {
     name: string;
     label: string;
@@ -98,7 +100,7 @@ export interface FormField {
     targetDoctype: string;
     targetField: string;
   };
-  customElement?: React.ReactNode; // 🟢 ADDED: To hold custom components like tables
+  customElement?: React.ReactNode;
 }
 
 // Tabbed layout
@@ -146,20 +148,9 @@ async function fetchFieldValue(
       withCredentials: true,
     });
 
-    console.log(`API Response:`, resp.data);
-
-    const fieldValue = resp.data.data?.[targetField];
-    console.log(`Extracted field value:`, fieldValue);
-
-    return fieldValue || null;
+    return resp.data.data?.[targetField] || null;
   } catch (e: any) {
     console.error(`Failed to fetch ${targetField} from ${targetDoctype}:`, e);
-    console.error("Error details:", {
-      message: e.message,
-      status: e.response?.status,
-      statusText: e.response?.statusText,
-      data: e.response?.data,
-    });
     return null;
   }
 }
@@ -172,7 +163,6 @@ function evaluateDisplayDependsOn(
   getValue: (name: string) => any
 ): boolean {
   try {
-    // Split by operators and evaluate
     const parts = condition
       .split(/(\&\&|\|\|)/)
       .map((c) => c.trim())
@@ -180,7 +170,6 @@ function evaluateDisplayDependsOn(
     const conditions = parts.filter((p) => p !== "&&" && p !== "||");
     const operators = parts.filter((p) => p === "&&" || p === "||");
 
-    // Evaluate each condition
     const results = conditions.map((cond) => {
       const [field, op, value] = cond.split(/([=!<>]=?)/);
       if (!field || !op || value === undefined) return true;
@@ -188,7 +177,6 @@ function evaluateDisplayDependsOn(
       const fieldValue = getValue(field.trim());
       let compareValue: any = value.trim();
 
-      // Parse value types
       if (compareValue === "true") compareValue = true;
       else if (compareValue === "false") compareValue = false;
       else if (/^\d+$/.test(compareValue))
@@ -197,26 +185,17 @@ function evaluateDisplayDependsOn(
         compareValue = parseFloat(compareValue);
       else compareValue = compareValue.replace(/^['"]|['"]$/g, "");
 
-      // Evaluate condition
       switch (op) {
-        case "==":
-          return fieldValue == compareValue;
-        case "!=":
-          return fieldValue != compareValue;
-        case ">":
-          return (fieldValue ?? 0) > (compareValue ?? 0);
-        case "<":
-          return (fieldValue ?? 0) < (compareValue ?? 0);
-        case ">=":
-          return (fieldValue ?? 0) >= (compareValue ?? 0);
-        case "<=":
-          return (fieldValue ?? 0) <= (compareValue ?? 0);
-        default:
-          return true;
+        case "==": return fieldValue == compareValue;
+        case "!=": return fieldValue != compareValue;
+        case ">": return (fieldValue ?? 0) > (compareValue ?? 0);
+        case "<": return (fieldValue ?? 0) < (compareValue ?? 0);
+        case ">=": return (fieldValue ?? 0) >= (compareValue ?? 0);
+        case "<=": return (fieldValue ?? 0) <= (compareValue ?? 0);
+        default: return true;
       }
     });
 
-    // Apply logical operators
     return results.reduce((acc, result, i) => {
       const op = operators[i - 1];
       return op === "&&" ? acc && result : op === "||" ? acc || result : result;
@@ -235,8 +214,6 @@ function buildDynamicFilters(
   getValue: (name: string) => any
 ): Record<string, any> {
   const filters: Record<string, any> = {};
-
-  // Handle filterMapping - maps source fields to target fields
   if (field.filterMapping?.length) {
     field.filterMapping.forEach((mapping) => {
       const sourceValue = getValue(mapping.sourceField);
@@ -245,10 +222,8 @@ function buildDynamicFilters(
       }
     });
   } else if (typeof field.filters === "function") {
-    // Handle dynamic filter function
     Object.assign(filters, field.filters(getValue));
   }
-
   return filters;
 }
 
@@ -280,7 +255,6 @@ function buildDefaultValues(fields: FormField[]) {
       }
     }
   }
-
   return dv;
 }
 
@@ -373,10 +347,11 @@ function FieldHelp({ text }: { text?: string }) {
     </div>
   );
 }
+// 🟢 2. Style FieldError to be explicitly red
 function FieldError({ error }: { error?: any }) {
   if (!error) return null;
   return (
-    <div className="text-error" style={{ marginTop: 6, fontSize: "0.85rem" }}>
+    <div className="text-red-500 font-medium" style={{ marginTop: 6, fontSize: "0.85rem" }}>
       {String(error.message || error)}
     </div>
   );
@@ -435,6 +410,13 @@ export function DynamicForm({
   );
 
   const onFormSubmit = (data: Record<string, any>) => onSubmit(data, isDirty);
+
+  // 🟢 3. IMPORTANT: Use !important classes to override default .form-control styles
+  const getErrorClass = (fieldName: string) => {
+    return errors[fieldName]
+      ? "!border-red-500 !focus:border-red-500 !focus:ring-red-500 !ring-1 !ring-red-500"
+      : "";
+  };
 
   // ── DUPLICATION LOGIC ────────────────────────────────────────────────────
   const handleDuplicate = React.useCallback(() => {
@@ -519,10 +501,6 @@ export function DynamicForm({
 
           if (sourceValue) {
             try {
-              console.log(
-                `Fetching ${field.name} from ${field.fetchFrom.targetDoctype}.${field.fetchFrom.targetField}`
-              );
-
               const fetchedValue = await fetchFieldValue(
                 sourceValue,
                 field.fetchFrom.targetDoctype,
@@ -567,7 +545,8 @@ export function DynamicForm({
     const rules = rulesFor(field);
     const commonProps: any = {
       id: field.name,
-      className: "form-control",
+      // 🟢 4. Apply cn() with getErrorClass
+      className: cn("form-control", getErrorClass(field.name)),
       placeholder: field.placeholder,
       ...(field.step ? { step: field.step } : {}),
       ...(field.min !== undefined ? { min: field.min } : {}),
@@ -611,7 +590,8 @@ export function DynamicForm({
         <textarea
           id={field.name}
           rows={field.rows ?? rows}
-          className="form-control"
+          // 🟢 4. Apply cn() with getErrorClass
+          className={cn("form-control", getErrorClass(field.name))}
           placeholder={field.placeholder}
           {...reg(field.name, rules)}
         />
@@ -643,7 +623,8 @@ export function DynamicForm({
 
         <select
           id={field.name}
-          className="form-control"
+          // 🟢 4. Apply cn() with getErrorClass
+          className={cn("form-control", getErrorClass(field.name))}
           {...reg(field.name, rules)}
         >
           <option value="">Select...</option>
@@ -673,7 +654,11 @@ export function DynamicForm({
               id={field.name}
               checked={!!rhfField.value}
               onCheckedChange={(val) => rhfField.onChange(val)}
-              className="rounded border border-gray-300 data-[state=checked]:bg-primary"
+              // 🟢 4. Apply cn() with getErrorClass to Checkbox
+              className={cn(
+                "rounded border border-gray-300 data-[state=checked]:bg-primary",
+                getErrorClass(field.name)
+              )}
             />
             <label
               htmlFor={field.name}
@@ -704,7 +689,8 @@ export function DynamicForm({
         <input
           id={field.name}
           type="color"
-          className="form-control"
+          // 🟢 4. Apply cn() with getErrorClass
+          className={cn("form-control h-10 p-1", getErrorClass(field.name))}
           {...reg(field.name, rules)}
         />
         <FieldError
@@ -733,20 +719,26 @@ export function DynamicForm({
                 {field.label}
                 {field.required ? " *" : ""}
               </label>
-              <DatePicker
-                selected={controllerField.value ? new Date(controllerField.value) : null}
-                onChange={(date: Date | null) => {
-                  controllerField.onChange(date ? date.toISOString().split('T')[0] : '');
-                }}
-                dateFormat="dd/MM/yyyy"
-                className="form-control"
-                placeholderText="DD/MM/YYYY"
-                showYearDropdown
-                scrollableYearDropdown
-                yearDropdownItemNumber={100}
-              />
+              <div className={error ? "input-error-wrapper" : ""}>
+                <DatePicker
+                  selected={controllerField.value ? new Date(controllerField.value) : null}
+                  onChange={(date: Date | null) => {
+                    controllerField.onChange(date ? date.toISOString().split('T')[0] : '');
+                  }}
+                  dateFormat="dd/MM/yyyy"
+                  // 🟢 4. Apply cn() directly to DatePicker to override defaults
+                  className={cn(
+                    "form-control w-full",
+                    error ? "!border-red-500 !focus:border-red-500 !focus:ring-red-500 !ring-1 !ring-red-500" : ""
+                  )}
+                  placeholderText="DD/MM/YYYY"
+                  showYearDropdown
+                  scrollableYearDropdown
+                  yearDropdownItemNumber={100}
+                />
+              </div>
               {error && (
-                <span className="error-message">{error.message}</span>
+                <span className="text-red-500 font-medium text-sm mt-1">{error.message}</span>
               )}
               <FieldHelp text={field.description} />
             </div>
@@ -764,7 +756,8 @@ export function DynamicForm({
         <input
           id={field.name}
           type={type}
-          className="form-control"
+          // 🟢 4. Apply cn() with getErrorClass
+          className={cn("form-control", getErrorClass(field.name))}
           {...reg(field.name, rules)}
         />
         <FieldError
@@ -793,7 +786,7 @@ export function DynamicForm({
           <input
             type="number"
             min={0}
-            className="form-control"
+            className={cn("form-control", (errors as any)[`${base}.hours`] ? "!border-red-500" : "")}
             placeholder="Hours"
             {...reg(
               `${base}.hours`,
@@ -803,7 +796,7 @@ export function DynamicForm({
           <input
             type="number"
             min={0}
-            className="form-control"
+            className={cn("form-control", (errors as any)[`${base}.minutes`] ? "!border-red-500" : "")}
             placeholder="Minutes"
             {...reg(
               `${base}.minutes`,
@@ -813,7 +806,7 @@ export function DynamicForm({
           <input
             type="number"
             min={0}
-            className="form-control"
+            className={cn("form-control", (errors as any)[`${base}.seconds`] ? "!border-red-500" : "")}
             placeholder="Seconds"
             {...reg(
               `${base}.seconds`,
@@ -844,7 +837,10 @@ export function DynamicForm({
               key={n}
               type="button"
               onClick={() => set(n)}
-              className={`btn btn--outline btn--sm`}
+              className={cn(
+                "btn btn--outline btn--sm",
+                (errors as any)[field.name] ? "!border-red-500 !text-red-500" : ""
+              )}
               style={{
                 borderColor: current >= n ? "var(--color-warning)" : undefined,
                 color: current >= n ? "var(--color-warning)" : undefined,
@@ -936,7 +932,7 @@ export function DynamicForm({
         {!value && (
           <Button
             variant="outline"
-            className="w-fit flex items-center gap-2"
+            className={cn("w-fit flex items-center gap-2", getErrorClass(field.name))}
             onClick={() => fileInputRefs.current[field.name]?.click()}
           >
             <Upload size={16} />
@@ -945,7 +941,7 @@ export function DynamicForm({
         )}
 
         {value && (
-          <div className="flex items-center gap-3 bg-muted/40 p-3 rounded-md border">
+          <div className={cn("flex items-center gap-3 bg-muted/40 p-3 rounded-md border", getErrorClass(field.name))}>
             <span className="text-sm flex-1">{value?.name}</span>
 
             <Button
@@ -1022,6 +1018,8 @@ export function DynamicForm({
               control={control}
               error={(errors as FieldErrors<Record<string, any>>)[field.name]}
               filters={filtersToPass}
+              // 🟢 5. Apply className prop to LinkField (IMPORTANT)
+              className={getErrorClass(field.name) ? "!border-red-500 !focus:ring-red-500" : ""}
             />
           );
         }
@@ -1047,7 +1045,7 @@ export function DynamicForm({
         case "Attach":
           return renderAttachment(field);
 
-        case "Custom": // 🟢 RENDER CUSTOM COMPONENT
+        case "Custom":
           return (
             <div className="form-group">
               {field.label && <label className="form-label">{field.label}</label>}
@@ -1178,13 +1176,13 @@ export function DynamicForm({
               const isTable =
                 field.type === "Table" || field.type === "Table MultiSelect";
               const isSectionBreak = field.type === "Section Break";
-              const isCustom = field.type === "Custom"; // 🟢 CHECK FOR CUSTOM
+              const isCustom = field.type === "Custom";
 
               return (
                 <div
                   key={`${field.name}-${idx}`}
                   className={
-                    isTable || isSectionBreak || isCustom // 🟢 FULL WIDTH
+                    isTable || isSectionBreak || isCustom
                       ? "md:col-span-3"
                       : "md:col-span-1"
                   }

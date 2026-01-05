@@ -3,15 +3,19 @@
 "use client";
 
 import * as React from "react";
-import { Workspace, Doctype } from "@/components/Workspace";
+import { Workspace, Doctype, DoctypeGroup } from "@/components/Workspace";
 import {
 
   User,
 } from "lucide-react";
 
-const assetsDoctypes: Doctype[] = [
-    
-  { name: "user", title: "User", icon: User },
+const adminDoctypeGroups: DoctypeGroup[] = [
+  {
+    title: "User Management",
+    doctypes: [
+      { name: "user", title: "User", icon: User }
+    ]
+  }
 ];
 
 export default function AdminWorkspace() {
@@ -20,7 +24,7 @@ export default function AdminWorkspace() {
       title="Admin Workspace"
       description="Manage system settings and configurations."
       // buttonText="Add Setting"
-      doctypes={assetsDoctypes}
+      doctypeGroups={adminDoctypeGroups}
       basePath="/admin/doctype"
     />
   );

@@ -88,6 +88,15 @@ export default function NewRecordPage() {
             name: "is_composite_component", label: "Is Composite Component", type: "Check", defaultValue: getValue("is_composite_component", false),
             displayDependsOn: "is_composite_asset==0 && is_existing_asset==0 && custom_obsolete==0"
           },
+          
+          // 🟢 UPDATED: Using a Custom Field as a Vertical Spacer (h-2 = 0.5rem)
+          {
+            name: "spacer_obsolete",
+            label: "",
+            type: "Custom", 
+            customElement: <div className="h-2 w-full" aria-hidden="true" /> // Adds vertical gap
+          },
+
           {
             name: "custom_obsolete", label: "Is Obsolete", type: "Check", defaultValue: getValue("custom_obsolete", false),
             displayDependsOn: "is_composite_asset==0 && is_existing_asset==0 && is_composite_component==0"
@@ -208,7 +217,8 @@ export default function NewRecordPage() {
           field.type === "Section Break" ||
           field.type === "Column Break" ||
           field.type === "Button" ||
-          field.type === "Read Only"
+          field.type === "Read Only" ||
+          field.type === "Custom" // Ignore Custom fields in payload
         ) {
           nonDataFields.add(field.name);
         }

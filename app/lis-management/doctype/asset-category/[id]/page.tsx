@@ -100,6 +100,7 @@ export default function RecordDetailPage() {
             name: "custom_specifications", // This is the field name for the child table
             label: "Specifications",
             type: "Table",
+            showDownloadUpload: true,
             columns: [
               { name: "specification_type", label: "Specification Type", type: "Link", linkTarget: "Specifications" },
               { name: "details", label: "Details", type: "Text" },
@@ -159,7 +160,7 @@ export default function RecordDetailPage() {
 
     // Prepare data for duplication - exclude fields that should not be copied
     const duplicateData: Record<string, any> = {};
-    
+
     // Fields to exclude from duplication
     const excludeFields = [
       'name', 'naming_series', 'docstatus', 'modified', 'creation',
@@ -175,10 +176,10 @@ export default function RecordDetailPage() {
 
     // Encode the data for URL transmission
     const encodedData = btoa(JSON.stringify(duplicateData));
-    
+
     // Navigate to new page with duplicate data
     router.push(`/lis-management/doctype/asset-category/new?duplicate=${encodeURIComponent(encodedData)}`);
-    
+
     toast.success("Asset Category data copied! Creating duplicate...");
   }, [category, router]);
 
