@@ -73,8 +73,8 @@ export default function PrapanSuchiDetailPage() {
           err.response?.status === 404
             ? "Record not found"
             : err.response?.status === 403
-            ? "Unauthorized"
-            : "Failed to load record"
+              ? "Unauthorized"
+              : "Failed to load record"
         );
       } finally {
         setLoading(false);
@@ -125,15 +125,8 @@ export default function PrapanSuchiDetailPage() {
           {
             name: "stage",
             label: "Stage/Sub Scheme",
-            type: "Table",
-            columns: [
-              {
-                name: "stage",
-                label: "Stage",
-                type: "Link",
-                linkTarget: "Stage No",
-              },
-            ],
+            type: "Table MultiSelect",
+            linkTarget: "Stage No",
           },
           {
             name: "work_name",
@@ -195,6 +188,34 @@ export default function PrapanSuchiDetailPage() {
           finalPayload[f] = Number(finalPayload[f]) || 0;
         }
       });
+
+      // Process stage field to ensure proper Frappe child table format
+      if (finalPayload.stage && Array.isArray(finalPayload.stage)) {
+        finalPayload.stage = finalPayload.stage.map((item, index) => {
+          // If item is a string, convert to proper child table object
+          if (typeof item === 'string') {
+            return {
+              doctype: "Stage Multiselect",
+              stage: item,
+              idx: index + 1
+            };
+          }
+          // If item is already an object, ensure it has required fields
+          if (typeof item === 'object' && item !== null) {
+            return {
+              ...item,
+              doctype: "Stage Multiselect",
+              idx: item.idx || (index + 1)
+            };
+          }
+          // Fallback for any other type
+          return {
+            doctype: "Stage Multiselect",
+            stage: String(item),
+            idx: index + 1
+          };
+        });
+      }
 
       console.log("Sending this PAYLOAD to Frappe:", finalPayload);
 

@@ -28,6 +28,7 @@ import {
 
 import { TableField } from "./TableField";
 import { LinkField } from "./LinkField";
+import { TableMultiSelect } from "./TableMultiSelect";
 import { cn } from "@/lib/utils"; // 🟢 1. Import 'cn' utility
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -239,7 +240,8 @@ function buildDefaultValues(fields: FormField[]) {
       if (f.type === "Check") dv[f.name] = false;
       if (f.type === "Duration")
         dv[f.name] = { hours: 0, minutes: 0, seconds: 0 };
-      if (f.type === "Table" || f.type === "Table MultiSelect") dv[f.name] = [];
+      if (f.type === "Table") dv[f.name] = [];
+      if (f.type === "Table MultiSelect") dv[f.name] = [];
     }
   }
 
@@ -357,9 +359,6 @@ function FieldError({ error }: { error?: any }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main component
-// ─────────────────────────────────────────────────────────────────────────────
 export function DynamicForm({
   tabs,
   onSubmit,
@@ -1030,7 +1029,6 @@ export function DynamicForm({
         case "Rating":
           return renderRating(field);
         case "Table":
-        case "Table MultiSelect":
           return (
             <TableField
               key={field.name}
@@ -1040,6 +1038,21 @@ export function DynamicForm({
               errors={errors}
             />
           );
+        case "Table MultiSelect": {
+          const getValue = (name: string) => watch(name);
+          const filtersToPass = buildDynamicFilters(field, getValue);
+          const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
+          return (
+            <TableMultiSelect
+              key={filterKey}
+              field={field}
+              control={control}
+              error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+              filters={filtersToPass}
+              className={getErrorClass(field.name) ? "!border-red-500 !focus:ring-red-500" : ""}
+            />
+          );
+        }
         case "Button":
           return renderButton(field);
         case "Attach":
@@ -1173,8 +1186,8 @@ export function DynamicForm({
             style={{ overflow: "visible" }}
           >
             {activeTabFields.map((field, idx) => {
-              const isTable =
-                field.type === "Table" || field.type === "Table MultiSelect";
+              const isTable = field.type === "Table";
+              const isTableMultiSelect = field.type === "Table MultiSelect";
               const isSectionBreak = field.type === "Section Break";
               const isCustom = field.type === "Custom";
 
@@ -1182,7 +1195,7 @@ export function DynamicForm({
                 <div
                   key={`${field.name}-${idx}`}
                   className={
-                    isTable || isSectionBreak || isCustom
+                    isTable || isTableMultiSelect || isSectionBreak || isCustom
                       ? "md:col-span-3"
                       : "md:col-span-1"
                   }
