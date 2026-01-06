@@ -127,6 +127,9 @@ export default function PrapanSuchiDetailPage() {
             label: "Stage/Sub Scheme",
             type: "Table MultiSelect",
             linkTarget: "Stage No",
+            filterMapping: [
+              { sourceField: "lis_name", targetField: "lis_name" }
+            ]
           },
           {
             name: "work_name",

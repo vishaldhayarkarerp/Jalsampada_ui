@@ -10,15 +10,15 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { 
-    Loader2, 
-    IndianRupee, 
-    FileText, 
-    LayoutGrid, 
-    List as ListIcon, 
-    Plus, 
-    Trash2, 
-    Upload, 
+import {
+    Loader2,
+    IndianRupee,
+    FileText,
+    LayoutGrid,
+    List as ListIcon,
+    Plus,
+    Trash2,
+    Upload,
     X,
     Eye,
     Image as ImageIcon
@@ -29,12 +29,12 @@ import { useFormContext, useFieldArray } from "react-hook-form";
 
 // Import UI Table Components (only for Expenditure)
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "@/components/ui/table";
 
 const FRAPPE_BASE_URL = "http://103.219.1.138:4412";
@@ -77,8 +77,8 @@ interface AssetData {
     modified: string;
     additional_asset_cost?: number;
     total_asset_cost?: number;
-    
-    custom_doctype_name?: string; 
+
+    custom_doctype_name?: string;
 
     policy_number?: string;
     insurance_start_date?: string;
@@ -107,7 +107,7 @@ interface AssetData {
     }>;
     custom_drawing_attachment?: Array<{
         name_of_document?: string;
-        attachment?: string | File; 
+        attachment?: string | File;
     }>;
     custom_asset_specifications?: Array<{
         specification_type: string;
@@ -116,14 +116,14 @@ interface AssetData {
 }
 
 interface ExpenditureData {
-  work_type: string;
-  work_subtype: string;
-  bill_amount: number;
-  asset_id: string;
-  work_details: string;
-  expenditure_date: string;
-  fiscal_year: string;
-  expenditure_doc: string;
+    work_type: string;
+    work_subtype: string;
+    bill_amount: number;
+    asset_id: string;
+    work_details: string;
+    expenditure_date: string;
+    fiscal_year: string;
+    expenditure_doc: string;
 }
 
 /* -------------------------------------------------
@@ -147,7 +147,7 @@ const DrawingAttachmentEditor = () => {
         control,
         name: "custom_drawing_attachment"
     });
-    
+
     // Toggle State: Default list view
     const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
 
@@ -179,7 +179,7 @@ const DrawingAttachmentEditor = () => {
                 <label className="form-label" style={{ margin: 0 }}>
                     Drawing Attachments
                 </label>
-                
+
                 {/* Single Toggle Button */}
                 <button
                     type="button"
@@ -235,8 +235,8 @@ const DrawingAttachmentEditor = () => {
                                                 {fileName && (
                                                     <div className="flex items-center gap-2 max-w-[250px]">
                                                         {/* 🟢 UPDATED: Simple text, adaptive color */}
-                                                        <span 
-                                                            className="text-xs truncate text-gray-900 dark:text-gray-100" 
+                                                        <span
+                                                            className="text-xs truncate text-gray-900 dark:text-gray-100"
                                                             style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
                                                         >
                                                             {fileName}
@@ -286,12 +286,12 @@ const DrawingAttachmentEditor = () => {
                         const attachmentValue = watchedFields?.[index]?.attachment;
                         const isFile = attachmentValue instanceof File;
                         const isImg = isImage(attachmentValue);
-                        
+
                         // Create preview URL
-                        const previewUrl = isFile 
-                            ? URL.createObjectURL(attachmentValue) 
-                            : attachmentValue?.startsWith("http") 
-                                ? attachmentValue 
+                        const previewUrl = isFile
+                            ? URL.createObjectURL(attachmentValue)
+                            : attachmentValue?.startsWith("http")
+                                ? attachmentValue
                                 : `${FRAPPE_BASE_URL}${attachmentValue}`;
 
                         return (
@@ -306,7 +306,7 @@ const DrawingAttachmentEditor = () => {
                                 </button>
 
                                 {/* Image/Icon Preview Area */}
-                                <div 
+                                <div
                                     className="h-32 w-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 overflow-hidden relative cursor-pointer"
                                     onClick={() => attachmentValue && handlePreview(attachmentValue)}
                                 >
@@ -326,7 +326,7 @@ const DrawingAttachmentEditor = () => {
                                             <span className="text-[10px]">No File</span>
                                         </div>
                                     )}
-                                    
+
                                     {/* Upload Overlay */}
                                     <label className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center cursor-pointer">
                                         <div className="bg-white dark:bg-black text-xs px-3 py-1.5 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity font-medium flex items-center gap-1">
@@ -357,7 +357,7 @@ const DrawingAttachmentEditor = () => {
                             </div>
                         );
                     })}
-                    
+
                     {/* Add New Card (Grid Mode) */}
                     <button
                         type="button"
@@ -385,7 +385,7 @@ async function uploadFile(
 ): Promise<string> {
     const formData = new FormData();
     formData.append("file", file, file.name);
-    formData.append("is_private", "0"); 
+    formData.append("is_private", "0");
 
     try {
         const resp = await axios.post(
@@ -505,12 +505,12 @@ export default function RecordDetailPage() {
                 <label className="form-label" style={{ fontWeight: 600, marginBottom: "8px", display: "block" }}>
                     Expenditure History
                 </label>
-                
-                <div 
-                    className="stock-table-container" 
-                    style={{ 
-                        border: "1px solid var(--color-border)", 
-                        borderRadius: "var(--radius-base)", 
+
+                <div
+                    className="stock-table-container"
+                    style={{
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-base)",
                         overflow: "hidden",
                         backgroundColor: "var(--color-surface)"
                     }}
@@ -633,7 +633,7 @@ export default function RecordDetailPage() {
                         required: true,
                         displayDependsOn: "is_existing_asset==1 || is_composite_asset==1",
                     },
-                    { name: "gross_purchase_amount", label: "Net Purchase Amount", type: "Currency", required: true },
+                    { name: "net_purchase_amount", label: "Net Purchase Amount", type: "Currency", required: true },
                     { name: "asset_quantity", label: "Asset Quantity", type: "Int", min: 1 },
                     {
                         name: "available_for_use_date",
@@ -715,59 +715,18 @@ export default function RecordDetailPage() {
     /* -------------------------------------------------
        7. SUBMIT
        ------------------------------------------------- */
-    const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+    const handleSubmit = async (formData: Record<string, any>, isDirty: boolean) => {
         if (!isDirty) {
             toast.info("No changes to save.");
-            return;
+            return { status: asset?.status };
         }
 
         setIsSaving(true);
-
         try {
-            const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
+            const doctypeName = "Asset";
+            const docname = params.id as string;
 
-            if (payload.custom_drawing_attachment && apiKey && apiSecret) {
-                toast.info("Uploading attachments...");
-                await Promise.all(
-                    payload.custom_drawing_attachment.map(async (row: any, index: number) => {
-                        const originalFile = data.custom_drawing_attachment[index]?.attachment;
-                        if (originalFile instanceof File) {
-                            try {
-                                const fileUrl = await uploadFile(originalFile, apiKey, apiSecret, API_BASE_URL.replace("/api/resource", ""));
-                                row.attachment = fileUrl;
-                            } catch (err) {
-                                throw new Error(`Failed to upload file: ${originalFile.name}`);
-                            }
-                        }
-                    })
-                );
-            }
-
-            const allFields = formTabs.flatMap(tab => tab.fields);
-            const nonDataFields = new Set<string>();
-            allFields.forEach(field => {
-                if (
-                    field.type === "Section Break" ||
-                    field.type === "Column Break" ||
-                    field.type === "Button" ||
-                    field.type === "Read Only" ||
-                    field.type === "Custom"
-                ) {
-                    nonDataFields.add(field.name);
-                }
-            });
-
-            const finalPayload: Record<string, any> = {};
-            for (const key in payload) {
-                if (!nonDataFields.has(key)) {
-                    finalPayload[key] = payload[key];
-                }
-            }
-            
-            // 🟢 Explicitly include custom_drawing_attachment because it's a Custom field now
-            if (payload.custom_drawing_attachment) {
-                finalPayload.custom_drawing_attachment = payload.custom_drawing_attachment;
-            }
+            let finalPayload = { ...formData };
 
             if (!asset) {
                 alert("Error: Asset data not loaded. Cannot save.");
@@ -812,11 +771,88 @@ export default function RecordDetailPage() {
 
             if (resp.data && resp.data.data) {
                 setAsset(resp.data.data);
+                // Return the status from API response
+                return { status: resp.data.data.status };
             }
+
+            return { status: asset?.status }; // Fallback to current asset status
 
         } catch (err: any) {
             console.error("Save error:", err);
             toast.error("Failed to save", {
+                description: (err as Error).message || "Check the browser console (F12) for the full server error."
+            });
+            return { status: asset?.status };
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSubmitDocument = async () => {
+        setIsSaving(true);
+        try {
+            const doctypeName = "Asset";
+            const docname = params.id as string;
+
+            // Use REST API PUT method to update docstatus to 1 (Submitted)
+            const resp = await axios.put(`${API_BASE_URL}/${doctypeName}/${docname}`, {
+                docstatus: 1
+            }, {
+                headers: {
+                    Authorization: `token ${apiKey}:${apiSecret}`,
+                    "Content-Type": "application/json",
+                },
+                withCredentials: true,
+            });
+
+            toast.success("Document submitted successfully!");
+
+            if (resp.data && resp.data.data) {
+                setAsset(resp.data.data);
+                return { status: resp.data.data.status };
+            }
+
+            return { status: "Submitted" };
+
+        } catch (err: any) {
+            console.error("Submit error:", err);
+            toast.error("Failed to submit document", {
+                description: (err as Error).message || "Check the browser console (F12) for the full server error."
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCancelDocument = async () => {
+        setIsSaving(true);
+        try {
+            const doctypeName = "Asset";
+            const docname = params.id as string;
+
+            // Use REST API PUT method to update docstatus to 2 (Cancelled)
+            const resp = await axios.put(`${API_BASE_URL}/${doctypeName}/${docname}`, {
+                docstatus: 2
+            }, {
+                headers: {
+                    Authorization: `token ${apiKey}:${apiSecret}`,
+                    "Content-Type": "application/json",
+                },
+                withCredentials: true,
+            });
+
+            toast.success("Document cancelled successfully!");
+
+            if (resp.data && resp.data.data) {
+                setAsset(resp.data.data);
+                return { status: resp.data.data.status };
+            }
+
+            return { status: "Cancelled" };
+
+        } catch (err: any) {
+            console.error("Cancel error:", err);
+            toast.error("Failed to cancel document", {
                 description: (err as Error).message || "Check the browser console (F12) for the full server error."
             });
         } finally {
@@ -902,6 +938,11 @@ export default function RecordDetailPage() {
             description={`Status: ${asset?.status || 'Unknown'}`}
             submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"
+            initialStatus={asset?.status || 'Draft'}
+            docstatus={asset.docstatus}
+            isSubmittable={true}
+            onSubmitDocument={handleSubmitDocument}
+            onCancelDocument={handleCancelDocument}
         />
     );
 }

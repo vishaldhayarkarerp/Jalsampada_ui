@@ -213,14 +213,14 @@ export function TableMultiSelect({ control, field, error, className, filters = {
                                     {selectedOptions.map((option, index) => (
                                         <div
                                             key={`${option.value}-${index}`}
-                                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm"
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-sky-100 text-sky-800 rounded-md text-sm"
                                         >
                                             <Tag size={14} />
                                             <span>{option.label}</span>
                                             <X
                                                 size={14}
-                                                className="cursor-pointer hover:text-blue-600"
-                                                onClick={() => removeSelectedValue(option.value)}
+                                                className="cursor-pointer hover:text-sky-600"
+                                                onClick={() => removeSelectedValue(option.label)}
                                             />
                                         </div>
                                     ))}
@@ -294,7 +294,7 @@ export function TableMultiSelect({ control, field, error, className, filters = {
                                                 <div
                                                     key={`dropdown-${option.value}`}
                                                     className={`px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between
-                            ${isSelected ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"}
+                            ${isSelected ? "bg-sky-50 text-sky-700" : "hover:bg-gray-50"}
                           `}
                                                     onMouseDown={(e) => {
                                                         e.preventDefault();
@@ -303,7 +303,7 @@ export function TableMultiSelect({ control, field, error, className, filters = {
                                                 >
                                                     <span>{option.label}</span>
                                                     {isSelected && (
-                                                        <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center">
+                                                        <div className="w-4 h-4 bg-sky-600 rounded flex items-center justify-center">
                                                             <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                             </svg>

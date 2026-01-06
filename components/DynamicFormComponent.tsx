@@ -113,12 +113,17 @@ export interface TabbedLayout {
 // Props
 export interface DynamicFormProps {
   tabs: TabbedLayout[];
-  onSubmit: (data: Record<string, any>, isDirty: boolean) => void;
+  onSubmit: (data: Record<string, any>, isDirty: boolean) => Promise<{ status?: string } | void>;
   onCancel?: () => void;
   title?: string;
   description?: string;
   submitLabel?: string;
   cancelLabel?: string;
+  initialStatus?: string;
+  docstatus?: number;
+  isSubmittable?: boolean;
+  onSubmitDocument?: () => Promise<{ status?: string } | void>;
+  onCancelDocument?: () => Promise<{ status?: string } | void>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -367,6 +372,11 @@ export function DynamicForm({
   description,
   submitLabel = "Submit",
   cancelLabel = "Cancel",
+  initialStatus = "Draft",
+  docstatus = 0,
+  isSubmittable = false,
+  onSubmitDocument,
+  onCancelDocument,
 }: DynamicFormProps) {
   const { apiKey, apiSecret } = useAuth();
 
@@ -375,6 +385,7 @@ export function DynamicForm({
   const formRef = React.useRef<HTMLFormElement>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const [currentStatus, setCurrentStatus] = React.useState(initialStatus);
 
   // ── ALL FIELDS (for defaultValues) ───────────────────────────────────────
   const allFields = React.useMemo(() => tabs.flatMap((t) => t.fields), [tabs]);
@@ -408,7 +419,44 @@ export function DynamicForm({
     [register]
   );
 
-  const onFormSubmit = (data: Record<string, any>) => onSubmit(data, isDirty);
+  const onFormSubmit = async (data: Record<string, any>) => {
+    try {
+      const result = await onSubmit(data, isDirty);
+      // Update status from save response if available
+      if (result && result.status) {
+        setCurrentStatus(result.status);
+      } else {
+        setCurrentStatus(initialStatus); // Reset to initial if no status in response
+      }
+    } catch (error) {
+      // Don't reset status on error - keep "Not Saved" if there was an error
+      console.error('Save error:', error);
+    }
+  };
+
+  const handleSubmitDocument = async () => {
+    try {
+      const result = await onSubmitDocument?.();
+      // Update status from submit response if available
+      if (result && result.status) {
+        setCurrentStatus(result.status);
+      }
+    } catch (error) {
+      console.error('Submit error:', error);
+    }
+  };
+
+  const handleCancelDocument = async () => {
+    try {
+      const result = await onCancelDocument?.();
+      // Update status from cancel response if available
+      if (result && result.status) {
+        setCurrentStatus(result.status);
+      }
+    } catch (error) {
+      console.error('Cancel error:', error);
+    }
+  };
 
   // 🟢 3. IMPORTANT: Use !important classes to override default .form-control styles
   const getErrorClass = (fieldName: string) => {
@@ -440,7 +488,14 @@ export function DynamicForm({
     router.push(newPath);
   }, [methods, pathname, router]);
 
-  // ── KEYBOARD SHORTCUTS ───────────────────────────────────────────────────
+  // ── STATUS MONITORING ─────────────────────────────────────────────────────
+  React.useEffect(() => {
+    if (isDirty) {
+      setCurrentStatus("Not Saved");
+    }
+  }, [isDirty]);
+
+  // ── KEYBOARD SHORTCUTS ─────────────────────────────────────────────────────
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "s") {
@@ -1116,11 +1171,28 @@ export function DynamicForm({
           >
             {/* Title Section */}
             <div>
-              <h2 style={{ margin: 0 }}>{title}</h2>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <h2 style={{ margin: 0 }}>{title}</h2>
+                <span
+                  className={`status-badge text-xs whitespace-nowrap ${currentStatus === "Not Saved" ? "status-badge-danger" : "status-badge-draft"
+                    }`}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    fontSize: "0.75rem",
+                    fontWeight: "500",
+                    backgroundColor: currentStatus === "Not Saved" ? "#fee2e2" : "#dbeafe",
+                    color: currentStatus === "Not Saved" ? "#dc2626" : "#2563eb",
+                    border: `1px solid ${currentStatus === "Not Saved" ? "#fca5a5" : "#93c5fd"}`
+                  }}
+                >
+                  {currentStatus}
+                </span>
+              </div>
               {description ? (
                 <p
                   style={{
-                    margin: 0,
+                    margin: "4px 0 0 0",
                     color: "var(--color-text-muted, #6b7280)",
                   }}
                 >
@@ -1131,9 +1203,47 @@ export function DynamicForm({
 
             {/* Actions Section */}
             <div className="flex items-center gap-2">
-              <button type="submit" className="btn btn--primary">
-                {submitLabel}
-              </button>
+              {/* Show different buttons based on docstatus and isSubmittable */}
+              {isSubmittable && docstatus === 0 && (
+                <>
+                  {/* Draft: Show Submit button */}
+                  <button
+                    type="submit"
+                    className="btn btn--primary"
+                    onClick={handleSubmitDocument}
+                  >
+                    Submit
+                  </button>
+                </>
+              )}
+              {isSubmittable && docstatus === 1 && (
+                <>
+                  {/* Submitted: Show Cancel button */}
+                  <button
+                    type="submit"
+                    className="btn btn--danger"
+                    onClick={handleCancelDocument}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+              {isSubmittable && docstatus === 2 && (
+                <>
+                  {/* Cancelled: No actions allowed */}
+                  <span className="text-sm text-gray-500">Document Cancelled</span>
+                </>
+              )}
+
+              {/* Show Save button for draft documents when there are changes */}
+              {docstatus === 0 && isDirty && (
+                <button
+                  type="submit"
+                  className="btn btn--primary"
+                >
+                  Save
+                </button>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1212,18 +1322,66 @@ export function DynamicForm({
             style={{ borderColor: "var(--color-border)", margin: "16px 0" }}
           />
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            {onCancel ? (
+            {/* Show different buttons based on docstatus and isSubmittable */}
+            {isSubmittable && docstatus === 0 && (
+              <>
+                {/* Draft: Show Save and Submit buttons */}
+                {isDirty && (
+                  <button
+                    type="submit"
+                    className="btn btn--primary"
+                  >
+                    Save
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn--success"
+                  onClick={handleSubmitDocument}
+                >
+                  Submit
+                </button>
+              </>
+            )}
+            {isSubmittable && docstatus === 1 && (
+              <>
+                {/* Submitted: Show Cancel button */}
+                <button
+                  type="button"
+                  className="btn btn--danger"
+                  onClick={handleCancelDocument}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+            {isSubmittable && docstatus === 2 && (
+              <>
+                {/* Cancelled: No actions allowed */}
+                <span className="text-sm text-gray-500 italic">Document is cancelled and cannot be modified</span>
+              </>
+            )}
+
+            {/* For non-submittable documents, just show Save button */}
+            {!isSubmittable && docstatus === 0 && isDirty && (
+              <button
+                type="submit"
+                className="btn btn--primary"
+              >
+                Save
+              </button>
+            )}
+
+            {/* Show regular cancel button for navigation */}
+            {onCancel && (!isSubmittable || docstatus !== 2) && (
               <button
                 type="button"
                 className="btn btn--outline"
                 onClick={onCancel}
               >
-                {cancelLabel}
+                Back
               </button>
-            ) : null}
-            <button type="submit" className="btn btn--primary">
-              {submitLabel}
-            </button>
+            )}
           </div>
         </div>
       </form>

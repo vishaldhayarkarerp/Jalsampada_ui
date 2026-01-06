@@ -10,6 +10,8 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -35,6 +37,14 @@ interface TenderProjectData {
   custom_tender_status?: string;
   custom_expected_date?: string;
   custom_is_extension?: 0 | 1;
+
+  // Extension Child Table
+  custom_tender_extension_history?: Array<{
+    extension_count?: string;
+    extension_upto?: string;
+    sanction_letter?: string;
+    attach?: string;
+  }>;
 
   // Document tables
   custom_work_order_document?: Array<{
@@ -136,7 +146,49 @@ export default function RecordDetailPage() {
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
   /* -------------------------------------------------
-     5. Build tabs
+     5. VALIDATION LOGIC (Extension Check)
+  ------------------------------------------------- */
+
+  const overdueWarning = React.useMemo(() => {
+    if (!record || !record.custom_tender_status) return null;
+
+    // 1. Only check if status is Ongoing
+    if (record.custom_tender_status !== "Ongoing") return null;
+
+    let finalDateStr = record.custom_expected_date;
+
+    // 2. Determine Final Date (Extensions vs Original)
+    if (record.custom_is_extension && record.custom_tender_extension_history?.length) {
+      // Get all dates from history
+      const dates = record.custom_tender_extension_history
+        .map((row) => row.extension_upto)
+        .filter((d): d is string => !!d);
+
+      if (dates.length > 0) {
+        // Find the latest date (String comparison works for YYYY-MM-DD)
+        dates.sort().reverse();
+        finalDateStr = dates[0];
+      }
+    }
+
+    if (!finalDateStr) return null;
+
+    // 3. Compare with Today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize today to midnight
+
+    const finalDate = new Date(finalDateStr);
+    finalDate.setHours(0, 0, 0, 0); // Normalize deadline to midnight
+
+    if (finalDate.getTime() < today.getTime()) {
+      return `Extension required for ${record.name} - date was ${finalDateStr}`;
+    }
+
+    return null;
+  }, [record]);
+
+  /* -------------------------------------------------
+     6. Build tabs
   ------------------------------------------------- */
 
   const formTabs: TabbedLayout[] = React.useMemo(() => {
@@ -237,7 +289,7 @@ export default function RecordDetailPage() {
         options: "Extension Period Details",
         columns: [
           { name: "extension_count", label: "Extension Count", type: "Data" },
-          { name: "extension_upto", label: "Extension Upto", type: "Text", },
+          { name: "extension_upto", label: "Extension Upto", type: "Date", },
           { name: "sanction_letter", label: "Sanction Letter", type: "Data" },
           { name: "attach", label: "Attach", type: "Attach" },
         ],
@@ -297,7 +349,7 @@ export default function RecordDetailPage() {
   }, [record]);
 
   /* -------------------------------------------------
-     6. SUBMIT – with file upload for child tables
+     7. SUBMIT – with file upload for child tables
   ------------------------------------------------- */
 
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
@@ -448,7 +500,7 @@ export default function RecordDetailPage() {
   const handleCancel = () => router.back();
 
   /* -------------------------------------------------
-     7. UI states
+     8. UI states
   ------------------------------------------------- */
 
   if (loading) {
@@ -479,18 +531,31 @@ export default function RecordDetailPage() {
   }
 
   /* -------------------------------------------------
-     8. Render form
+     9. Render form
   ------------------------------------------------- */
 
   return (
-    <DynamicForm
-      tabs={formTabs}
-      onSubmit={handleSubmit}
-      onCancel={handleCancel}
-      title={`Edit Tender ${record.name}`}
-      description={`Update details for record ID ${docname}`}
-      submitLabel={isSaving ? "Saving..." : "Save"}
-      cancelLabel="Cancel"
-    />
+    <div className="space-y-4">
+      {/* 🟢 OVERDUE WARNING ALERT 🟢 */}
+      {overdueWarning && (
+        <Alert variant="destructive" className="mb-4 border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-950/20 text-orange-900 dark:text-orange-200">
+          <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <AlertTitle className="text-orange-800 dark:text-orange-300 ml-2">Action Required</AlertTitle>
+          <AlertDescription className="ml-2">
+            {overdueWarning}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <DynamicForm
+        tabs={formTabs}
+        onSubmit={handleSubmit}
+        onCancel={handleCancel}
+        title={`Edit Tender ${record.name}`}
+        description={`Update details for record ID ${docname}`}
+        submitLabel={isSaving ? "Saving..." : "Save"}
+        cancelLabel="Cancel"
+      />
+    </div>
   );
 }

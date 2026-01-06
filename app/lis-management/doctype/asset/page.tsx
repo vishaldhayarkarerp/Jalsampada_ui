@@ -81,7 +81,7 @@ export default function DoctypePage() {
   // Data States
   const [assets, setAssets] = React.useState<Asset[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  
+
   // 🟢 Loading & Pagination States
   const [loading, setLoading] = React.useState(true);       // Full page load
   const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
@@ -377,7 +377,7 @@ export default function DoctypePage() {
                       control={control}
                       field={{ ...mockField, defaultValue: value }}
                       error={null}
-                      className="[&>label]:hidden"
+                      className="[&>label]:hidden vishal"
                     />
                   </div>
                 );

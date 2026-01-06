@@ -112,7 +112,7 @@ export default function NewRecordPage() {
           },
           // ---------------------------------------------
 
-          { name: "gross_purchase_amount", label: "Net Purchase Amount", type: "Currency", required: true, defaultValue: getValue("gross_purchase_amount") },
+          { name: "net_purchase_amount", label: "Net Purchase Amount", type: "Currency", required: true, defaultValue: getValue("gross_purchase_amount") },
           { name: "asset_quantity", label: "Asset Quantity", type: "Int", min: 1, defaultValue: getValue("asset_quantity", 1) },
           {
             name: "available_for_use_date", label: "Commisioning Date", type: "Date", defaultValue: getValue("available_for_use_date"),

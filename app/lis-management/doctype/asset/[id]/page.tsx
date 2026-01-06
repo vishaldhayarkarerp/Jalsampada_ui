@@ -129,7 +129,7 @@ export default function AssetDetailPage() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <h1 className="text-2xl font-bold truncate">{asset.asset_name}</h1>
-            <span className={`status-badge text-xs whitespace-nowrap ${asset.status === 'Draft' ? 'status-badge-draft' : 'bg-gray-500'}`}>
+            <span className={`status-badge text-xs whitespace-nowrap status-badge-draft`}>
               {asset.status}
             </span>
             <span className="flex items-center gap-1 text-sm text-blue-100 whitespace-nowrap">

@@ -152,8 +152,8 @@ export default function RecordDetailPage() {
           err.response?.status === 404
             ? "Record not found"
             : err.response?.status === 403
-            ? "Unauthorized"
-            : "Failed to load record"
+              ? "Unauthorized"
+              : "Failed to load record"
         );
       } finally {
         setLoading(false);
@@ -176,7 +176,7 @@ export default function RecordDetailPage() {
         defaultValue:
           f.name in expenditure
             ? // @ts-ignore
-              expenditure[f.name as keyof ExpenditureData]
+            expenditure[f.name as keyof ExpenditureData]
             : f.defaultValue,
       }));
 
@@ -201,8 +201,6 @@ export default function RecordDetailPage() {
             type: "Currency",
           },
 
-         
-
           {
             name: "tender_number",
             label: "Tender Number",
@@ -219,8 +217,6 @@ export default function RecordDetailPage() {
             label: "Remaining Amount",
             type: "Currency",
           },
-
-        
 
           {
             name: "tender_amount",
@@ -243,8 +239,6 @@ export default function RecordDetailPage() {
             ],
           },
 
-
-
           {
             name: "posting_date",
             label: "Bill Date",
@@ -266,8 +260,6 @@ export default function RecordDetailPage() {
             type: "Data",
           },
 
-        
-
           {
             name: "lift_irrigation_scheme",
             label: "Lift Irrigation Scheme",
@@ -283,10 +275,16 @@ export default function RecordDetailPage() {
             name: "stage",
             label: "Stage/ Sub Scheme",
             type: "Table MultiSelect",
-            linkTarget: "Stage Multiselect",
+            linkTarget: "Stage No",
+            filterMapping: [
+              { sourceField: "lift_irrigation_scheme", targetField: "lis_name" }
+            ],
+            fetchFrom: {
+              sourceField: "tender_number",
+              targetDoctype: "Project",
+              targetField: "custom_stage"
+            }
           },
-
-          
 
           {
             name: "expenditure_details",
@@ -391,7 +389,7 @@ export default function RecordDetailPage() {
   }, [expenditure]);
 
   /* -------------------------------------------------
-  5. SUBMIT – with file uploading for child table
+  5. SUBMIT – with Validation & file uploading
   ------------------------------------------------- */
 
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
@@ -400,6 +398,44 @@ export default function RecordDetailPage() {
       return;
     }
 
+    // 🟢 1. CLIENT-SIDE VALIDATION LOGIC 🟢
+
+    // Parse Parent Values
+    const billAmount = Number(data.bill_amount) || 0;
+    const tenderAmount = Number(data.tender_amount) || 0;
+    const savedAmount = Number(data.saved_amount) || 0;
+
+    // Rule 1: Bill Amount cannot be > Tender Amount
+    if (billAmount > tenderAmount) {
+      toast.error("Validation Failed", {
+        description: "The Bill Amount cannot be greater than the Tender Amount. Please verify the bill amount."
+      });
+      return; // Stop the save process
+    }
+
+    // Calculate sum of child table rows
+    const details = data.expenditure_details || [];
+    const totalChildBillAmt = details.reduce((sum: number, row: any) => {
+      return sum + (Number(row.bill_amount) || 0);
+    }, 0);
+
+    const amtToBeMatched = savedAmount + totalChildBillAmt;
+
+    // Rule 2: Balance Check
+    if (billAmount !== amtToBeMatched) {
+      const lowOrHigh = billAmount < amtToBeMatched ? "LOWER" : "HIGHER";
+
+      toast.error("Mismatch detected in amounts", {
+        description: `Calculated Invoice Amount: ${amtToBeMatched}
+Entered Bill Amount: ${billAmount}
+
+The entered Bill Amount is ${lowOrHigh} than the calculated Invoice Amount.
+Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
+      });
+      return; // Stop the save process
+    }
+
+    // If validation passes, proceed to save
     setIsSaving(true);
 
     try {
@@ -520,13 +556,13 @@ export default function RecordDetailPage() {
         }
       );
 
-      toast.success("Changes saved!");
+      toast.success("Amount verification successful. Changes saved!");
 
       if (resp.data && resp.data.data) {
         setExpenditure(resp.data.data as ExpenditureData);
       }
 
-      router.push(`/lis-management/doctype/expenditure/${docname}`);
+      router.push(`/tender/doctype/expenditure/${docname}`);
     } catch (err: any) {
       console.error("Save error:", err);
       console.log("Full server error:", err.response?.data);

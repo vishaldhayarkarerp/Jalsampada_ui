@@ -612,6 +612,10 @@ select.form-control {
   margin-bottom: var(--space-16);
 }
 
+.form-group .vishal {
+  margin-bottom: 0px;
+}
+
 /* Card component */
 .card {
   background-color: var(--color-surface);
@@ -2128,15 +2132,6 @@ body {
   font-weight: 500;
 }
 
-
-
-
-
-/* ---------------------------------- */
-/* STYLES FOR THE NEW TEST MODULE PAGE */
-/* ---------------------------------- */
-
-/* Use a light background for the page body in light mode */
 body {
   background-color: var(--color-page-background, #f1f5f9);
 }
