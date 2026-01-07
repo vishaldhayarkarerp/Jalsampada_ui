@@ -146,7 +146,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" side="right" className="bg-white border border-gray-200 rounded-md shadow-lg">
-                <DropdownMenuItem className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                <DropdownMenuItem onClick={() => router.push("/admin/doctype/session_default")} className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors">
                   <i className="fas fa-user-circle mr-2"></i>
                   Session Default
                 </DropdownMenuItem>
