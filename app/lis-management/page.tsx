@@ -25,6 +25,7 @@ const masterDoctypes: Doctype[] = [
   { name: "equipment-make", title: "Equipement Make", icon: Factory },
   { name: "equipement-model", title: "Equipement Model", icon: Package },
   { name: "equipement-capacity", title: "Equipement Capacity", icon: Ruler },
+  { name: "rating", title: "Rating", icon: Star },
   { name: "district", title: "District", icon: MapPin },  // Change icon to represent a district location
   { name: "taluka", title: "Taluka", icon: Star },        // You could keep Star for Taluka as a general icon
   { name: "village", title: "Village", icon: Home }

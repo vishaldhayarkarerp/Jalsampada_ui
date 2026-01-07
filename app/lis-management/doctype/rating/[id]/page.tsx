@@ -184,6 +184,11 @@ export default function RecordDetailPage() {
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      deleteConfig={{
+        doctypeName: doctypeName, // e.g. "Asset" or "Project"
+        docName: docname,         // usually params.id
+        redirectUrl: "/lis-management/doctype/rating" // The list page to go to after deletion 
+    }}
     />
   );
 }

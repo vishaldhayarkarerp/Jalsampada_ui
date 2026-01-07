@@ -7,10 +7,12 @@ import {
   useFieldArray,
   FieldErrors,
   RegisterOptions,
+  UseFormReturn,
 } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Upload, X, MoreVertical, Copy } from "lucide-react";
+// 🟢 1. Added Trash2 icon
+import { Upload, X, MoreVertical, Copy, Trash2 } from "lucide-react";
 import { useRef } from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
@@ -18,18 +20,23 @@ import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 import { TableField } from "./TableField";
 import { LinkField } from "./LinkField";
 import { TableMultiSelect } from "./TableMultiSelect";
-import { cn } from "@/lib/utils"; // 🟢 1. Import 'cn' utility
+import { cn } from "@/lib/utils";
+
+const DEFAULT_API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -110,6 +117,14 @@ export interface TabbedLayout {
   fields: FormField[];
 }
 
+// 🟢 NEW: Delete Configuration Interface
+export interface DeleteConfig {
+  doctypeName: string;
+  docName: string;
+  redirectUrl?: string; // Optional: If not provided, it will go router.back()
+  baseUrl?: string;     // Optional: Override default API URL
+}
+
 // Props
 export interface DynamicFormProps {
   tabs: TabbedLayout[];
@@ -124,6 +139,11 @@ export interface DynamicFormProps {
   isSubmittable?: boolean;
   onSubmitDocument?: () => Promise<{ status?: string } | void>;
   onCancelDocument?: () => Promise<{ status?: string } | void>;
+  onFormInit?: (form: UseFormReturn<any>) => void;
+
+  // 🟢 Updated Props: Use 'onDelete' for custom logic OR 'deleteConfig' for auto logic
+  onDelete?: () => Promise<void> | void;
+  deleteConfig?: DeleteConfig;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,7 +374,7 @@ function FieldHelp({ text }: { text?: string }) {
     </div>
   );
 }
-// 🟢 2. Style FieldError to be explicitly red
+
 function FieldError({ error }: { error?: any }) {
   if (!error) return null;
   return (
@@ -377,6 +397,9 @@ export function DynamicForm({
   isSubmittable = false,
   onSubmitDocument,
   onCancelDocument,
+  onFormInit,
+  onDelete, // 🟢 Destructure new props
+  deleteConfig // 🟢 Destructure new props
 }: DynamicFormProps) {
   const { apiKey, apiSecret } = useAuth();
 
@@ -409,6 +432,13 @@ export function DynamicForm({
     watch,
   } = methods;
 
+  // 🟢 Expose form instance
+  React.useEffect(() => {
+    if (onFormInit) {
+      onFormInit(methods);
+    }
+  }, [methods, onFormInit]);
+
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>(
     {}
   );
@@ -422,14 +452,12 @@ export function DynamicForm({
   const onFormSubmit = async (data: Record<string, any>) => {
     try {
       const result = await onSubmit(data, isDirty);
-      // Update status from save response if available
       if (result && result.status) {
         setCurrentStatus(result.status);
       } else {
-        setCurrentStatus(initialStatus); // Reset to initial if no status in response
+        setCurrentStatus(initialStatus);
       }
     } catch (error) {
-      // Don't reset status on error - keep "Not Saved" if there was an error
       console.error('Save error:', error);
     }
   };
@@ -437,7 +465,6 @@ export function DynamicForm({
   const handleSubmitDocument = async () => {
     try {
       const result = await onSubmitDocument?.();
-      // Update status from submit response if available
       if (result && result.status) {
         setCurrentStatus(result.status);
       }
@@ -449,7 +476,6 @@ export function DynamicForm({
   const handleCancelDocument = async () => {
     try {
       const result = await onCancelDocument?.();
-      // Update status from cancel response if available
       if (result && result.status) {
         setCurrentStatus(result.status);
       }
@@ -458,7 +484,6 @@ export function DynamicForm({
     }
   };
 
-  // 🟢 3. IMPORTANT: Use !important classes to override default .form-control styles
   const getErrorClass = (fieldName: string) => {
     return errors[fieldName]
       ? "!border-red-500 !focus:border-red-500 !focus:ring-red-500 !ring-1 !ring-red-500"
@@ -488,10 +513,58 @@ export function DynamicForm({
     router.push(newPath);
   }, [methods, pathname, router]);
 
+  // 🟢 ── INTERNAL DELETE LOGIC ──────────────────────────────────────────────
+  const handleDeleteAction = async () => {
+    // 1. If custom handler provided, use it
+    if (onDelete) {
+      if (window.confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
+        await onDelete();
+      }
+      return;
+    }
+
+    // 2. If config provided, use standard delete logic
+    if (deleteConfig) {
+      if (!apiKey || !apiSecret) {
+        toast.error("Authentication required to delete.");
+        return;
+      }
+
+      const { doctypeName, docName, redirectUrl, baseUrl } = deleteConfig;
+
+      if (window.confirm(`Are you sure you want to delete this ${doctypeName}? This action cannot be undone.`)) {
+        try {
+          const url = `${baseUrl || DEFAULT_API_BASE_URL}/${doctypeName}/${docName}`;
+
+          await axios.delete(url, {
+            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            withCredentials: true,
+          });
+
+          toast.success(`${doctypeName} deleted successfully`);
+
+          if (redirectUrl) {
+            router.push(redirectUrl);
+          } else {
+            router.back();
+          }
+        } catch (err: any) {
+          console.error("Delete error:", err);
+          toast.error("Failed to delete record", {
+            description: err.response?.data?.exception || err.message || "Unknown error"
+          });
+        }
+      }
+    }
+  };
+
+  const showDeleteOption = !!onDelete || !!deleteConfig;
+
   // ── STATUS MONITORING ─────────────────────────────────────────────────────
   React.useEffect(() => {
     if (isDirty) {
       setCurrentStatus("Not Saved");
+      console.log("Not Saved");
     }
   }, [isDirty]);
 
@@ -599,7 +672,6 @@ export function DynamicForm({
     const rules = rulesFor(field);
     const commonProps: any = {
       id: field.name,
-      // 🟢 4. Apply cn() with getErrorClass
       className: cn("form-control", getErrorClass(field.name)),
       placeholder: field.placeholder,
       ...(field.step ? { step: field.step } : {}),
@@ -644,7 +716,6 @@ export function DynamicForm({
         <textarea
           id={field.name}
           rows={field.rows ?? rows}
-          // 🟢 4. Apply cn() with getErrorClass
           className={cn("form-control", getErrorClass(field.name))}
           placeholder={field.placeholder}
           {...reg(field.name, rules)}
@@ -677,7 +748,6 @@ export function DynamicForm({
 
         <select
           id={field.name}
-          // 🟢 4. Apply cn() with getErrorClass
           className={cn("form-control", getErrorClass(field.name))}
           {...reg(field.name, rules)}
         >
@@ -708,7 +778,6 @@ export function DynamicForm({
               id={field.name}
               checked={!!rhfField.value}
               onCheckedChange={(val) => rhfField.onChange(val)}
-              // 🟢 4. Apply cn() with getErrorClass to Checkbox
               className={cn(
                 "rounded border border-gray-300 data-[state=checked]:bg-primary",
                 getErrorClass(field.name)
@@ -743,7 +812,6 @@ export function DynamicForm({
         <input
           id={field.name}
           type="color"
-          // 🟢 4. Apply cn() with getErrorClass
           className={cn("form-control h-10 p-1", getErrorClass(field.name))}
           {...reg(field.name, rules)}
         />
@@ -780,7 +848,6 @@ export function DynamicForm({
                     controllerField.onChange(date ? date.toISOString().split('T')[0] : '');
                   }}
                   dateFormat="dd/MM/yyyy"
-                  // 🟢 4. Apply cn() directly to DatePicker to override defaults
                   className={cn(
                     "form-control w-full",
                     error ? "!border-red-500 !focus:border-red-500 !focus:ring-red-500 !ring-1 !ring-red-500" : ""
@@ -810,7 +877,6 @@ export function DynamicForm({
         <input
           id={field.name}
           type={type}
-          // 🟢 4. Apply cn() with getErrorClass
           className={cn("form-control", getErrorClass(field.name))}
           {...reg(field.name, rules)}
         />
@@ -1072,7 +1138,6 @@ export function DynamicForm({
               control={control}
               error={(errors as FieldErrors<Record<string, any>>)[field.name]}
               filters={filtersToPass}
-              // 🟢 5. Apply className prop to LinkField (IMPORTANT)
               className={getErrorClass(field.name) ? "!border-red-500 !focus:ring-red-500" : ""}
             />
           );
@@ -1208,7 +1273,7 @@ export function DynamicForm({
                 <>
                   {/* Draft: Show Submit button */}
                   <button
-                    type="submit"
+                    type="button"
                     className="btn btn--primary"
                     onClick={handleSubmitDocument}
                   >
@@ -1220,7 +1285,7 @@ export function DynamicForm({
                 <>
                   {/* Submitted: Show Cancel button */}
                   <button
-                    type="submit"
+                    type="button"
                     className="btn btn--danger"
                     onClick={handleCancelDocument}
                   >
@@ -1259,6 +1324,20 @@ export function DynamicForm({
                       ⇧D
                     </span>
                   </DropdownMenuItem>
+
+                  {/* 🟢 4. New Delete Action in Dropdown */}
+                  {showDeleteOption && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={handleDeleteAction}
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/10 cursor-pointer"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Delete</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

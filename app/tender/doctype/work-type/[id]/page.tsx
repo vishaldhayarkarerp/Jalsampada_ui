@@ -258,6 +258,11 @@ export default function RecordDetailPage() {
       description={`Update details for record ID ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      deleteConfig={{
+        doctypeName: doctypeName,
+        docName: docname,
+        redirectUrl: "/tender/doctype/work-type",
+      }}
     />
   );
 }

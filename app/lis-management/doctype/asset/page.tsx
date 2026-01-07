@@ -262,38 +262,40 @@ export default function DoctypePage() {
   // ── Renderers ────────────────────────────────────────────────────
   const renderListView = () => (
     <div className="stock-table-container">
-      <table className="stock-table">
-        <thead>
-          <tr>
-            <th style={{ cursor: "pointer" }} onClick={() => setSortConfig({ key: "name", direction: sortConfig.key === "name" && sortConfig.direction === "asc" ? "desc" : "asc" })}>ID</th>
-            <th>Status</th>
-            <th>Category</th>
-            <th>LIS</th>
-            <th>Stage</th>
-            <th>Location</th>
-          </tr>
-        </thead>
-        <tbody>
-          {assets.length ? (
-            assets.map((a) => (
-              <tr key={a.name} onClick={() => handleCardClick(a.name)} style={{ cursor: "pointer" }}>
-                <td>{a.name}</td>
-                <td>{a.status || "—"}</td>
-                <td>{a.asset_category || "—"}</td>
-                <td>{a.custom_lis_name || "—"}</td>
-                <td>{a.custom_stage_no || "—"}</td>
-                <td>{a.location}</td>
-              </tr>
-            ))
-          ) : (
+      <div className="table-scroll-container" style={{ maxHeight: "400px", overflowY: "auto" }}>
+        <table className="stock-table">
+          <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-surface, #fff)' }}>
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
-                {!loading && "No records found."}
-              </td>
+              <th style={{ cursor: "pointer" }} onClick={() => setSortConfig({ key: "name", direction: sortConfig.key === "name" && sortConfig.direction === "asc" ? "desc" : "asc" })}>ID</th>
+              <th>Status</th>
+              <th>Category</th>
+              <th>LIS</th>
+              <th>Stage</th>
+              <th>Location</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {assets.length ? (
+              assets.map((a) => (
+                <tr key={a.name} onClick={() => handleCardClick(a.name)} style={{ cursor: "pointer" }}>
+                  <td>{a.name}</td>
+                  <td>{a.status || "—"}</td>
+                  <td>{a.asset_category || "—"}</td>
+                  <td>{a.custom_lis_name || "—"}</td>
+                  <td>{a.custom_stage_no || "—"}</td>
+                  <td>{a.location}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
+                  {!loading && "No records found."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 

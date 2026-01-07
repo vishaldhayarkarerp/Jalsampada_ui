@@ -615,6 +615,12 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
       onSubmit={handleSubmit}
       onCancel={handleCancel}
       submitLabel={isSaving ? "Saving..." : "Save"}
+      cancelLabel="Cancel"
+      deleteConfig={{
+        doctypeName: doctypeName,
+        docName: docname,
+        redirectUrl: "/tender/doctype/expenditure",
+      }}
     />
   );
 }

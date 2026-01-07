@@ -120,6 +120,11 @@ export default function LISPhaseDetailPage() {
       title={`Edit LIS Phase`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      deleteConfig={{
+        doctypeName: doctypeName, // e.g. "Asset" or "Project"
+        docName: docname,         // usually params.id
+        redirectUrl: "/lis-management/doctype/lis-phases" // The list page to go to
+    }}
     />
   );
 }

@@ -95,7 +95,7 @@ export default function RecordDetailPage() {
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
   const docname = params.id as string;
-  const doctypeName = "Project";
+  const doctypeName = "Project"; // Note: This doctype is named 'Project' in Frappe
 
   const [record, setRecord] = React.useState<TenderProjectData | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -152,20 +152,16 @@ export default function RecordDetailPage() {
   const overdueWarning = React.useMemo(() => {
     if (!record || !record.custom_tender_status) return null;
 
-    // 1. Only check if status is Ongoing
     if (record.custom_tender_status !== "Ongoing") return null;
 
     let finalDateStr = record.custom_expected_date;
 
-    // 2. Determine Final Date (Extensions vs Original)
     if (record.custom_is_extension && record.custom_tender_extension_history?.length) {
-      // Get all dates from history
       const dates = record.custom_tender_extension_history
         .map((row) => row.extension_upto)
         .filter((d): d is string => !!d);
 
       if (dates.length > 0) {
-        // Find the latest date (String comparison works for YYYY-MM-DD)
         dates.sort().reverse();
         finalDateStr = dates[0];
       }
@@ -173,12 +169,11 @@ export default function RecordDetailPage() {
 
     if (!finalDateStr) return null;
 
-    // 3. Compare with Today
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize today to midnight
+    today.setHours(0, 0, 0, 0);
 
     const finalDate = new Date(finalDateStr);
-    finalDate.setHours(0, 0, 0, 0); // Normalize deadline to midnight
+    finalDate.setHours(0, 0, 0, 0);
 
     if (finalDate.getTime() < today.getTime()) {
       return `Extension required for ${record.name} - date was ${finalDateStr}`;
@@ -204,7 +199,6 @@ export default function RecordDetailPage() {
             : f.defaultValue,
       }));
 
-    // Details tab (from Fields-1.csv) [file:6]
     const detailsFields: FormField[] = withDefaults([
       {
         name: "custom_fiscal_year",
@@ -298,7 +292,6 @@ export default function RecordDetailPage() {
 
     ]);
 
-    // Documents Attachment tab (from Fields-1.csv – Tab Break) [file:6]
     const documentsFields: FormField[] = withDefaults([
       {
         name: "custom_work_order_document",
@@ -349,7 +342,7 @@ export default function RecordDetailPage() {
   }, [record]);
 
   /* -------------------------------------------------
-     7. SUBMIT – with file upload for child tables
+     7. SUBMIT
   ------------------------------------------------- */
 
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
@@ -370,62 +363,36 @@ export default function RecordDetailPage() {
 
     setIsSaving(true);
     try {
-      // Deep copy form data to payload
       const payload: any = JSON.parse(JSON.stringify(data));
       const baseUrl = API_BASE_URL.replace("/api/resource", "");
 
-      // Upload files for custom_work_order_document
+      // Handle file uploads
       if (payload.custom_work_order_document) {
         await Promise.all(
-          payload.custom_work_order_document.map(
-            async (row: any, index: number) => {
-              const original =
-                data.custom_work_order_document?.[index]?.attachment;
-              if (original instanceof File) {
-                const fileUrl = await uploadFile(
-                  original,
-                  apiKey,
-                  apiSecret,
-                  baseUrl
-                );
-                row.attachment = fileUrl;
-              }
+          payload.custom_work_order_document.map(async (row: any, index: number) => {
+            const original = data.custom_work_order_document?.[index]?.attachment;
+            if (original instanceof File) {
+              row.attachment = await uploadFile(original, apiKey, apiSecret, baseUrl);
             }
-          )
+          })
         );
       }
 
-      // Upload files for custom_related_documents
       if (payload.custom_related_documents) {
         await Promise.all(
-          payload.custom_related_documents.map(
-            async (row: any, index: number) => {
-              const original =
-                data.custom_related_documents?.[index]?.attachment;
-              if (original instanceof File) {
-                const fileUrl = await uploadFile(
-                  original,
-                  apiKey,
-                  apiSecret,
-                  baseUrl
-                );
-                row.attachment = fileUrl;
-              }
+          payload.custom_related_documents.map(async (row: any, index: number) => {
+            const original = data.custom_related_documents?.[index]?.attachment;
+            if (original instanceof File) {
+              row.attachment = await uploadFile(original, apiKey, apiSecret, baseUrl);
             }
-          )
+          })
         );
       }
 
-      // Clean non-data fields (Section Break, Column Break, etc.)
       const nonDataFields = new Set<string>();
       formTabs.forEach((tab) => {
         tab.fields.forEach((field) => {
-          if (
-            field.type === "Section Break" ||
-            field.type === "Column Break" ||
-            field.type === "Button" ||
-            field.type === "Read Only"
-          ) {
+          if (["Section Break", "Column Break", "Button", "Read Only"].includes(field.type)) {
             nonDataFields.add(field.name);
           }
         });
@@ -438,26 +405,18 @@ export default function RecordDetailPage() {
         }
       }
 
-      // Preserve metadata
       finalPayload.modified = record.modified;
       finalPayload.docstatus = record.docstatus;
 
-      // Convert checkboxes to 0/1
       const boolFields = ["custom_is_extension"];
       boolFields.forEach((f) => {
-        if (f in finalPayload) {
-          finalPayload[f] = finalPayload[f] ? 1 : 0;
-        }
+        if (f in finalPayload) finalPayload[f] = finalPayload[f] ? 1 : 0;
       });
 
-      // Ensure posting date is a valid date or null (avoid "Today") [web:1][file:6]
       if (finalPayload.custom_posting_date === "Today") {
-        finalPayload.custom_posting_date = new Date()
-          .toISOString()
-          .slice(0, 10);
+        finalPayload.custom_posting_date = new Date().toISOString().slice(0, 10);
       }
 
-      // Send to Frappe
       const resp = await axios.put(
         `${API_BASE_URL}/${doctypeName}/${docname}`,
         finalPayload,
@@ -480,17 +439,8 @@ export default function RecordDetailPage() {
       router.push(`/tender/doctype/tender/${docname}`);
     } catch (err: any) {
       console.error("Save error:", err);
-      const serverData = err.response?.data;
-      const serverMessage =
-        serverData?.exception ||
-        serverData?._server_messages ||
-        err.message ||
-        "Check console for details.";
-
-      console.log("Full server error:", serverData || serverMessage);
-
       toast.error("Failed to save", {
-        description: serverMessage,
+        description: err.response?.data?.exception || err.message || "Unknown error",
       });
     } finally {
       setIsSaving(false);
@@ -536,7 +486,6 @@ export default function RecordDetailPage() {
 
   return (
     <div className="space-y-4">
-      {/* 🟢 OVERDUE WARNING ALERT 🟢 */}
       {overdueWarning && (
         <Alert variant="destructive" className="mb-4 border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-950/20 text-orange-900 dark:text-orange-200">
           <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
@@ -555,6 +504,12 @@ export default function RecordDetailPage() {
         description={`Update details for record ID ${docname}`}
         submitLabel={isSaving ? "Saving..." : "Save"}
         cancelLabel="Cancel"
+        // 🟢 SIMPLY PASS THE CONFIG
+        deleteConfig={{
+          doctypeName: doctypeName, // "Project"
+          docName: docname,
+          redirectUrl: "/tender/doctype/tender"
+        }}
       />
     </div>
   );

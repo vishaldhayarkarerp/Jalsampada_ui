@@ -355,78 +355,104 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                 </th>
               </tr>
             </thead>
-
-            <tbody>
-              {rows.map((r, idx) => (
-                <tr
-                  key={r.id}
-                  className={selectedIndices.has(idx) ? "row-selected" : ""}
-                >
-                  <td className="child-table-checkbox-cell">
+          </table>
+          <div className="table-scroll-container" style={{ maxHeight: "400px", overflowY: "auto" }}>
+            <table className="stock-table child-form-table">
+              <thead style={{ visibility: "hidden", height: 0 }}>
+                <tr>
+                  <th style={{ width: 40 }} className="child-table-checkbox-cell">
                     <input
                       type="checkbox"
                       className="form-control"
                       style={{ width: 16, height: 16 }}
-                      checked={selectedIndices.has(idx)}
-                      onChange={() => toggleRow(idx)}
-                      aria-label={`Select row ${idx + 1}`}
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected;
+                      }}
+                      onChange={toggleSelectAll}
+                      aria-label="Select all rows"
                     />
-                  </td>
-
+                  </th>
                   {(field.columns || []).map((c) => (
-                    <td key={c.name} className="child-table-input-cell">
-
-                      {c.type === "Attach" ? (
-                        <AttachmentCell
-                          control={formMethods.control}
-                          fieldName={`${field.name}.${idx}.${c.name}`}
-                        />
-                      ) : c.type === "Link" ? (
-                        // NEW: Use TableLinkCell instead of old LinkCell
-                        <TableLinkCell
-                          control={formMethods.control}
-                          fieldName={`${field.name}.${idx}.${c.name}`}
-                          column={c}
-                        // filters={...} // Pass filters if needed, e.g., dynamic based on row
-                        />
-                      ) : c.type === "Text" ? (
-                        <input
-                          className="form-control-borderless"
-                          type="text"
-                          placeholder={c.label}
-                          value={(rows[idx] as any)?.[c.name] || ""}
-                          onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
-                        />
-                      ) : (
-                        <input
-                          className="form-control-borderless"
-                          type={c.type === "Int" ? "number" : c.type === "Float" ? "number" : "text"}
-                          placeholder={c.label}
-                          value={(rows[idx] as any)?.[c.name] || ""}
-                          onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
-                        />
-                      )}
-
-                    </td>
+                    <th key={c.name}>{c.label}</th>
                   ))}
-
-                  <td style={{ position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleEdit(idx)}
-                      title="Edit row"
-                    >
-                      <Edit size={16} />
-                    </Button>
-                  </td>
-
+                  <th style={{ width: 60, position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((r, idx) => (
+                  <tr
+                    key={r.id}
+                    className={selectedIndices.has(idx) ? "row-selected" : ""}
+                  >
+                    <td className="child-table-checkbox-cell">
+                      <input
+                        type="checkbox"
+                        className="form-control"
+                        style={{ width: 16, height: 16 }}
+                        checked={selectedIndices.has(idx)}
+                        onChange={() => toggleRow(idx)}
+                        aria-label={`Select row ${idx + 1}`}
+                      />
+                    </td>
+
+                    {(field.columns || []).map((c) => (
+                      <td key={c.name} className="child-table-input-cell">
+
+                        {c.type === "Attach" ? (
+                          <AttachmentCell
+                            control={formMethods.control}
+                            fieldName={`${field.name}.${idx}.${c.name}`}
+                          />
+                        ) : c.type === "Link" ? (
+                          // NEW: Use TableLinkCell instead of old LinkCell
+                          <TableLinkCell
+                            control={formMethods.control}
+                            fieldName={`${field.name}.${idx}.${c.name}`}
+                            column={c}
+                          // filters={...} // Pass filters if needed, e.g., dynamic based on row
+                          />
+                        ) : c.type === "Text" ? (
+                          <input
+                            className="form-control-borderless"
+                            type="text"
+                            placeholder={c.label}
+                            value={(rows[idx] as any)?.[c.name] || ""}
+                            onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+                          />
+                        ) : (
+                          <input
+                            className="form-control-borderless"
+                            type={c.type === "Int" ? "number" : c.type === "Float" ? "number" : "text"}
+                            placeholder={c.label}
+                            value={(rows[idx] as any)?.[c.name] || ""}
+                            onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+                          />
+                        )}
+
+                      </td>
+                    ))}
+
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleEdit(idx)}
+                        title="Edit row"
+                      >
+                        <Edit size={16} />
+                      </Button>
+                    </td>
+
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>

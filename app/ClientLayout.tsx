@@ -12,6 +12,13 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/ModeToggle";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // 2. This is the wrapper component
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +47,18 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const isLoginPage = pathname === "/login";
+
+  // Helper function to get initials from full name
+  const getInitials = (fullName: string) => {
+    if (!fullName) return "U";
+
+    const names = fullName.trim().split(' ');
+    if (names.length === 1) {
+      return names[0].charAt(0).toUpperCase();
+    }
+
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
 
   /* ------------------- 1. REDIRECT UNAUTHENTICATED USERS ------------------- */
   React.useEffect(() => {
@@ -79,7 +98,25 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
           <div className="user-info">
             <span>Welcome, {currentUser ?? "Admin"}</span>
-            <i className="fas fa-user-circle"></i>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Avatar className="h-8 w-8 border-1 cursor-pointer">
+                  <AvatarFallback className="text-muted-foreground font-semibold border ">
+                    {getInitials(currentUser || "Admin")}
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white border border-gray-200 rounded-md shadow-lg">
+                <DropdownMenuItem className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                  <i className="fas fa-user-circle mr-2"></i>
+                  Session Default
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={logout} className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                  <i className="fas fa-sign-out-alt mr-2"></i>
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <ModeToggle />
           </div>
         </div>
@@ -98,18 +135,17 @@ function AppContent({ children }: { children: React.ReactNode }) {
             { href: "/attendance", icon: "fa-user-check", label: "Attendance" },
             // { href: "/stock", icon: "fa-boxes", label: "Stock & Maintenance" },
             { href: "/tp_reports", icon: "fa-file-alt", label: "Reports" },
-            {href: "/admin", icon: "fa-user-cog", label: "Admin"}
-            
+            { href: "/admin", icon: "fa-user-cog", label: "Admin" }
+
           ].map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`nav-item ${
-                pathname === item.href ||
+              className={`nav-item ${pathname === item.href ||
                 (item.href !== "/" && pathname.startsWith(item.href))
-                  ? "active"
-                  : ""
-              }`}
+                ? "active"
+                : ""
+                }`}
             >
               <i className={`fas ${item.icon}`}></i>
               <span>{item.label}</span>

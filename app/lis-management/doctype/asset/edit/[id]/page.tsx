@@ -12,7 +12,6 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {
     Loader2,
-    IndianRupee,
     FileText,
     LayoutGrid,
     List as ListIcon,
@@ -26,16 +25,6 @@ import {
 
 // Use RHF hooks for the custom editor component
 import { useFormContext, useFieldArray } from "react-hook-form";
-
-// Import UI Table Components (only for Expenditure)
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
 
 const FRAPPE_BASE_URL = "http://103.219.1.138:4412";
 const API_BASE_URL = `${FRAPPE_BASE_URL}/api/resource`;
@@ -234,7 +223,6 @@ const DrawingAttachmentEditor = () => {
                                                 {/* Filename & Preview - Pure Text with Preview Icon */}
                                                 {fileName && (
                                                     <div className="flex items-center gap-2 max-w-[250px]">
-                                                        {/* 🟢 UPDATED: Simple text, adaptive color */}
                                                         <span
                                                             className="text-xs truncate text-gray-900 dark:text-gray-100"
                                                             style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
@@ -943,6 +931,11 @@ export default function RecordDetailPage() {
             isSubmittable={true}
             onSubmitDocument={handleSubmitDocument}
             onCancelDocument={handleCancelDocument}
+            deleteConfig={{
+                doctypeName: doctypeName,
+                docName: docname,
+                redirectUrl: "/lis-management/doctype/asset"
+            }}
         />
     );
 }

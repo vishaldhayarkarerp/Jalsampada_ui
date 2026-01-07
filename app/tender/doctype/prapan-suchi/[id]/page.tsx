@@ -296,6 +296,12 @@ export default function PrapanSuchiDetailPage() {
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      // 🟢 Added Delete Config
+      deleteConfig={{
+        doctypeName: doctypeName,
+        docName: docname,
+        redirectUrl: "/tender/doctype/prapan-suchi",
+      }}
     />
   );
 }
