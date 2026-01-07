@@ -6,7 +6,16 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
+
+// 🟢 New Imports for Bulk Delete & Icons
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+import { Plus, List, LayoutGrid } from "lucide-react";
+
+// 🟢 Changed: Point to Root URL (Required for RPC calls)
+const API_BASE_URL = "http://103.219.1.138:4412";
 
 // ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -38,9 +47,9 @@ type ViewMode = "grid" | "list";
 export default function DoctypePage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-  const doctypeName = "Lift Irrigation Scheme"; // <-- CHANGED
+  const doctypeName = "Lift Irrigation Scheme";
 
-  const [schemes, setSchemes] = React.useState<LiftIrrigationScheme[]>([]); // <-- CHANGED
+  const [schemes, setSchemes] = React.useState<LiftIrrigationScheme[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -56,71 +65,112 @@ export default function DoctypePage() {
     );
   }, [schemes, searchTerm]);
 
+  // 🟢 1. Initialize Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected
+  } = useSelection(filteredSchemes, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   /* -------------------------------------------------
   3. FETCH
   ------------------------------------------------- */
+  const fetchSchemes = React.useCallback(async () => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = {
+        fields: JSON.stringify([
+          "name",
+          "lis_name"
+        ]),
+        limit_page_length: "20",
+        order_by: "creation desc"
+      };
+
+      // 🟢 Append /api/resource manually
+      const resp = await axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
+        params,
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        },
+        withCredentials: true,
+      });
+
+      const raw = resp.data?.data ?? [];
+      const mapped: LiftIrrigationScheme[] = raw.map((r: any) => ({
+        name: r.name,
+        lis_name: r.lis_name ?? r.name,
+      }));
+
+      setSchemes(mapped);
+    } catch (err: any) {
+      console.error("API error:", err);
+      setError(
+        err.response?.status === 403
+          ? "Unauthorized – check API key/secret"
+          : `Failed to fetch ${doctypeName}`
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [apiKey, apiSecret, isAuthenticated, isInitialized, doctypeName]);
+
   React.useEffect(() => {
-    const fetchSchemes = async () => { // <-- CHANGED
-      if (!isInitialized) return;
-      if (!isAuthenticated || !apiKey || !apiSecret) {
-        setLoading(false);
-        return;
-      }
+    fetchSchemes();
+  }, [fetchSchemes]);
 
-      try {
-        setLoading(true);
-        setError(null);
+  // 🟢 2. Handle Bulk Delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
+      return;
+    }
 
-        const params = {
-          fields: JSON.stringify([
-            "name",
-            "lis_name" // Fetch the name field
-          ]),
-          limit_page_length: "20",
-          order_by: "creation desc"
-        };
+    setIsDeleting(true);
+    try {
+      await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        API_BASE_URL,
+        apiKey!,
+        apiSecret!
+      );
 
-        const resp = await axios.get(`${API_BASE_URL}/${doctypeName}`, { // <-- CHANGED
-          params,
-          headers: {
-            Authorization: `token ${apiKey}:${apiSecret}`,
-          },
-          withCredentials: true,
-        });
+      toast.success(`Successfully deleted ${count} records.`);
+      clearSelection();
+      fetchSchemes(); // Refresh list
+    } catch (err: any) {
+      console.error("Bulk Delete Error:", err);
+      toast.error("Failed to delete records", {
+        description: err.response?.data?.exception || err.message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
-        const raw = resp.data?.data ?? [];
-        const mapped: LiftIrrigationScheme[] = raw.map((r: any) => ({
-          name: r.name,
-          lis_name: r.lis_name ?? r.name, // Use lis_name, fallback to name
-        }));
-
-        setSchemes(mapped); // <-- CHANGED
-      } catch (err: any) {
-        console.error("API error:", err);
-        setError(
-          err.response?.status === 403
-            ? "Unauthorized – check API key/secret"
-            : `Failed to fetch ${doctypeName}`
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (doctypeName === "Lift Irrigation Scheme") fetchSchemes(); // <-- CHANGED
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
-
-  const title = "Lift Irrigation Scheme"; // <-- CHANGED
+  const title = "Lift Irrigation Scheme";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/lift-irrigation-scheme/${id}`); // <-- CHANGED
+    router.push(`/lis-management/doctype/lift-irrigation-scheme/${id}`);
   };
 
   /* -------------------------------------------------
   4. CARD FIELDS
   ------------------------------------------------- */
   const getFieldsForScheme = (scheme: LiftIrrigationScheme): RecordCardField[] => {
-    // No extra fields needed, title is the lis_name, subtitle is the ID
     return [];
   };
 
@@ -132,25 +182,52 @@ export default function DoctypePage() {
       <table className="stock-table">
         <thead>
           <tr>
+            {/* 🟢 Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
             <th>LIS Name</th>
             <th>ID</th>
           </tr>
         </thead>
         <tbody>
           {filteredSchemes.length ? (
-            filteredSchemes.map((scheme) => (
-              <tr
-                key={scheme.name}
-                onClick={() => handleCardClick(scheme.name)}
-                style={{ cursor: "pointer" }}
-              >
-                <td>{scheme.lis_name}</td>
-                <td>{scheme.name}</td>
-              </tr>
-            ))
+            filteredSchemes.map((scheme) => {
+              const isSelected = selectedIds.has(scheme.name);
+              return (
+                <tr
+                  key={scheme.name}
+                  onClick={() => handleCardClick(scheme.name)}
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                  }}
+                >
+                  {/* 🟢 Row Checkbox */}
+                  <td
+                    style={{ textAlign: "center" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(scheme.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
+                  <td>{scheme.lis_name}</td>
+                  <td>{scheme.name}</td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
-              <td colSpan={2} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={3} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -169,8 +246,8 @@ export default function DoctypePage() {
         filteredSchemes.map((scheme) => (
           <RecordCard
             key={scheme.name}
-            title={scheme.lis_name} // Show the descriptive name
-            subtitle={scheme.name} // Show the ID
+            title={scheme.lis_name}
+            subtitle={scheme.name}
             fields={getFieldsForScheme(scheme)}
             onClick={() => handleCardClick(scheme.name)}
           />
@@ -210,16 +287,27 @@ export default function DoctypePage() {
   ------------------------------------------------- */
   return (
     <div className="module active">
-      <div className="module-header">
+      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>{title}</h2>
-          <p>Manage Lift Irrigation Scheme master</p> {/* <-- CHANGED */}
+          <p>Manage Lift Irrigation Scheme master</p>
         </div>
-        <Link href="/lis-management/doctype/lift-irrigation-scheme/new" passHref>
-    <button className="btn btn--primary">
-      <i className="fas fa-plus"></i> Add {title}
-    </button>
-  </Link>
+        
+        {/* 🟢 3. Header Action Switch */}
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <Link href="/lis-management/doctype/lift-irrigation-scheme/new" passHref>
+            <button className="btn btn--primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add {title}
+            </button>
+          </Link>
+        )}
       </div>
 
       <div
@@ -244,12 +332,12 @@ export default function DoctypePage() {
 
         <div className="view-switcher">
           <button
-            className="btn btn--outline btn--sm"
+            className="btn btn--outline btn--sm flex items-center justify-center"
             onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
             aria-label="Toggle view"
             title={view === "grid" ? "List view" : "Grid view"}
           >
-            {view === "grid" ? <i className="fas fa-list"></i> : <i className="fas fa-th-large"></i>}
+            {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
           </button>
         </div>
       </div>

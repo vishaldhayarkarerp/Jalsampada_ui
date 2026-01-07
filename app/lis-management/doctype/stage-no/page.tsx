@@ -6,7 +6,15 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 
-const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
+// 🟢 New Imports for Bulk Delete & Icons
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+import { Plus, List, LayoutGrid } from "lucide-react";
+
+// 🟢 Changed: Point to Root URL (Required for RPC calls)
+const API_BASE_URL = "http://103.219.1.138:4412";
 
 // ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -39,9 +47,9 @@ type ViewMode = "grid" | "list";
 export default function DoctypePage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-  const doctypeName = "Stage No"; // <-- CHANGED
+  const doctypeName = "Stage No";
 
-  const [stages, setStages] = React.useState<StageNo[]>([]); // <-- CHANGED
+  const [stages, setStages] = React.useState<StageNo[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -58,73 +66,114 @@ export default function DoctypePage() {
     );
   }, [stages, searchTerm]);
 
+  // 🟢 1. Initialize Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected
+  } = useSelection(filteredStages, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   /* -------------------------------------------------
   3. FETCH
   ------------------------------------------------- */
-  React.useEffect(() => {
-    const fetchStages = async () => { // <-- CHANGED
-      if (!isInitialized) return;
-      if (!isAuthenticated || !apiKey || !apiSecret) {
-        setLoading(false);
-        return;
-      }
+  const fetchStages = React.useCallback(async () => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        const params = {
-          fields: JSON.stringify([
-            "name",
-            "stage_no",
-            "lis_name" // Fetch the fields
-          ]),
-          limit_page_length: "20",
-          order_by: "creation desc"
-        };
+      const params = {
+        fields: JSON.stringify([
+          "name",
+          "stage_no",
+          "lis_name"
+        ]),
+        limit_page_length: "20",
+        order_by: "creation desc"
+      };
 
-        const resp = await axios.get(`${API_BASE_URL}/${doctypeName}`, { // <-- CHANGED
-          params,
-          headers: {
-            Authorization: `token ${apiKey}:${apiSecret}`,
-          },
-          withCredentials: true,
-        });
+      // 🟢 Append /api/resource manually
+      const resp = await axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
+        params,
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        },
+        withCredentials: true,
+      });
 
-        const raw = resp.data?.data ?? [];
-        const mapped: StageNo[] = raw.map((r: any) => ({
-          name: r.name,
-          stage_no: r.stage_no ?? r.name, // Use stage_no, fallback to name
-          lis_name: r.lis_name ?? "—",
-        }));
+      const raw = resp.data?.data ?? [];
+      const mapped: StageNo[] = raw.map((r: any) => ({
+        name: r.name,
+        stage_no: r.stage_no ?? r.name,
+        lis_name: r.lis_name ?? "—",
+      }));
 
-        setStages(mapped); // <-- CHANGED
-      } catch (err: any) {
-        console.error("API error:", err);
-        setError(
-          err.response?.status === 403
-            ? "Unauthorized – check API key/secret"
-            : `Failed to fetch ${doctypeName}`
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (doctypeName === "Stage No") fetchStages(); // <-- CHANGED
+      setStages(mapped);
+    } catch (err: any) {
+      console.error("API error:", err);
+      setError(
+        err.response?.status === 403
+          ? "Unauthorized – check API key/secret"
+          : `Failed to fetch ${doctypeName}`
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-  const title = "Stage No"; // <-- CHANGED
+  React.useEffect(() => {
+    fetchStages();
+  }, [fetchStages]);
+
+  // 🟢 2. Handle Bulk Delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        API_BASE_URL,
+        apiKey!,
+        apiSecret!
+      );
+
+      toast.success(`Successfully deleted ${count} records.`);
+      clearSelection();
+      fetchStages(); // Refresh list
+    } catch (err: any) {
+      console.error("Bulk Delete Error:", err);
+      toast.error("Failed to delete records", {
+        description: err.response?.data?.exception || err.message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const title = "Stage No";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/stage-no/${id}`); // <-- CHANGED
+    router.push(`/lis-management/doctype/stage-no/${id}`);
   };
 
   /* -------------------------------------------------
   4. CARD FIELDS
   ------------------------------------------------- */
   const getFieldsForStage = (stage: StageNo): RecordCardField[] => {
-    // Show LIS Name as a field on the card
     const fields: RecordCardField[] = [];
     if (stage.lis_name) fields.push({ label: "LIS", value: stage.lis_name });
     return fields;
@@ -138,6 +187,15 @@ export default function DoctypePage() {
       <table className="stock-table">
         <thead>
           <tr>
+            {/* 🟢 Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
             <th>Stage No</th>
             <th>LIS Name</th>
             <th>ID</th>
@@ -145,20 +203,38 @@ export default function DoctypePage() {
         </thead>
         <tbody>
           {filteredStages.length ? (
-            filteredStages.map((stage) => (
-              <tr
-                key={stage.name}
-                onClick={() => handleCardClick(stage.name)}
-                style={{ cursor: "pointer" }}
-              >
-                <td>{stage.stage_no}</td>
-                <td>{stage.lis_name}</td>
-                <td>{stage.name}</td>
-              </tr>
-            ))
+            filteredStages.map((stage) => {
+              const isSelected = selectedIds.has(stage.name);
+              return (
+                <tr
+                  key={stage.name}
+                  onClick={() => handleCardClick(stage.name)}
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                  }}
+                >
+                  {/* 🟢 Row Checkbox */}
+                  <td
+                    style={{ textAlign: "center" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(stage.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
+                  <td>{stage.stage_no}</td>
+                  <td>{stage.lis_name}</td>
+                  <td>{stage.name}</td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
-              <td colSpan={3} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -177,8 +253,8 @@ export default function DoctypePage() {
         filteredStages.map((stage) => (
           <RecordCard
             key={stage.name}
-            title={stage.stage_no} // Show as stage number
-            subtitle={stage.lis_name} // Show as LIS name
+            title={stage.stage_no}
+            subtitle={stage.lis_name}
             fields={getFieldsForStage(stage)}
             onClick={() => handleCardClick(stage.name)}
           />
@@ -218,17 +294,28 @@ export default function DoctypePage() {
   ------------------------------------------------- */
   return (
     <div className="module active">
-      <div className="module-header">
+      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>{title}</h2>
-          <p>Manage Stage No master</p> {/* <-- CHANGED */}
+          <p>Manage Stage No master</p>
         </div>
-        <button 
-          className="btn btn--primary"
-          onClick={() => router.push('/lis-management/doctype/stage-no/new')}
-        >
-          <i className="fas fa-plus"></i> Add {title}
-        </button>
+        
+        {/* 🟢 3. Header Action Switch */}
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <button 
+            className="btn btn--primary flex items-center gap-2"
+            onClick={() => router.push('/lis-management/doctype/stage-no/new')}
+          >
+            <Plus className="w-4 h-4" /> Add {title}
+          </button>
+        )}
       </div>
 
       <div
@@ -253,12 +340,12 @@ export default function DoctypePage() {
 
         <div className="view-switcher">
           <button
-            className="btn btn--outline btn--sm"
+            className="btn btn--outline btn--sm flex items-center justify-center"
             onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
             aria-label="Toggle view"
             title={view === "grid" ? "List view" : "Grid view"}
           >
-            {view === "grid" ? <i className="fas fa-list"></i> : <i className="fas fa-th-large"></i>}
+            {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
           </button>
         </div>
       </div>

@@ -8,6 +8,13 @@ import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
 import { LinkField } from "@/components/LinkField";
+
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+
 import {
   Search,
   Plus,
@@ -20,7 +27,8 @@ import {
   Loader2,
 } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// 🟢 Changed: Point to Root URL (Required for RPC calls)
+const API_BASE_URL = "http://103.219.1.138:4412";
 
 // 🟢 CONFIG: Settings for Frappe-like pagination
 const INITIAL_PAGE_SIZE = 25;
@@ -100,6 +108,17 @@ export default function DoctypePage() {
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
+  // 🟢 1. Initialize Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected
+  } = useSelection(assets, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   // Form for category filter
   const { control, watch } = useForm({
     defaultValues: {
@@ -126,7 +145,8 @@ export default function DoctypePage() {
       if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
 
       try {
-        const resp = await axios.get(`${API_BASE_URL}/Asset Category`, {
+        // 🟢 Append /api/resource manually
+        const resp = await axios.get(`${API_BASE_URL}/api/resource/Asset Category`, {
           params: {
             fields: JSON.stringify(["name"]),
             limit_page_length: "100",
@@ -190,7 +210,8 @@ export default function DoctypePage() {
           params.filters = JSON.stringify(filters);
         }
 
-        const resp = await axios.get(`${API_BASE_URL}/Asset`, {
+        // 🟢 Append /api/resource manually
+        const resp = await axios.get(`${API_BASE_URL}/api/resource/Asset`, {
           params,
           headers: { Authorization: `token ${apiKey}:${apiSecret}` },
           withCredentials: true,
@@ -242,6 +263,36 @@ export default function DoctypePage() {
     }
   };
 
+  // 🟢 2. Handle Bulk Delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        API_BASE_URL,
+        apiKey!,
+        apiSecret!
+      );
+
+      toast.success(`Successfully deleted ${count} records.`);
+      clearSelection();
+      fetchData(0, true); // Reset list
+    } catch (err: any) {
+      console.error("Bulk Delete Error:", err);
+      toast.error("Failed to delete records", {
+        description: err.response?.data?.exception || err.message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // ── Helpers ──────────────────────────────────────────────────────
   const currentSortLabel = SORT_OPTIONS.find((opt) => opt.key === sortConfig.key)?.label || "Sort By";
 
@@ -261,23 +312,53 @@ export default function DoctypePage() {
 
   // ── Renderers ────────────────────────────────────────────────────
   const renderListView = () => (
+    // 🟢 REMOVED THE SCROLL CONTAINER DIV
     <div className="stock-table-container">
-      <div className="table-scroll-container" style={{ maxHeight: "400px", overflowY: "auto" }}>
-        <table className="stock-table">
-          <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-surface, #fff)' }}>
-            <tr>
-              <th style={{ cursor: "pointer" }} onClick={() => setSortConfig({ key: "name", direction: sortConfig.key === "name" && sortConfig.direction === "asc" ? "desc" : "asc" })}>ID</th>
-              <th>Status</th>
-              <th>Category</th>
-              <th>LIS</th>
-              <th>Stage</th>
-              <th>Location</th>
-            </tr>
-          </thead>
-          <tbody>
-            {assets.length ? (
-              assets.map((a) => (
-                <tr key={a.name} onClick={() => handleCardClick(a.name)} style={{ cursor: "pointer" }}>
+      <table className="stock-table">
+        <thead>
+          <tr>
+            {/* 🟢 Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
+            <th style={{ cursor: "pointer" }} onClick={() => setSortConfig({ key: "name", direction: sortConfig.key === "name" && sortConfig.direction === "asc" ? "desc" : "asc" })}>ID</th>
+            <th>Status</th>
+            <th>Category</th>
+            <th>LIS</th>
+            <th>Stage</th>
+            <th>Location</th>
+          </tr>
+        </thead>
+        <tbody>
+          {assets.length ? (
+            assets.map((a) => {
+              const isSelected = selectedIds.has(a.name);
+              return (
+                <tr
+                  key={a.name}
+                  onClick={() => handleCardClick(a.name)}
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                  }}
+                >
+                  {/* 🟢 Row Checkbox */}
+                  <td
+                    style={{ textAlign: "center" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(a.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
                   <td>{a.name}</td>
                   <td>{a.status || "—"}</td>
                   <td>{a.asset_category || "—"}</td>
@@ -285,17 +366,17 @@ export default function DoctypePage() {
                   <td>{a.custom_stage_no || "—"}</td>
                   <td>{a.location}</td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
-                  {!loading && "No records found."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
+                {!loading && "No records found."}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 
@@ -330,11 +411,21 @@ export default function DoctypePage() {
         <div>
           <h2 className="mt-1">Asset</h2>
         </div>
-        <Link href="/lis-management/doctype/asset/new" passHref>
-          <button className="btn btn--primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add Asset
-          </button>
-        </Link>
+        {/* 🟢 3. Header Action Switch */}
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <Link href="/lis-management/doctype/asset/new" passHref>
+            <button className="btn btn--primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add Asset
+            </button>
+          </Link>
+        )}
       </div>
 
       {/* FILTER BAR */}
@@ -464,7 +555,7 @@ export default function DoctypePage() {
       <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
 
-        {/* 🟢 LOAD MORE BUTTON - FIXED: Right aligned */}
+        {/* 🟢 LOAD MORE BUTTON */}
         {hasMore && assets.length > 0 && (
           <div className="mt-6 flex justify-end">
             <button

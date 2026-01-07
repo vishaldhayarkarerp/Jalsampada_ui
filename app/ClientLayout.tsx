@@ -12,7 +12,6 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/ModeToggle";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,25 +97,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
           <div className="user-info">
             <span>Welcome, {currentUser ?? "Admin"}</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Avatar className="h-8 w-8 border-1 cursor-pointer">
-                  <AvatarFallback className="text-muted-foreground font-semibold border ">
-                    {getInitials(currentUser || "Admin")}
-                  </AvatarFallback>
-                </Avatar>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-white border border-gray-200 rounded-md shadow-lg">
-                <DropdownMenuItem className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors">
-                  <i className="fas fa-user-circle mr-2"></i>
-                  Session Default
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={logout} className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors">
-                  <i className="fas fa-sign-out-alt mr-2"></i>
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
             <ModeToggle />
           </div>
         </div>
@@ -153,15 +133,30 @@ function AppContent({ children }: { children: React.ReactNode }) {
           ))}
         </div>
 
-        <div className="mt-auto pb-4">
+        <div className="mt-auto pb-2">
           <div className="border-t border-gray-200 dark:border-gray-700 mx-4 my-4"></div>
-          <button
-            onClick={logout}
-            className="nav-item w-full flex items-center text-left text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900/50 hover:text-red-700 dark:hover:text-red-400 transition-colors duration-150"
-          >
-            <i className="fas fa-sign-out-alt"></i>
-            <span>Logout</span>
-          </button>
+
+          {/* Avatar Section - Bottom Corner */}
+          <div className="px-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="nav-item cursor-pointer">
+                  <i className="fas fa-user"></i>
+                  <span>{currentUser || "Admin"}</span>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="right" className="bg-white border border-gray-200 rounded-md shadow-lg">
+                <DropdownMenuItem className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                  <i className="fas fa-user-circle mr-2"></i>
+                  Session Default
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={logout} className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                  <i className="fas fa-sign-out-alt mr-2"></i>
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </nav>
 

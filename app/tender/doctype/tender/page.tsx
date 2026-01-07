@@ -6,7 +6,14 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner"; // Assuming you have sonner installed (or use your preferred toast)
+import { Plus } from "lucide-react"; // Optional: if you want to use Lucide icons for consistency
+
+const API_BASE_URL = "http://103.219.1.138:4412"; // 🟢 Changed: Removed /api/resource so RPC helper can append /api/method
 
 // ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -33,16 +40,15 @@ type ViewMode = "grid" | "list";
 export default function DoctypePage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-  const doctypeName = "Project";
+  const doctypeName = "Project"; // 🟢 This is the DocType used for API calls
 
   const [tenders, setTenders] = React.useState<Tender[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-
   const [searchTerm, setSearchTerm] = React.useState("");
 
-  // Filter tenders client-side for instant results
+  // Filter tenders client-side
   const filteredTenders = React.useMemo(() => {
     if (!searchTerm) return tenders;
     return tenders.filter(tender =>
@@ -52,59 +58,105 @@ export default function DoctypePage() {
     );
   }, [tenders, searchTerm]);
 
+  // 🟢 1. Initialize Selection Hook
+  const { 
+    selectedIds, 
+    handleSelectOne, 
+    handleSelectAll, 
+    clearSelection, 
+    isAllSelected 
+  } = useSelection(filteredTenders, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // ── Fetch Data ────────────────────────────────────────────────
+  const fetchTenders = React.useCallback(async () => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = {
+        fields: JSON.stringify([
+          "name",
+          "custom_tender_status",
+          "custom_prapan_suchi",
+        ]),
+        limit_page_length: 20,
+        order_by: "creation desc",
+      };
+
+      // 🟢 Note: Added /api/resource here since we changed API_BASE_URL to root
+      const resp = await axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
+        params,
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        },
+        withCredentials: true,
+      });
+
+      const raw = resp.data?.data ?? [];
+      const mapped: Tender[] = raw.map((r: any) => ({
+        name: r.name,
+        status: r.custom_tender_status ?? "",
+        tender_name: r.custom_prapan_suchi ?? "",
+      }));
+
+      setTenders(mapped);
+    } catch (err: any) {
+      console.error("API error", err);
+      setError(
+        err.response?.status === 403
+          ? "Unauthorized - check API key/secret"
+          : `Failed to fetch ${doctypeName}`
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [isInitialized, isAuthenticated, apiKey, apiSecret, doctypeName]);
+
   React.useEffect(() => {
-    const fetchTenders = async () => {
-      if (!isInitialized) return;
-      if (!isAuthenticated || !apiKey || !apiSecret) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const params = {
-          // only fetch the 3 fields
-          fields: JSON.stringify([
-            "name",                  // id
-            "custom_tender_status",  // status
-            "custom_prapan_suchi",   // tender name
-          ]),
-          limit_page_length: 20,
-          order_by: "creation desc",
-        };
-
-        const resp = await axios.get(`${API_BASE_URL}/${doctypeName}`, {
-          params,
-          headers: {
-            Authorization: `token ${apiKey}:${apiSecret}`,
-          },
-          withCredentials: true,
-        });
-
-        const raw = resp.data?.data ?? [];
-        const mapped: Tender[] = raw.map((r: any) => ({
-          name: r.name,
-          status: r.custom_tender_status ?? "",
-          tender_name: r.custom_prapan_suchi ?? "",
-        }));
-
-        setTenders(mapped);
-      } catch (err: any) {
-        console.error("API error", err);
-        setError(
-          err.response?.status === 403
-            ? "Unauthorized - check API key/secret"
-            : `Failed to fetch ${doctypeName}`
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTenders();
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
+  }, [fetchTenders]);
+
+  // 🟢 2. Handle Bulk Delete Action
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // Execute the RPC call
+      await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        API_BASE_URL,
+        apiKey!,
+        apiSecret!
+      );
+
+      toast.success(`Successfully deleted ${count} records.`);
+      
+      // Clear selection and refresh list
+      clearSelection();
+      fetchTenders();
+
+    } catch (err: any) {
+      console.error("Bulk Delete Error:", err);
+      toast.error("Failed to delete records", {
+        description: err.response?.data?.exception || err.message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const title = "Tender";
 
@@ -114,50 +166,13 @@ export default function DoctypePage() {
 
   const getFieldsForTender = (t: Tender): RecordCardField[] => {
     const fields: RecordCardField[] = [];
-
     fields.push({ label: "ID", value: t.name });
     if (t.status) fields.push({ label: "Status", value: t.status });
-    if (t.tender_name)
-      fields.push({ label: "Prapan Suchi", value: t.tender_name });
-
+    if (t.tender_name) fields.push({ label: "Prapan Suchi", value: t.tender_name });
     return fields;
   };
 
-  const renderListView = () => (
-    <div className="stock-table-container">
-      <table className="stock-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Prapan Suchi</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredTenders.length ? (
-            filteredTenders.map((t) => (
-              <tr
-                key={t.name}
-                onClick={() => handleCardClick(t.name)}
-                style={{ cursor: "pointer" }}
-              >
-                <td>{t.name}</td>
-                <td>{t.tender_name}</td>
-                <td>{t.status}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={3} style={{ textAlign: "center", padding: "32px" }}>
-                No records found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-
+  // 🟢 3. Modified Grid View (Standard - No Selection for now)
   const renderGridView = () => (
     <div className="equipment-grid">
       {filteredTenders.length ? (
@@ -176,7 +191,70 @@ export default function DoctypePage() {
     </div>
   );
 
-  if (loading) {
+  // 🟢 4. Modified List View (Added Checkboxes)
+  const renderListView = () => (
+    <div className="stock-table-container">
+      <table className="stock-table">
+        <thead>
+          <tr>
+            {/* Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
+            <th>ID</th>
+            <th>Prapan Suchi</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredTenders.length ? (
+            filteredTenders.map((t) => {
+              const isSelected = selectedIds.has(t.name);
+              return (
+                <tr
+                  key={t.name}
+                  onClick={() => handleCardClick(t.name)}
+                  style={{ 
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined 
+                  }}
+                >
+                  {/* Row Checkbox */}
+                  <td 
+                    style={{ textAlign: "center" }} 
+                    onClick={(e) => e.stopPropagation()} // 🔴 Prevent navigation
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(t.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
+                  <td>{t.name}</td>
+                  <td>{t.tender_name}</td>
+                  <td>{t.status}</td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
+                No records found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  if (loading && !tenders.length) {
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
         <p>Loading {title}...</p>
@@ -194,17 +272,28 @@ export default function DoctypePage() {
 
   return (
     <div className="module active">
-      <div className="module-header">
+      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>{title}</h2>
           <p>Manage tender records</p>
         </div>
-        <button 
-          className="btn btn--primary"
-          onClick={() => router.push('/tender/doctype/tender/new')}
-        >
-          <i className="fas fa-plus"></i> Add {title}
-        </button>
+        
+        {/* 🟢 5. Switch between "Add New" and "Bulk Actions" */}
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <button 
+            className="btn btn--primary"
+            onClick={() => router.push('/tender/doctype/tender/new')}
+          >
+            <i className="fas fa-plus"></i> Add {title}
+          </button>
+        )}
       </div>
 
       <div

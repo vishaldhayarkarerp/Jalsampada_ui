@@ -31,6 +31,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
+
 import { TableField } from "./TableField";
 import { LinkField } from "./LinkField";
 import { TableMultiSelect } from "./TableMultiSelect";
@@ -430,6 +431,7 @@ export function DynamicForm({
     control,
     setValue,
     watch,
+    reset,
   } = methods;
 
   // 🟢 Expose form instance
@@ -438,6 +440,11 @@ export function DynamicForm({
       onFormInit(methods);
     }
   }, [methods, onFormInit]);
+
+  // ── FORM INITIALIZATION ─────────────────────────────────────────────────────
+  React.useEffect(() => {
+    reset(defaultValues);
+  }, [defaultValues, reset]);
 
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>(
     {}
@@ -637,13 +644,13 @@ export function DynamicForm({
               );
 
               if (fetchedValue !== null && fetchedValue !== undefined) {
-                setValue(field.name, fetchedValue, { shouldDirty: true });
+                setValue(field.name, fetchedValue, { shouldDirty: false });
               }
             } catch (e) {
               console.error(`Failed to fetch ${field.name}:`, e);
             }
           } else {
-            setValue(field.name, "", { shouldDirty: true });
+            setValue(field.name, "", { shouldDirty: false });
           }
         }
       }
