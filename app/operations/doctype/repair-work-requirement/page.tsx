@@ -17,7 +17,14 @@ import {
   Check,
 } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+
+// 🟢 Changed: Point to Root URL
+const API_BASE_URL = "http://103.219.1.138:4412";
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -85,6 +92,17 @@ export default function RepairWorkRequirementPage() {
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
+  // 🟢 1. Initialize Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected
+  } = useSelection(rows, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
@@ -98,71 +116,102 @@ export default function RepairWorkRequirementPage() {
   /* -------------------------------------------------
      3. FETCH REPAIR WORK REQUIREMENTS
      ------------------------------------------------- */
-  React.useEffect(() => {
-    const fetchRows = async () => {
-      if (!isInitialized) return;
-      if (!isAuthenticated || !apiKey || !apiSecret) {
-        setLoading(false);
-        return;
+  const fetchRows = React.useCallback(async () => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params: any = {
+        fields: JSON.stringify([
+          "name",
+          "lis_name",
+          "work_requirement_number",
+          "stage",
+          "prepared_by",
+          "modified",
+        ]),
+        limit_page_length: "20",
+        order_by: "modified desc",
+      };
+
+      if (debouncedSearch) {
+        params.or_filters = JSON.stringify([
+          ["name", "like", `%${debouncedSearch}%`],
+          ["lis_name", "like", `%${debouncedSearch}%`],
+          ["work_requirement_number", "like", `%${debouncedSearch}%`],
+          ["stage", "like", `%${debouncedSearch}%`],
+          ["prepared_by", "like", `%${debouncedSearch}%`],
+        ]);
       }
 
-      try {
-        setLoading(true);
-        setError(null);
-
-        const params: any = {
-          fields: JSON.stringify([
-            "name",
-            "lis_name",
-            "work_requirement_number",
-            "stage",
-            "prepared_by",
-            "modified",
-          ]),
-          limit_page_length: "20",
-          order_by: "modified desc",
-        };
-
-        if (debouncedSearch) {
-          params.or_filters = JSON.stringify([
-            ["name", "like", `%${debouncedSearch}%`],
-            ["lis_name", "like", `%${debouncedSearch}%`],
-            ["work_requirement_number", "like", `%${debouncedSearch}%`],
-            ["stage", "like", `%${debouncedSearch}%`],
-            ["prepared_by", "like", `%${debouncedSearch}%`],
-          ]);
+      // 🟢 Append /api/resource manually
+      const resp = await axios.get(
+        `${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`,
+        {
+          params,
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+          withCredentials: true,
         }
+      );
 
-        const resp = await axios.get(
-          `${API_BASE_URL}/${encodeURIComponent(doctypeName)}`,
-          {
-            params,
-            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-            withCredentials: true,
-          }
-        );
+      const raw = resp.data?.data ?? [];
+      const mapped: RepairWorkRequirement[] = raw.map((r: any) => ({
+        name: r.name,
+        lis_name: r.lis_name,
+        work_requirement_number: r.work_requirement_number,
+        stage: r.stage,
+        prepared_by: r.prepared_by,
+        modified: r.modified,
+      }));
 
-        const raw = resp.data?.data ?? [];
-        const mapped: RepairWorkRequirement[] = raw.map((r: any) => ({
-          name: r.name,
-          lis_name: r.lis_name,
-          work_requirement_number: r.work_requirement_number,
-          stage: r.stage,
-          prepared_by: r.prepared_by,
-          modified: r.modified,
-        }));
+      setRows(mapped);
+    } catch (err: any) {
+      console.error("API error:", err);
+      setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch records");
+    } finally {
+      setLoading(false);
+    }
+  }, [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, doctypeName]);
 
-        setRows(mapped);
-      } catch (err: any) {
-        console.error("API error:", err);
-        setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch records");
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  React.useEffect(() => {
     fetchRows();
-  }, [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+  }, [fetchRows]);
+
+  // 🟢 2. Handle Bulk Delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        API_BASE_URL,
+        apiKey!,
+        apiSecret!
+      );
+
+      toast.success(`Successfully deleted ${count} records.`);
+      clearSelection();
+      fetchRows();
+    } catch (err: any) {
+      console.error("Bulk Delete Error:", err);
+      toast.error("Failed to delete records", {
+        description: err.response?.data?.exception || err.message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   /* -------------------------------------------------
      4. SORTING LOGIC
@@ -215,6 +264,15 @@ export default function RepairWorkRequirementPage() {
       <table className="stock-table" style={{ minWidth: "900px", whiteSpace: "nowrap" }}>
         <thead>
           <tr>
+            {/* 🟢 Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
             <th style={{ cursor: "pointer", minWidth: 140 }} onClick={() => requestSort("name")}>
               ID
             </th>
@@ -240,22 +298,40 @@ export default function RepairWorkRequirementPage() {
         </thead>
         <tbody>
           {sortedRows.length ? (
-            sortedRows.map((row) => (
-              <tr
-                key={row.name}
-                onClick={() => handleCardClick(row.name)}
-                style={{ cursor: "pointer" }}
-              >
-                <td style={{ minWidth: 140 }}>{row.name}</td>
-                <td style={{ minWidth: 180 }}>{row.lis_name || "—"}</td>
-                <td style={{ minWidth: 200 }}>{row.work_requirement_number || "—"}</td>
-                <td style={{ minWidth: 160 }}>{row.stage || "—"}</td>
-                <td style={{ minWidth: 200 }}>{row.prepared_by || "—"}</td>
-              </tr>
-            ))
+            sortedRows.map((row) => {
+              const isSelected = selectedIds.has(row.name);
+              return (
+                <tr
+                  key={row.name}
+                  onClick={() => handleCardClick(row.name)}
+                  style={{ 
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                  }}
+                >
+                  {/* 🟢 Row Checkbox */}
+                  <td 
+                    style={{ textAlign: "center" }} 
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(row.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
+                  <td style={{ minWidth: 140 }}>{row.name}</td>
+                  <td style={{ minWidth: 180 }}>{row.lis_name || "—"}</td>
+                  <td style={{ minWidth: 200 }}>{row.work_requirement_number || "—"}</td>
+                  <td style={{ minWidth: 160 }}>{row.stage || "—"}</td>
+                  <td style={{ minWidth: 200 }}>{row.prepared_by || "—"}</td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
-              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
                 No repair work requirements found.
               </td>
             </tr>
@@ -299,16 +375,27 @@ export default function RepairWorkRequirementPage() {
 
   return (
     <div className="module active">
-      <div className="module-header">
+      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>{title}</h2>
           <p>Overview of all repair work requirements</p>
         </div>
-        <Link href="/operations/doctype/repair-work-requirement/new" passHref>
-          <button className="btn btn--primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> New Requirement
-          </button>
-        </Link>
+        
+        {/* 🟢 3. Header Action Switch */}
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <Link href="/operations/doctype/repair-work-requirement/new" passHref>
+            <button className="btn btn--primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> New Requirement
+            </button>
+          </Link>
+        )}
       </div>
 
       {/* --- FILTER BAR --- */}

@@ -17,7 +17,14 @@ import {
   Check,
 } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+
+// 🟢 Changed: Point to Root URL
+const API_BASE_URL = "http://103.219.1.138:4412";
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -32,7 +39,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 /* -------------------------------------------------
-   1. Stock Entry Type Definition (Status removed)
+   1. Stock Entry Type Definition
    ------------------------------------------------- */
 interface StockEntryRow {
   name: string;
@@ -80,6 +87,17 @@ export default function StockEntryPage() {
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
+  // 🟢 1. Initialize Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected
+  } = useSelection(rows, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
@@ -91,70 +109,101 @@ export default function StockEntryPage() {
   }, []);
 
   /* -------------------------------------------------
-     3. FETCH STOCK ENTRIES (Status removed from fields)
+     3. FETCH STOCK ENTRIES
      ------------------------------------------------- */
-  React.useEffect(() => {
-    const fetchEntries = async () => {
-      if (!isInitialized) return;
-      if (!isAuthenticated || !apiKey || !apiSecret) {
-        setLoading(false);
-        return;
+  const fetchEntries = React.useCallback(async () => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params: any = {
+        fields: JSON.stringify([
+          "name",
+          "stock_entry_type",
+          "from_warehouse",
+          "to_warehouse",
+          "modified",
+        ]),
+        limit_page_length: "20",
+        order_by: "modified desc",
+      };
+
+      if (debouncedSearch) {
+        params.or_filters = JSON.stringify({
+          name: ["like", `%${debouncedSearch}%`],
+          stock_entry_type: ["like", `%${debouncedSearch}%`],
+          from_warehouse: ["like", `%${debouncedSearch}%`],
+          to_warehouse: ["like", `%${debouncedSearch}%`],
+        });
       }
 
-      try {
-        setLoading(true);
-        setError(null);
-
-        const params: any = {
-          fields: JSON.stringify([
-            "name",
-            "stock_entry_type",
-            "from_warehouse",
-            "to_warehouse",
-            "modified",
-          ]),
-          limit_page_length: "20",
-          order_by: "modified desc",
-        };
-
-        if (debouncedSearch) {
-          params.or_filters = JSON.stringify({
-            name: ["like", `%${debouncedSearch}%`],
-            stock_entry_type: ["like", `%${debouncedSearch}%`],
-            from_warehouse: ["like", `%${debouncedSearch}%`],
-            to_warehouse: ["like", `%${debouncedSearch}%`],
-          });
+      // 🟢 Append /api/resource manually
+      const resp = await axios.get(
+        `${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`,
+        {
+          params,
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+          withCredentials: true,
         }
+      );
 
-        const resp = await axios.get(
-          `${API_BASE_URL}/${encodeURIComponent(doctypeName)}`,
-          {
-            params,
-            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-            withCredentials: true,
-          }
-        );
+      const raw = resp.data?.data ?? [];
+      const mapped: StockEntryRow[] = raw.map((r: any) => ({
+        name: r.name,
+        stock_entry_type: r.stock_entry_type,
+        from_warehouse: r.from_warehouse,
+        to_warehouse: r.to_warehouse,
+        modified: r.modified,
+      }));
 
-        const raw = resp.data?.data ?? [];
-        const mapped: StockEntryRow[] = raw.map((r: any) => ({
-          name: r.name,
-          stock_entry_type: r.stock_entry_type,
-          from_warehouse: r.from_warehouse,
-          to_warehouse: r.to_warehouse,
-          modified: r.modified,
-        }));
-
-        setRows(mapped);
-      } catch (err: any) {
-        console.error("API error:", err);
-        setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (doctypeName === "Stock Entry") fetchEntries();
+      setRows(mapped);
+    } catch (err: any) {
+      console.error("API error:", err);
+      setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
+    } finally {
+      setLoading(false);
+    }
   }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+
+  React.useEffect(() => {
+    fetchEntries();
+  }, [fetchEntries]);
+
+  // 🟢 2. Handle Bulk Delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        API_BASE_URL,
+        apiKey!,
+        apiSecret!
+      );
+
+      toast.success(`Successfully deleted ${count} records.`);
+      clearSelection();
+      fetchEntries();
+    } catch (err: any) {
+      console.error("Bulk Delete Error:", err);
+      toast.error("Failed to delete records", {
+        description: err.response?.data?.exception || err.message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   /* -------------------------------------------------
      4. SORTING LOGIC
@@ -199,7 +248,7 @@ export default function StockEntryPage() {
   };
 
   /* -------------------------------------------------
-     6. RENDERERS (Status column removed from table)
+     6. RENDERERS
      ------------------------------------------------- */
 
   const renderListView = () => (
@@ -213,6 +262,15 @@ export default function StockEntryPage() {
       >
         <thead>
           <tr>
+            {/* 🟢 Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
             <th
               style={{ cursor: "pointer", minWidth: 160 }}
               onClick={() => requestSort("name")}
@@ -241,21 +299,39 @@ export default function StockEntryPage() {
         </thead>
         <tbody>
           {sortedRows.length ? (
-            sortedRows.map((row) => (
-              <tr
-                key={row.name}
-                onClick={() => handleCardClick(row.name)}
-                style={{ cursor: "pointer" }}
-              >
-                <td style={{ minWidth: 160 }}>{row.name}</td>
-                <td style={{ minWidth: 180 }}>{row.stock_entry_type || "—"}</td>
-                <td style={{ minWidth: 220 }}>{row.from_warehouse || "—"}</td>
-                <td style={{ minWidth: 220 }}>{row.to_warehouse || "—"}</td>
-              </tr>
-            ))
+            sortedRows.map((row) => {
+              const isSelected = selectedIds.has(row.name);
+              return (
+                <tr
+                  key={row.name}
+                  onClick={() => handleCardClick(row.name)}
+                  style={{ 
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                  }}
+                >
+                  {/* 🟢 Row Checkbox */}
+                  <td 
+                    style={{ textAlign: "center" }} 
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(row.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
+                  <td style={{ minWidth: 160 }}>{row.name}</td>
+                  <td style={{ minWidth: 180 }}>{row.stock_entry_type || "—"}</td>
+                  <td style={{ minWidth: 220 }}>{row.from_warehouse || "—"}</td>
+                  <td style={{ minWidth: 220 }}>{row.to_warehouse || "—"}</td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
-              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -299,16 +375,27 @@ export default function StockEntryPage() {
 
   return (
     <div className="module active">
-      <div className="module-header">
+      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>{title}</h2>
           <p>Stock movements between warehouses</p>
         </div>
-        <Link href="/lis-management/doctype/stock-entry/new" passHref>
-          <button className="btn btn--primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add {title}
-          </button>
-        </Link>
+        
+        {/* 🟢 3. Header Action Switch */}
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <Link href="/lis-management/doctype/stock-entry/new" passHref>
+            <button className="btn btn--primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add {title}
+            </button>
+          </Link>
+        )}
       </div>
 
       {/* --- FILTER BAR --- */}
@@ -348,12 +435,6 @@ export default function StockEntryPage() {
                     direction: prev.direction === "asc" ? "dsc" : "asc",
                   }))
                 }
-                title={`Sort ${sortConfig.direction === "asc" ? "Descending" : "Ascending"}`}
-                aria-label={
-                  sortConfig.direction === "asc"
-                    ? "Sort Descending"
-                    : "Sort Ascending"
-                }
               >
                 {sortConfig.direction === "asc" ? (
                   <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -361,19 +442,15 @@ export default function StockEntryPage() {
                   <ArrowUpNarrowWide className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 )}
               </button>
-
-              <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1" />
-
+              <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
               <button
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
                 onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                aria-label="Open Sort Options"
               >
                 {currentSortLabel}
                 <ChevronDown className="w-3 h-3 opacity-70" />
               </button>
             </div>
-
             {isSortMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
                 <div className="py-1">
@@ -403,12 +480,9 @@ export default function StockEntryPage() {
               </div>
             )}
           </div>
-
-          {/* View Switcher */}
           <button
             className="btn btn--outline btn--sm flex items-center justify-center"
             onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
-            aria-label={view === "grid" ? "Switch to List View" : "Switch to Grid View"}
           >
             {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
           </button>

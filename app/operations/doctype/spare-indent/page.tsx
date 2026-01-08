@@ -1,4 +1,3 @@
-// app/operations/doctype/material-request/page.tsx
 "use client";
 
 import * as React from "react";
@@ -18,7 +17,14 @@ import {
   Check,
 } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+
+// 🟢 Changed: Point to Root URL
+const API_BASE_URL = "http://103.219.1.138:4412";
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -84,6 +90,17 @@ export default function MaterialRequestPage() {
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
+  // 🟢 1. Initialize Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected
+  } = useSelection(requests, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
@@ -97,66 +114,97 @@ export default function MaterialRequestPage() {
   /* -------------------------------------------------
      FETCH MATERIAL REQUESTS
      ------------------------------------------------- */
-  React.useEffect(() => {
-    const fetchMaterialRequests = async () => {
-      if (!isInitialized) return;
-      if (!isAuthenticated || !apiKey || !apiSecret) {
-        setLoading(false);
-        return;
+  const fetchMaterialRequests = React.useCallback(async () => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params: any = {
+        fields: JSON.stringify([
+          "name",
+          "material_request_type",
+          "title",
+          "transaction_date",
+          "modified",
+        ]),
+        limit_page_length: "20",
+        order_by: "modified desc",
+      };
+
+      if (debouncedSearch) {
+        params.or_filters = JSON.stringify([
+          ["Material Request", "name", "like", `%${debouncedSearch}%`],
+          ["Material Request", "title", "like", `%${debouncedSearch}%`],
+          ["Material Request", "material_request_type", "like", `%${debouncedSearch}%`],
+        ]);
       }
 
-      try {
-        setLoading(true);
-        setError(null);
+      // 🟢 Append /api/resource manually
+      const resp = await axios.get(`${API_BASE_URL}/api/resource/Material Request`, {
+        params,
+        headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        withCredentials: true,
+      });
 
-        const params: any = {
-          fields: JSON.stringify([
-            "name",
-            "material_request_type",
-            "title",
-            "transaction_date",
-            "modified",
-          ]),
-          limit_page_length: "20",
-          order_by: "modified desc",
-        };
+      const raw = resp.data?.data ?? [];
+      const mapped: MaterialRequest[] = raw.map((r: any) => ({
+        name: r.name,
+        material_request_type: r.material_request_type,
+        title: r.title,
+        transaction_date: r.transaction_date,
+        modified: r.modified,
+      }));
 
-        if (debouncedSearch) {
-          params.or_filters = JSON.stringify([
-            ["Material Request", "name", "like", `%${debouncedSearch}%`],
-            ["Material Request", "title", "like", `%${debouncedSearch}%`],
-            ["Material Request", "material_request_type", "like", `%${debouncedSearch}%`],
-          ]);
-        }
-
-        const resp = await axios.get(`${API_BASE_URL}/Material Request`, {
-          params,
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-          withCredentials: true,
-        });
-
-        const raw = resp.data?.data ?? [];
-        const mapped: MaterialRequest[] = raw.map((r: any) => ({
-          name: r.name,
-          material_request_type: r.material_request_type,
-          title: r.title,
-          transaction_date: r.transaction_date,
-          modified: r.modified,
-        }));
-
-        setRequests(mapped);
-      } catch (err: any) {
-        console.error("API error:", err);
-        setError(
-          err.response?.status === 403 ? "Unauthorized" : "Failed to fetch material requests"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMaterialRequests();
+      setRequests(mapped);
+    } catch (err: any) {
+      console.error("API error:", err);
+      setError(
+        err.response?.status === 403 ? "Unauthorized" : "Failed to fetch material requests"
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+
+  React.useEffect(() => {
+    fetchMaterialRequests();
+  }, [fetchMaterialRequests]);
+
+  // 🟢 2. Handle Bulk Delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        API_BASE_URL,
+        apiKey!,
+        apiSecret!
+      );
+
+      toast.success(`Successfully deleted ${count} records.`);
+      clearSelection();
+      fetchMaterialRequests();
+    } catch (err: any) {
+      console.error("Bulk Delete Error:", err);
+      toast.error("Failed to delete records", {
+        description: err.response?.data?.exception || err.message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   /* -------------------------------------------------
      SORTING LOGIC
@@ -202,6 +250,15 @@ export default function MaterialRequestPage() {
       <table className="stock-table">
         <thead>
           <tr>
+            {/* 🟢 Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("name")}>
               ID
             </th>
@@ -218,21 +275,39 @@ export default function MaterialRequestPage() {
         </thead>
         <tbody>
           {sortedRequests.length ? (
-            sortedRequests.map((req) => (
-              <tr
-                key={req.name}
-                onClick={() => handleCardClick(req.name)}
-                style={{ cursor: "pointer" }}
-              >
-                <td>{req.name}</td>
-                <td>{req.material_request_type || "—"}</td>
-                <td>{req.title || "—"}</td>
-                <td>{req.transaction_date || "—"}</td>
-              </tr>
-            ))
+            sortedRequests.map((req) => {
+              const isSelected = selectedIds.has(req.name);
+              return (
+                <tr
+                  key={req.name}
+                  onClick={() => handleCardClick(req.name)}
+                  style={{ 
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                  }}
+                >
+                  {/* 🟢 Row Checkbox */}
+                  <td 
+                    style={{ textAlign: "center" }} 
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(req.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
+                  <td>{req.name}</td>
+                  <td>{req.material_request_type || "—"}</td>
+                  <td>{req.title || "—"}</td>
+                  <td>{req.transaction_date || "—"}</td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
-              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
                 No material requests found.
               </td>
             </tr>
@@ -276,16 +351,27 @@ export default function MaterialRequestPage() {
 
   return (
     <div className="module active">
-      <div className="module-header">
+      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>Material Requests</h2>
           <p>List of material requests with type, title and date</p>
         </div>
-        <Link href="/operations/doctype/material-request/new" passHref>
-          <button className="btn btn--primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> New Material Request
-          </button>
-        </Link>
+        
+        {/* 🟢 3. Header Action Switch */}
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <Link href="/operations/doctype/material-request/new" passHref>
+            <button className="btn btn--primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> New Material Request
+            </button>
+          </Link>
+        )}
       </div>
 
       {/* --- FILTER BAR --- */}

@@ -1,4 +1,3 @@
-// app/operations/doctype/warehouse/page.tsx
 "use client";
 
 import * as React from "react";
@@ -18,7 +17,14 @@ import {
   Check,
 } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+
+// 🟢 Changed: Point to Root URL
+const API_BASE_URL = "http://103.219.1.138:4412";
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -86,6 +92,17 @@ export default function WarehousePage() {
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
+  // 🟢 1. Initialize Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected
+  } = useSelection(warehouses, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
@@ -99,70 +116,101 @@ export default function WarehousePage() {
   /* -------------------------------------------------
      FETCH WAREHOUSES
      ------------------------------------------------- */
-  React.useEffect(() => {
-    const fetchWarehouses = async () => {
-      if (!isInitialized) return;
-      if (!isAuthenticated || !apiKey || !apiSecret) {
-        setLoading(false);
-        return;
-      }
+  const fetchWarehouses = React.useCallback(async () => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        const params: any = {
-          fields: JSON.stringify([
-            "name",
-            "is_group",
-            "parent_warehouse",
-            "company",
-            "warehouse_type",
-            "account",
-            "modified",
-          ]),
-          limit_page_length: "20",
-          order_by: "modified desc",
-        };
+      const params: any = {
+        fields: JSON.stringify([
+          "name",
+          "is_group",
+          "parent_warehouse",
+          "company",
+          "warehouse_type",
+          "account",
+          "modified",
+        ]),
+        limit_page_length: "20",
+        order_by: "modified desc",
+      };
 
-        if (debouncedSearch) {
-          params.or_filters = JSON.stringify({
-            name: ["like", `%${debouncedSearch}%`],
-            company: ["like", `%${debouncedSearch}%`],
-            parent_warehouse: ["like", `%${debouncedSearch}%`],
-            warehouse_type: ["like", `%${debouncedSearch}%`],
-            account: ["like", `%${debouncedSearch}%`],
-          });
-        }
-
-        const resp = await axios.get(`${API_BASE_URL}/Warehouse`, {
-          params,
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-          withCredentials: true,
+      if (debouncedSearch) {
+        params.or_filters = JSON.stringify({
+          name: ["like", `%${debouncedSearch}%`],
+          company: ["like", `%${debouncedSearch}%`],
+          parent_warehouse: ["like", `%${debouncedSearch}%`],
+          warehouse_type: ["like", `%${debouncedSearch}%`],
+          account: ["like", `%${debouncedSearch}%`],
         });
-
-        const raw = resp.data?.data ?? [];
-        const mapped: Warehouse[] = raw.map((r: any) => ({
-          name: r.name,
-          is_group: r.is_group,
-          parent_warehouse: r.parent_warehouse,
-          company: r.company,
-          warehouse_type: r.warehouse_type,
-          account: r.account,
-          modified: r.modified,
-        }));
-
-        setWarehouses(mapped);
-      } catch (err: any) {
-        console.error("API error:", err);
-        setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch warehouses");
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchWarehouses();
+      // 🟢 Append /api/resource manually
+      const resp = await axios.get(`${API_BASE_URL}/api/resource/Warehouse`, {
+        params,
+        headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        withCredentials: true,
+      });
+
+      const raw = resp.data?.data ?? [];
+      const mapped: Warehouse[] = raw.map((r: any) => ({
+        name: r.name,
+        is_group: r.is_group,
+        parent_warehouse: r.parent_warehouse,
+        company: r.company,
+        warehouse_type: r.warehouse_type,
+        account: r.account,
+        modified: r.modified,
+      }));
+
+      setWarehouses(mapped);
+    } catch (err: any) {
+      console.error("API error:", err);
+      setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch warehouses");
+    } finally {
+      setLoading(false);
+    }
   }, [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+
+  React.useEffect(() => {
+    fetchWarehouses();
+  }, [fetchWarehouses]);
+
+  // 🟢 2. Handle Bulk Delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        API_BASE_URL,
+        apiKey!,
+        apiSecret!
+      );
+
+      toast.success(`Successfully deleted ${count} records.`);
+      clearSelection();
+      fetchWarehouses();
+    } catch (err: any) {
+      console.error("Bulk Delete Error:", err);
+      toast.error("Failed to delete records", {
+        description: err.response?.data?.exception || err.message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   /* -------------------------------------------------
      SORTING LOGIC
@@ -214,6 +262,15 @@ export default function WarehousePage() {
       <table className="stock-table">
         <thead>
           <tr>
+            {/* 🟢 Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("name")}>
               Warehouse ID
             </th>
@@ -234,23 +291,41 @@ export default function WarehousePage() {
         </thead>
         <tbody>
           {sortedWarehouses.length ? (
-            sortedWarehouses.map((w) => (
-              <tr
-                key={w.name}
-                onClick={() => handleCardClick(w.name)}
-                style={{ cursor: "pointer" }}
-              >
-                <td>{w.name}</td>
-                <td>{w.is_group ? "Yes" : "No"}</td>
-                <td>{w.parent_warehouse || "—"}</td>
-                <td>{w.company || "—"}</td>
-                <td>{w.warehouse_type || "—"}</td>
-                <td>{w.account || "—"}</td>
-              </tr>
-            ))
+            sortedWarehouses.map((w) => {
+              const isSelected = selectedIds.has(w.name);
+              return (
+                <tr
+                  key={w.name}
+                  onClick={() => handleCardClick(w.name)}
+                  style={{ 
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                  }}
+                >
+                  {/* 🟢 Row Checkbox */}
+                  <td 
+                    style={{ textAlign: "center" }} 
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(w.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
+                  <td>{w.name}</td>
+                  <td>{w.is_group ? "Yes" : "No"}</td>
+                  <td>{w.parent_warehouse || "—"}</td>
+                  <td>{w.company || "—"}</td>
+                  <td>{w.warehouse_type || "—"}</td>
+                  <td>{w.account || "—"}</td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
                 No warehouses found.
               </td>
             </tr>
@@ -294,16 +369,27 @@ export default function WarehousePage() {
 
   return (
     <div className="module active">
-      <div className="module-header">
+      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>Warehouses</h2>
           <p>List of warehouses with company, parent, type and account</p>
         </div>
-        <Link href="/operations/doctype/warehouse/new" passHref>
-          <button className="btn btn--primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add Warehouse
-          </button>
-        </Link>
+        
+        {/* 🟢 3. Header Action Switch */}
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <Link href="/operations/doctype/warehouse/new" passHref>
+            <button className="btn btn--primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add Warehouse
+            </button>
+          </Link>
+        )}
       </div>
 
       {/* --- FILTER BAR --- */}

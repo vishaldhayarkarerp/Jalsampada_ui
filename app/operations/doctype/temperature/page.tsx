@@ -17,7 +17,14 @@ import {
   Check
 } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+
+// 🟢 Changed: Point to Root URL
+const API_BASE_URL = "http://103.219.1.138:4412";
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -79,6 +86,17 @@ export default function TemperatureReadingsPage() {
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
+  // 🟢 1. Initialize Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected
+  } = useSelection(readings, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
@@ -92,60 +110,91 @@ export default function TemperatureReadingsPage() {
   /* -------------------------------------------------
      3. FETCH TEMPERATURE READINGS
      ------------------------------------------------- */
-  React.useEffect(() => {
-    const fetchReadings = async () => {
-      if (!isInitialized) return;
-      if (!isAuthenticated || !apiKey || !apiSecret) {
-        setLoading(false);
-        return;
-      }
+  const fetchReadings = React.useCallback(async () => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        const params: any = {
-          fields: JSON.stringify([
-            "name",
-            "temperature",
-            "modified",
-          ]),
-          limit_page_length: "20",
-          order_by: "modified desc",
-        };
+      const params: any = {
+        fields: JSON.stringify([
+          "name",
+          "temperature",
+          "modified",
+        ]),
+        limit_page_length: "20",
+        order_by: "modified desc",
+      };
 
-        if (debouncedSearch) {
-          // Search by ID or temperature value
-          params.or_filters = JSON.stringify({
-            name: ["like", `%${debouncedSearch}%`],
-            temperature: ["like", `%${debouncedSearch}%`],
-          });
-        }
-
-        const resp = await axios.get(`${API_BASE_URL}/${encodeURIComponent(doctypeName)}`, {
-          params,
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-          withCredentials: true,
+      if (debouncedSearch) {
+        // Search by ID or temperature value
+        params.or_filters = JSON.stringify({
+          name: ["like", `%${debouncedSearch}%`],
+          temperature: ["like", `%${debouncedSearch}%`],
         });
-
-        const raw = resp.data?.data ?? [];
-        const mapped: TemperatureReading[] = raw.map((r: any) => ({
-          name: r.name,
-          temperature: r.temperature?.toString(),
-          modified: r.modified,
-        }));
-
-        setReadings(mapped);
-      } catch (err: any) {
-        console.error("API error:", err);
-        setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
-      } finally {
-        setLoading(false);
       }
-    };
 
-    if (doctypeName === "Temperature Readings") fetchReadings();
+      // 🟢 Append /api/resource manually
+      const resp = await axios.get(`${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`, {
+        params,
+        headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        withCredentials: true,
+      });
+
+      const raw = resp.data?.data ?? [];
+      const mapped: TemperatureReading[] = raw.map((r: any) => ({
+        name: r.name,
+        temperature: r.temperature?.toString(),
+        modified: r.modified,
+      }));
+
+      setReadings(mapped);
+    } catch (err: any) {
+      console.error("API error:", err);
+      setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
+    } finally {
+      setLoading(false);
+    }
   }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+
+  React.useEffect(() => {
+    fetchReadings();
+  }, [fetchReadings]);
+
+  // 🟢 2. Handle Bulk Delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        API_BASE_URL,
+        apiKey!,
+        apiSecret!
+      );
+
+      toast.success(`Successfully deleted ${count} records.`);
+      clearSelection();
+      fetchReadings();
+    } catch (err: any) {
+      console.error("Bulk Delete Error:", err);
+      toast.error("Failed to delete records", {
+        description: err.response?.data?.exception || err.message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   /* -------------------------------------------------
      4. SORTING LOGIC
@@ -192,6 +241,15 @@ export default function TemperatureReadingsPage() {
       <table className="stock-table">
         <thead>
           <tr>
+            {/* 🟢 Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("name")}>
               ID
             </th>
@@ -205,19 +263,37 @@ export default function TemperatureReadingsPage() {
         </thead>
         <tbody>
           {sortedReadings.length ? (
-            sortedReadings.map((r) => (
-              <tr
-                key={r.name}
-                onClick={() => handleCardClick(r.name)}
-                style={{ cursor: "pointer" }}
-              >
-                <td>{r.name}</td>
-                <td>{r.temperature ?? "—"}</td>
-              </tr>
-            ))
+            sortedReadings.map((r) => {
+              const isSelected = selectedIds.has(r.name);
+              return (
+                <tr
+                  key={r.name}
+                  onClick={() => handleCardClick(r.name)}
+                  style={{ 
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                  }}
+                >
+                  {/* 🟢 Row Checkbox */}
+                  <td 
+                    style={{ textAlign: "center" }} 
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(r.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
+                  <td>{r.name}</td>
+                  <td>{r.temperature ?? "—"}</td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
-              <td colSpan={2} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={3} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -261,16 +337,27 @@ export default function TemperatureReadingsPage() {
 
   return (
     <div className="module active">
-      <div className="module-header">
+      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>{title}</h2>
           <p>Temperature readings list</p>
         </div>
-        <Link href="/lis-management/doctype/temperature-readings/new" passHref>
-          <button className="btn btn--primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add Reading
-          </button>
-        </Link>
+        
+        {/* 🟢 3. Header Action Switch */}
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <Link href="/lis-management/doctype/temperature-readings/new" passHref>
+            <button className="btn btn--primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add Reading
+            </button>
+          </Link>
+        )}
       </div>
 
       {/* --- FILTER BAR --- */}
@@ -299,7 +386,6 @@ export default function TemperatureReadingsPage() {
 
         {/* Right: Sort Pill + View Switcher */}
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {/* Sort Pill */}
           <div className="relative" ref={sortMenuRef}>
             <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
               <button
@@ -310,12 +396,6 @@ export default function TemperatureReadingsPage() {
                     direction: prev.direction === "asc" ? "dsc" : "asc",
                   }))
                 }
-                title={`Sort ${sortConfig.direction === "asc" ? "Descending" : "Ascending"}`}
-                aria-label={
-                  sortConfig.direction === "asc"
-                    ? "Sort Descending"
-                    : "Sort Ascending"
-                }
               >
                 {sortConfig.direction === "asc" ? (
                   <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -323,19 +403,15 @@ export default function TemperatureReadingsPage() {
                   <ArrowUpNarrowWide className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 )}
               </button>
-
               <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
               <button
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
                 onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                aria-label="Open Sort Options"
               >
                 {currentSortLabel}
                 <ChevronDown className="w-3 h-3 opacity-70" />
               </button>
             </div>
-
             {isSortMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
                 <div className="py-1">
@@ -365,12 +441,9 @@ export default function TemperatureReadingsPage() {
               </div>
             )}
           </div>
-
-          {/* View Switcher */}
           <button
             className="btn btn--outline btn--sm flex items-center justify-center"
             onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
-            aria-label={view === "grid" ? "Switch to List View" : "Switch to Grid View"}
           >
             {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
           </button>
