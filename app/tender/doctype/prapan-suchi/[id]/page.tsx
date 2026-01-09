@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
-import { parseServerMessages } from "@/lib/utils";
+import { getApiMessages } from "@/lib/utils";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 const API_METHOD_URL = "http://103.219.1.138:4412/api/method";
@@ -86,17 +86,14 @@ export default function PrapanSuchiDetailPage() {
 
         } catch (error: any) {
           console.error("Failed to fetch stages:", error);
-          let errorMessage = "Could not fetch stages for the selected LIS.";
-          const serverMessages = error.response?.data?._server_messages;
+          const messages = getApiMessages(
+            null,
+            error,
+            "Stages fetched successfully",
+            "Could not fetch stages for the selected LIS."
+          );
 
-          if (serverMessages) {
-            const parsedMessages = parseServerMessages(serverMessages);
-            if (parsedMessages.length > 0) {
-              errorMessage = parsedMessages.join("\n");
-            }
-          }
-
-          toast.error(errorMessage);
+          toast.error(messages.message, { description: messages.description });
         }
       }
     });
@@ -132,31 +129,20 @@ export default function PrapanSuchiDetailPage() {
         setRecord(resp.data.data as PrapanSuchi);
       } catch (err: any) {
         console.error("API Error:", err);
-        let errorMessage = "Failed to load record";
-        const serverMessages = err.response?.data?._server_messages;
-
-        if (serverMessages) {
-          const parsedMessages = parseServerMessages(serverMessages);
-          if (parsedMessages.length > 0) {
-            errorMessage = parsedMessages.join("\n");
-          } else {
-            errorMessage =
-              err.response?.status === 404
-                ? "Record not found"
-                : err.response?.status === 403
-                  ? "Unauthorized"
-                  : "Failed to load record";
+        const messages = getApiMessages(
+          null,
+          err,
+          "Record loaded successfully",
+          "Failed to load record",
+          (error) => {
+            // Custom handler for load errors with status codes
+            if (error.response?.status === 404) return "Record not found";
+            if (error.response?.status === 403) return "Unauthorized";
+            return "Failed to load record";
           }
-        } else {
-          errorMessage =
-            err.response?.status === 404
-              ? "Record not found"
-              : err.response?.status === 403
-                ? "Unauthorized"
-                : "Failed to load record";
-        }
+        );
 
-        setError(errorMessage);
+        setError(messages.description || messages.message);
       } finally {
         setLoading(false);
       }
@@ -317,19 +303,11 @@ export default function PrapanSuchiDetailPage() {
         }
       );
 
-      // Check for server messages in successful response
-      const serverMessages = resp.data._server_messages;
-      if (serverMessages) {
-        const parsedMessages = parseServerMessages(serverMessages);
-        if (parsedMessages.length > 0) {
-          parsedMessages.forEach((msg) => {
-            toast.success(msg);
-          });
-        } else {
-          toast.success("Changes saved!");
-        }
-      } else {
-        toast.success("Changes saved!");
+      // Handle successful response with ultra-simple handler
+      const messages = getApiMessages(resp, null, "Changes saved!", "Failed to save");
+
+      if (messages.success) {
+        toast.success(messages.message, { description: messages.description });
       }
 
       if (resp.data && resp.data.data) {
@@ -341,23 +319,9 @@ export default function PrapanSuchiDetailPage() {
       console.error("Save error:", err);
       console.log("Full server error:", err.response?.data);
 
-      let errorMessage = "Unknown Error";
-      const serverMessages = err.response?.data?._server_messages;
+      const messages = getApiMessages(null, err, "Changes saved!", "Failed to save");
 
-      if (serverMessages) {
-        const parsedMessages = parseServerMessages(serverMessages);
-        if (parsedMessages.length > 0) {
-          errorMessage = parsedMessages.join("\n");
-        } else {
-          errorMessage = err.response?.data?.exception || err.message || "Unknown Error";
-        }
-      } else {
-        errorMessage = err.response?.data?.exception || err.message || "Unknown Error";
-      }
-
-      toast.error("Failed to save", {
-        description: errorMessage,
-      });
+      toast.error(messages.message, { description: messages.description });
     } finally {
       setIsSaving(false);
     }

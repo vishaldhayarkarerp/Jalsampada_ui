@@ -33,7 +33,7 @@ import {
 import { TableField } from "./TableField";
 import { LinkField } from "./LinkField";
 import { TableMultiSelect } from "./TableMultiSelect";
-import { cn, parseServerMessages } from "@/lib/utils";
+import { cn, getApiMessages } from "@/lib/utils";
 
 const DEFAULT_API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -546,19 +546,11 @@ export function DynamicForm({
             withCredentials: true,
           });
 
-          // Check for server messages in successful response
-          const serverMessages = response.data._server_messages;
-          if (serverMessages) {
-            const parsedMessages = parseServerMessages(serverMessages);
-            if (parsedMessages.length > 0) {
-              parsedMessages.forEach((msg) => {
-                toast.success(msg);
-              });
-            } else {
-              toast.success(`${doctypeName} deleted successfully`);
-            }
-          } else {
-            toast.success(`${doctypeName} deleted successfully`);
+          // Handle successful response with ultra-simple handler
+          const messages = getApiMessages(response, null, `${doctypeName} deleted successfully`, "Failed to delete record");
+
+          if (messages.success) {
+            toast.success(messages.message, { description: messages.description });
           }
 
           if (redirectUrl) {
@@ -568,23 +560,10 @@ export function DynamicForm({
           }
         } catch (err: any) {
           console.error("Delete error:", err);
-          let errorMessage = "Unknown error";
-          const serverMessages = err.response?.data?._server_messages;
 
-          if (serverMessages) {
-            const parsedMessages = parseServerMessages(serverMessages);
-            if (parsedMessages.length > 0) {
-              errorMessage = parsedMessages.join("\n");
-            } else {
-              errorMessage = err.response?.data?.exception || err.message || "Unknown error";
-            }
-          } else {
-            errorMessage = err.response?.data?.exception || err.message || "Unknown error";
-          }
+          const messages = getApiMessages(null, err, `${doctypeName} deleted successfully`, "Failed to delete record");
 
-          toast.error("Failed to delete record", {
-            description: errorMessage
-          });
+          toast.error(messages.message, { description: messages.description });
         }
       }
     }

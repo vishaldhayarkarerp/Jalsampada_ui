@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
-import { parseServerMessages } from "@/lib/utils";
+import { getApiMessages } from "@/lib/utils";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 const API_METHOD_URL = "http://103.219.1.138:4412/api/method";
@@ -78,17 +78,14 @@ export default function NewPrapanSuchiPage() {
 
         } catch (error: any) {
           console.error("Failed to fetch stages:", error);
-          let errorMessage = "Could not fetch stages for the selected LIS.";
-          const serverMessages = error.response?.data?._server_messages;
+          const messages = getApiMessages(
+            null,
+            error,
+            "Stages fetched successfully",
+            "Could not fetch stages for the selected LIS."
+          );
 
-          if (serverMessages) {
-            const parsedMessages = parseServerMessages(serverMessages);
-            if (parsedMessages.length > 0) {
-              errorMessage = parsedMessages.join("\n");
-            }
-          }
-
-          toast.error(errorMessage);
+          toast.error(messages.message, { description: messages.description });
         }
       }
     });
@@ -230,19 +227,11 @@ export default function NewPrapanSuchiPage() {
         maxContentLength: Infinity,
       });
 
-      // Check for server messages in successful response
-      const serverMessages = response.data._server_messages;
-      if (serverMessages) {
-        const parsedMessages = parseServerMessages(serverMessages);
-        if (parsedMessages.length > 0) {
-          parsedMessages.forEach((msg) => {
-            toast.success(msg);
-          });
-        } else {
-          toast.success("Prapan Suchi created successfully!");
-        }
-      } else {
-        toast.success("Prapan Suchi created successfully!");
+      // Handle successful response with ultra-simple handler
+      const messages = getApiMessages(response, null, "Prapan Suchi created successfully!", "Failed to create Prapan Suchi");
+
+      if (messages.success) {
+        toast.success(messages.message, { description: messages.description });
       }
 
       const docName = response.data.data.name;
@@ -256,23 +245,9 @@ export default function NewPrapanSuchiPage() {
       console.error("Create error:", err);
       console.log("Full server error:", err.response?.data);
 
-      let errorMessage = "Unknown Error";
-      const serverMessages = err.response?.data?._server_messages;
+      const messages = getApiMessages(null, err, "Prapan Suchi created successfully!", "Failed to create Prapan Suchi");
 
-      if (serverMessages) {
-        const parsedMessages = parseServerMessages(serverMessages);
-        if (parsedMessages.length > 0) {
-          errorMessage = parsedMessages.join("\n");
-        } else {
-          errorMessage = err.response?.data?.exception || err.message || "Unknown Error";
-        }
-      } else {
-        errorMessage = err.response?.data?.exception || err.message || "Unknown Error";
-      }
-
-      toast.error("Failed to create Prapan Suchi", {
-        description: errorMessage,
-      });
+      toast.error(messages.message, { description: messages.description });
     } finally {
       setIsSaving(false);
     }

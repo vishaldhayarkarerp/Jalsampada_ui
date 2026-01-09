@@ -24,3 +24,75 @@ export function parseServerMessages(serverMessages: string): string[] {
   }
   return [];
 }
+
+// Enhanced API response handler for consistent error/success message handling
+export function handleApiResponse(
+  response: any,
+  error: any,
+  defaultSuccessMessage: string,
+  defaultErrorMessage: string
+): { success: boolean; messages: string[]; fallbackMessage: string } {
+  const messages: string[] = [];
+  let fallbackMessage = defaultErrorMessage;
+  let success = false;
+
+  // Handle successful response
+  if (response && !error) {
+    success = true;
+    fallbackMessage = defaultSuccessMessage;
+
+    // Check for server messages in successful response
+    const serverMessages = response.data?._server_messages;
+    if (serverMessages) {
+      const parsedMessages = parseServerMessages(serverMessages);
+      if (parsedMessages.length > 0) {
+        messages.push(...parsedMessages);
+      }
+    }
+  }
+  // Handle error response
+  else if (error) {
+    success = false;
+    fallbackMessage = defaultErrorMessage;
+
+    // Check for server messages in error response
+    const serverMessages = error.response?.data?._server_messages;
+    if (serverMessages) {
+      const parsedMessages = parseServerMessages(serverMessages);
+      if (parsedMessages.length > 0) {
+        messages.push(...parsedMessages);
+      }
+    } else {
+      // Fallback to exception or error message
+      fallbackMessage = error.response?.data?.exception || error.message || defaultErrorMessage;
+    }
+  }
+
+  return { success, messages, fallbackMessage };
+}
+
+// Ultra-simple API response handler - returns formatted messages for toast
+export function getApiMessages(
+  response: any,
+  error: any,
+  defaultSuccessMessage: string,
+  defaultErrorMessage: string,
+  customErrorHandler?: (error: any) => string
+): { success: boolean; message: string; description?: string } {
+  const result = handleApiResponse(response, error, defaultSuccessMessage, defaultErrorMessage);
+
+  if (result.success) {
+    if (result.messages.length > 0) {
+      return { success: true, message: result.messages[0], description: result.messages.slice(1).join("\n") || undefined };
+    } else {
+      return { success: true, message: result.fallbackMessage };
+    }
+  } else {
+    if (result.messages.length > 0) {
+      return { success: false, message: defaultErrorMessage, description: result.messages.join("\n") };
+    } else {
+      const finalMessage = customErrorHandler ? customErrorHandler(error) : result.fallbackMessage;
+      return { success: false, message: defaultErrorMessage, description: finalMessage };
+    }
+  }
+}
