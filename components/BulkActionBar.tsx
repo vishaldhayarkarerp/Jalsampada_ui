@@ -44,21 +44,21 @@ export function BulkActionBar({
         <span className="text-xs">Cancel</span>
       </Button>
 
-      {/* 🟢 MODERN OPAQUE DELETE BUTTON */}
+      
       <Button
-        variant="destructive"
+        variant="outline"
         size="sm"
         onClick={onDelete}
         disabled={isDeleting}
         className={cn(
           "ml-auto h-8 px-4 shadow-sm transition-all duration-200",
-          "bg-red-500 hover:bg-red-600 hover:shadow-md hover:-translate-y-0.5", // Modern Red Hover + Lift effect
+          "bg-white border-red-500 text-red-500 hover:bg-red-50 hover:border-red-600 hover:text-red-600 hover:shadow-md hover:-translate-y-0.5", // White button with red styling
           "disabled:opacity-50 disabled:hover:translate-y-0"
         )}
       >
         {isDeleting ? (
           <>
-            <span className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <span className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
             Deleting...
           </>
         ) : (

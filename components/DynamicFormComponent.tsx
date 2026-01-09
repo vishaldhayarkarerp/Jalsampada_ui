@@ -13,15 +13,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 // 🟢 1. Added Trash2 icon
 import { Upload, X, MoreVertical, Copy, Trash2 } from "lucide-react";
-import { useRef } from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+
 
 import {
   DropdownMenu,
@@ -35,7 +33,7 @@ import {
 import { TableField } from "./TableField";
 import { LinkField } from "./LinkField";
 import { TableMultiSelect } from "./TableMultiSelect";
-import { cn } from "@/lib/utils";
+import { cn, parseServerMessages } from "@/lib/utils";
 
 const DEFAULT_API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -543,12 +541,25 @@ export function DynamicForm({
         try {
           const url = `${baseUrl || DEFAULT_API_BASE_URL}/${doctypeName}/${docName}`;
 
-          await axios.delete(url, {
+          const response = await axios.delete(url, {
             headers: { Authorization: `token ${apiKey}:${apiSecret}` },
             withCredentials: true,
           });
 
-          toast.success(`${doctypeName} deleted successfully`);
+          // Check for server messages in successful response
+          const serverMessages = response.data._server_messages;
+          if (serverMessages) {
+            const parsedMessages = parseServerMessages(serverMessages);
+            if (parsedMessages.length > 0) {
+              parsedMessages.forEach((msg) => {
+                toast.success(msg);
+              });
+            } else {
+              toast.success(`${doctypeName} deleted successfully`);
+            }
+          } else {
+            toast.success(`${doctypeName} deleted successfully`);
+          }
 
           if (redirectUrl) {
             router.push(redirectUrl);
@@ -557,8 +568,22 @@ export function DynamicForm({
           }
         } catch (err: any) {
           console.error("Delete error:", err);
+          let errorMessage = "Unknown error";
+          const serverMessages = err.response?.data?._server_messages;
+
+          if (serverMessages) {
+            const parsedMessages = parseServerMessages(serverMessages);
+            if (parsedMessages.length > 0) {
+              errorMessage = parsedMessages.join("\n");
+            } else {
+              errorMessage = err.response?.data?.exception || err.message || "Unknown error";
+            }
+          } else {
+            errorMessage = err.response?.data?.exception || err.message || "Unknown error";
+          }
+
           toast.error("Failed to delete record", {
-            description: err.response?.data?.exception || err.message || "Unknown error"
+            description: errorMessage
           });
         }
       }
@@ -599,80 +624,6 @@ export function DynamicForm({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleDuplicate]);
-
-  // ── FETCH FROM FUNCTIONALITY ─────────────────────────────────────────────
-  React.useEffect(() => {
-    if (!apiKey || !apiSecret) return;
-
-    const fieldsWithFetchFrom = tabs
-      .flatMap((tab) => tab.fields)
-      .filter((field) => field.fetchFrom);
-
-    const sourceFieldMap = new Map<string, FormField[]>();
-    fieldsWithFetchFrom.forEach((field) => {
-      if (field.fetchFrom) {
-        const sourceField = field.fetchFrom.sourceField;
-        if (!sourceFieldMap.has(sourceField)) {
-          sourceFieldMap.set(sourceField, []);
-        }
-        sourceFieldMap.get(sourceField)?.push(field);
-      }
-    });
-
-    const previousValues = new Map<string, any>();
-
-    const handleFetchForSource = async (sourceFieldName: string) => {
-      const sourceValue = watch(sourceFieldName);
-      const previousValue = previousValues.get(sourceFieldName);
-
-      if (sourceValue !== previousValue) {
-        previousValues.set(sourceFieldName, sourceValue);
-
-        const dependentFields = sourceFieldMap.get(sourceFieldName) || [];
-
-        for (const field of dependentFields) {
-          if (!field.fetchFrom) continue;
-
-          if (sourceValue) {
-            try {
-              const fetchedValue = await fetchFieldValue(
-                sourceValue,
-                field.fetchFrom.targetDoctype,
-                field.fetchFrom.targetField,
-                apiKey,
-                apiSecret
-              );
-
-              if (fetchedValue !== null && fetchedValue !== undefined) {
-                setValue(field.name, fetchedValue, { shouldDirty: false });
-              }
-            } catch (e) {
-              console.error(`Failed to fetch ${field.name}:`, e);
-            }
-          } else {
-            setValue(field.name, "", { shouldDirty: false });
-          }
-        }
-      }
-    };
-
-    const sourceFields = Array.from(sourceFieldMap.keys());
-    sourceFields.forEach((sourceField) => {
-      previousValues.set(sourceField, watch(sourceField));
-    });
-
-    sourceFields.forEach(handleFetchForSource);
-
-    const subscription = watch((value, { name, type }) => {
-      if (name && sourceFieldMap.has(name)) {
-        setTimeout(() => handleFetchForSource(name), 100);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [tabs, watch, setValue, apiKey, apiSecret]);
 
   // ── RENDER HELPERS ───────────────────────────────────────────────────────
   const renderInput = (field: FormField, type: string = "text") => {

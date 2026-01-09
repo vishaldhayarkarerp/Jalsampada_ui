@@ -424,17 +424,17 @@ export default function LisIncidentRecordPage() {
         <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
           <input
             type="text"
-            placeholder="Search Subject, ID, Status, Priority, or Raised By..."
-            className="form-control w-full pl-10"
+            placeholder="Search LIS Incident Record..."
+            className="form-control w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             aria-label="Search LIS Incident Record"
           />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
         </div>
 
         {/* Right: Sort Pill + View Switcher */}
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          {/* Sort Pill */}
           <div className="relative" ref={sortMenuRef}>
             <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
               <button

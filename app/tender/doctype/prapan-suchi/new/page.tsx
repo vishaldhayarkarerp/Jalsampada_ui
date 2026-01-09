@@ -10,8 +10,11 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { UseFormReturn } from "react-hook-form";
+import { parseServerMessages } from "@/lib/utils";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_METHOD_URL = "http://103.219.1.138:4412/api/method";
 
 interface PrapanSuchi {
   name?: string;
@@ -34,6 +37,64 @@ export default function NewPrapanSuchiPage() {
 
   const doctypeName = "Prapan Suchi";
   const [isSaving, setIsSaving] = React.useState(false);
+
+  // 🟢 State to capture form methods (to use watch/setValue outside the form)
+  const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
+  React.useEffect(() => {
+    if (!formMethods || !apiKey || !apiSecret) return;
+
+    const { watch, setValue } = formMethods;
+
+    // Watch for changes in "lis_name"
+    const subscription = watch(async (value, { name, type }) => {
+      if (name === "lis_name") {
+        const lisName = value.lis_name;
+
+        // 1. If LIS Name is cleared, clear the stages table
+        if (!lisName) {
+          setValue("stage", [], { shouldDirty: true });
+          return;
+        }
+
+        // 2. Fetch Stages from Custom API
+        try {
+          const resp = await axios.get(`${API_METHOD_URL}/quantlis_management.api.fetch_lis_name_stage`, {
+            params: { lis_name: lisName },
+            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            withCredentials: true,
+          });
+
+          const rawList = resp.data.message || [];
+
+          // 3. Format for Child Table
+          const formattedStages = rawList.map((item: any, idx: number) => ({
+            doctype: "Stage Multiselect",
+            stage: item.stage,
+            idx: idx + 1
+          }));
+
+          // 4. Update the form field
+          setValue("stage", formattedStages, { shouldDirty: true });
+
+        } catch (error: any) {
+          console.error("Failed to fetch stages:", error);
+          let errorMessage = "Could not fetch stages for the selected LIS.";
+          const serverMessages = error.response?.data?._server_messages;
+
+          if (serverMessages) {
+            const parsedMessages = parseServerMessages(serverMessages);
+            if (parsedMessages.length > 0) {
+              errorMessage = parsedMessages.join("\n");
+            }
+          }
+
+          toast.error(errorMessage);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [formMethods, apiKey, apiSecret]);
 
   /* -------------------------------------------------
   3. Form tabs configuration
@@ -70,7 +131,10 @@ export default function NewPrapanSuchiPage() {
             name: "stage",
             label: "Stage/Sub Scheme",
             type: "Table MultiSelect",
-            linkTarget: "Stage Multiselect",
+            linkTarget: "Stage No",
+            filterMapping: [
+              { sourceField: "lis_name", targetField: "lis_name" }
+            ]
           },
           {
             name: "work_name",
@@ -87,9 +151,7 @@ export default function NewPrapanSuchiPage() {
     ];
   }, []);
 
-  /* -------------------------------------------------
-  4. SUBMIT handler (POST)
-  ------------------------------------------------- */
+  // submit handler
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) {
       toast.info("No changes to save.");
@@ -135,6 +197,27 @@ export default function NewPrapanSuchiPage() {
         }
       });
 
+      // 🟢 FORMAT CHILD TABLE (STAGE)
+      // Ensure every item has the 'doctype' key required by Frappe
+      if (finalPayload.stage && Array.isArray(finalPayload.stage)) {
+        finalPayload.stage = finalPayload.stage.map((item: any, index: number) => {
+          // Handle string items (manual selection might create these)
+          if (typeof item === 'string') {
+            return {
+              doctype: "Stage Multiselect",
+              stage: item,
+              idx: index + 1
+            };
+          }
+          // Handle object items (auto-populated items are already objects)
+          return {
+            ...item,
+            doctype: "Stage Multiselect", // Force correct Doctype
+            idx: index + 1
+          };
+        });
+      }
+
       console.log("Sending this PAYLOAD to Frappe:", finalPayload);
 
       const response = await axios.post(`${API_BASE_URL}/${encodeURIComponent(doctypeName)}`, finalPayload, {
@@ -147,9 +230,21 @@ export default function NewPrapanSuchiPage() {
         maxContentLength: Infinity,
       });
 
-      toast.success("Prapan Suchi created successfully!");
+      // Check for server messages in successful response
+      const serverMessages = response.data._server_messages;
+      if (serverMessages) {
+        const parsedMessages = parseServerMessages(serverMessages);
+        if (parsedMessages.length > 0) {
+          parsedMessages.forEach((msg) => {
+            toast.success(msg);
+          });
+        } else {
+          toast.success("Prapan Suchi created successfully!");
+        }
+      } else {
+        toast.success("Prapan Suchi created successfully!");
+      }
 
-      // Navigate to the newly created record using name
       const docName = response.data.data.name;
       if (docName) {
         router.push(`/tender/doctype/prapan-suchi/${docName}`);
@@ -160,10 +255,23 @@ export default function NewPrapanSuchiPage() {
     } catch (err: any) {
       console.error("Create error:", err);
       console.log("Full server error:", err.response?.data);
+
+      let errorMessage = "Unknown Error";
+      const serverMessages = err.response?.data?._server_messages;
+
+      if (serverMessages) {
+        const parsedMessages = parseServerMessages(serverMessages);
+        if (parsedMessages.length > 0) {
+          errorMessage = parsedMessages.join("\n");
+        } else {
+          errorMessage = err.response?.data?.exception || err.message || "Unknown Error";
+        }
+      } else {
+        errorMessage = err.response?.data?.exception || err.message || "Unknown Error";
+      }
+
       toast.error("Failed to create Prapan Suchi", {
-        description:
-          (err as Error).message ||
-          "Check the browser console (F12) for the full server error.",
+        description: errorMessage,
       });
     } finally {
       setIsSaving(false);
@@ -184,6 +292,9 @@ export default function NewPrapanSuchiPage() {
       description="Create a new prapan suchi"
       submitLabel={isSaving ? "Saving..." : "New Prapan Suchi"}
       cancelLabel="Cancel"
+
+      // 🟢 Capture form methods to enable the watcher logic
+      onFormInit={(methods) => setFormMethods(methods)}
     />
   );
 }

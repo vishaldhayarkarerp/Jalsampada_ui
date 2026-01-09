@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
@@ -60,6 +60,8 @@ export default function AssetDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [showQR, setShowQR] = useState(false);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
 
   useEffect(() => {
     const fetchAsset = async () => {
@@ -93,6 +95,64 @@ export default function AssetDetailPage() {
     if (!url) return;
     const fullUrl = url.startsWith("http") ? url : `${FRAPPE_BASE_URL}${url}`;
     window.open(fullUrl, "_blank");
+  };
+
+  // Optimized Fetch Function
+  const handleQRClick = async () => {
+    setShowQR(true);
+
+    // If we already have the URL for this asset, don't call the API again
+    if (qrUrl || !asset?.name) return;
+
+    try {
+      setIsGeneratingQr(true);
+
+      // Call Frappe PDF generator
+      const { data } = await axios.get(
+        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset_pdf`,
+        {
+          params: { docname: asset.name },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` }
+        }
+      );
+
+      if (data.message) {
+        // Build the final scannable link
+        const pdfFullUrl = `${FRAPPE_BASE_URL}${data.message}`;
+        const qrApiBase = "https://api.qrserver.com/v1/create-qr-code/";
+        const optimizedQrUrl = `${qrApiBase}?size=300x300&data=${encodeURIComponent(pdfFullUrl)}&format=png`;
+
+        setQrUrl(optimizedQrUrl);
+      }
+    } catch (err) {
+      toast.error("QR Generation failed");
+      console.error(err);
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
+
+  // Print Function - Opens PDF directly
+  const handlePrintQR = async () => {
+    if (!asset?.name) return;
+
+    try {
+      const { data } = await axios.get(
+        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset_pdf`,
+        {
+          params: { docname: asset.name },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` }
+        }
+      );
+
+      if (data.message) {
+        const pdfFullUrl = `${data.message}`;
+        window.open(pdfFullUrl, '_blank');
+      }
+    } catch (err) {
+      toast.error("Failed to open PDF");
+      console.error(err);
+    }
   };
 
   const tabs = [
@@ -149,7 +209,7 @@ export default function AssetDetailPage() {
             <button onClick={handleDownloadReport} className="btn-header-secondary-asset text-sm">
               <Download size={16} /> Report
             </button>
-            <button onClick={() => setShowQR(true)} className="btn-header-secondary-asset text-sm">
+            <button onClick={handleQRClick} className="btn-header-secondary-asset text-sm">
               <QrCode size={16} /> QR
             </button>
           </div>
@@ -317,18 +377,32 @@ export default function AssetDetailPage() {
         )}
       </div>
 
-      {/* QR Modal */}
+      {/* Optimized Modal */}
       {showQR && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowQR(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Asset QR</h3>
-              <button onClick={() => setShowQR(false)}><X size={20} /></button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowQR(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700 relative" onClick={(e) => e.stopPropagation()}>
+
+            {/* View Document Button in Bottom Right Corner */}
+            <button
+              disabled={!qrUrl}
+              onClick={handlePrintQR}
+              className="absolute bottom-4 right-4 flex items-center justify-center gap-2 py-2.5 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-semibold text-sm shadow-md transition-all disabled:opacity-50"
+            >
+              <ExternalLink size={14} /> View Document
+            </button>
+
+            <div className="flex flex-col items-center justify-center mb-6 bg-white rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-600 min-h-[260px]">
+              {isGeneratingQr ? (
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="animate-spin h-10 w-10 text-blue-600" />
+                  <span className="text-sm text-gray-400">Fetching asset data...</span>
+                </div>
+              ) : qrUrl ? (
+                <img src={qrUrl} alt="QR" className="w-52 h-52 animate-in fade-in zoom-in duration-300" />
+              ) : (
+                <div className="text-center text-red-500">Failed to load</div>
+              )}
             </div>
-            <div className="flex justify-center mb-4 bg-gray-50 p-6 rounded-xl border border-dashed">
-              <QrCode size={100} className="text-gray-800" />
-            </div>
-            <div className="text-center font-mono font-bold text-sm">{asset.name}</div>
           </div>
         </div>
       )}

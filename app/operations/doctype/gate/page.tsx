@@ -390,13 +390,12 @@ export default function GatePage() {
         <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
           <input
             type="text"
-            placeholder="Search ID, Gate, or LIS..."
-            className="form-control w-full pl-10"
+            placeholder="Search Gates..."
+            className="form-control w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             aria-label="Search Gates"
           />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
         </div>
 
         {/* Right: Sort Pill + View Switcher */}

@@ -4,17 +4,55 @@
 }
 
 .stock-table-container {
-    overflow-x: auto;
     position: relative;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 4px;
+}
+
+.table-scroll-container {
+    max-height: 400px;
+    overflow: auto;
+}
+
+/* Make header sticky when scrolling */
+.stock-table.child-form-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background-color: var(--color-surface, #fff);
 }
 
 /* Ensure the table maintains proper layout with sticky column */
 .stock-table.child-form-table {
     border-collapse: separate;
     border-spacing: 0;
+    width: 100%;
 }
 
 /* Add box shadow to sticky column for better visual separation */
 .child-table-edit-cell {
     box-shadow: -2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Remove extra spacing and prevent double scrollbars */
+.stock-table.child-form-table {
+    margin: 0;
+}
+
+.table-scroll-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }

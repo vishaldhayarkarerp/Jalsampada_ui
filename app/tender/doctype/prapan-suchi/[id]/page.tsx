@@ -10,8 +10,11 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { UseFormReturn } from "react-hook-form";
+import { parseServerMessages } from "@/lib/utils";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_METHOD_URL = "http://103.219.1.138:4412/api/method";
 
 interface PrapanSuchi {
   name: string;
@@ -41,6 +44,66 @@ export default function PrapanSuchiDetailPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
 
+  // 🟢 State to store form methods
+  const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
+
+  React.useEffect(() => {
+    if (!formMethods || !apiKey || !apiSecret) return;
+
+    const { watch, setValue } = formMethods;
+
+    // Watch for changes in "lis_name"
+    const subscription = watch(async (value, { name, type }) => {
+      // Only run if the specific field "lis_name" changed
+      if (name === "lis_name") {
+        const lisName = value.lis_name;
+
+        // 1. If LIS Name is cleared, clear the stages table
+        if (!lisName) {
+          setValue("stage", [], { shouldDirty: true });
+          return;
+        }
+
+        // 2. Fetch Stages from Custom API
+        try {
+          const resp = await axios.get(`${API_METHOD_URL}/quantlis_management.api.fetch_lis_name_stage`, {
+            params: { lis_name: lisName },
+            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            withCredentials: true,
+          });
+
+          const rawList = resp.data.message || [];
+
+          // 3. Format for Child Table
+          const formattedStages = rawList.map((item: any, idx: number) => ({
+            doctype: "Stage Multiselect",
+            stage: item.stage,
+            idx: idx + 1
+          }));
+
+          // 4. Update the form field
+          setValue("stage", formattedStages, { shouldDirty: true });
+
+        } catch (error: any) {
+          console.error("Failed to fetch stages:", error);
+          let errorMessage = "Could not fetch stages for the selected LIS.";
+          const serverMessages = error.response?.data?._server_messages;
+
+          if (serverMessages) {
+            const parsedMessages = parseServerMessages(serverMessages);
+            if (parsedMessages.length > 0) {
+              errorMessage = parsedMessages.join("\n");
+            }
+          }
+
+          toast.error(errorMessage);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [formMethods, apiKey, apiSecret]);
+
   // FETCH DOC
   React.useEffect(() => {
     const fetchDoc = async () => {
@@ -69,13 +132,31 @@ export default function PrapanSuchiDetailPage() {
         setRecord(resp.data.data as PrapanSuchi);
       } catch (err: any) {
         console.error("API Error:", err);
-        setError(
-          err.response?.status === 404
-            ? "Record not found"
-            : err.response?.status === 403
-              ? "Unauthorized"
-              : "Failed to load record"
-        );
+        let errorMessage = "Failed to load record";
+        const serverMessages = err.response?.data?._server_messages;
+
+        if (serverMessages) {
+          const parsedMessages = parseServerMessages(serverMessages);
+          if (parsedMessages.length > 0) {
+            errorMessage = parsedMessages.join("\n");
+          } else {
+            errorMessage =
+              err.response?.status === 404
+                ? "Record not found"
+                : err.response?.status === 403
+                  ? "Unauthorized"
+                  : "Failed to load record";
+          }
+        } else {
+          errorMessage =
+            err.response?.status === 404
+              ? "Record not found"
+              : err.response?.status === 403
+                ? "Unauthorized"
+                : "Failed to load record";
+        }
+
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -236,7 +317,20 @@ export default function PrapanSuchiDetailPage() {
         }
       );
 
-      toast.success("Changes saved!");
+      // Check for server messages in successful response
+      const serverMessages = resp.data._server_messages;
+      if (serverMessages) {
+        const parsedMessages = parseServerMessages(serverMessages);
+        if (parsedMessages.length > 0) {
+          parsedMessages.forEach((msg) => {
+            toast.success(msg);
+          });
+        } else {
+          toast.success("Changes saved!");
+        }
+      } else {
+        toast.success("Changes saved!");
+      }
 
       if (resp.data && resp.data.data) {
         setRecord(resp.data.data as PrapanSuchi);
@@ -246,10 +340,23 @@ export default function PrapanSuchiDetailPage() {
     } catch (err: any) {
       console.error("Save error:", err);
       console.log("Full server error:", err.response?.data);
+
+      let errorMessage = "Unknown Error";
+      const serverMessages = err.response?.data?._server_messages;
+
+      if (serverMessages) {
+        const parsedMessages = parseServerMessages(serverMessages);
+        if (parsedMessages.length > 0) {
+          errorMessage = parsedMessages.join("\n");
+        } else {
+          errorMessage = err.response?.data?.exception || err.message || "Unknown Error";
+        }
+      } else {
+        errorMessage = err.response?.data?.exception || err.message || "Unknown Error";
+      }
+
       toast.error("Failed to save", {
-        description:
-          (err as Error).message ||
-          "Check the browser console (F12) for the full server error.",
+        description: errorMessage,
       });
     } finally {
       setIsSaving(false);
@@ -296,12 +403,13 @@ export default function PrapanSuchiDetailPage() {
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
-      // 🟢 Added Delete Config
       deleteConfig={{
         doctypeName: doctypeName,
         docName: docname,
         redirectUrl: "/tender/doctype/prapan-suchi",
       }}
+      // 🟢 Capture form methods
+      onFormInit={(methods) => setFormMethods(methods)}
     />
   );
 }

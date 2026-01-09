@@ -366,7 +366,7 @@ export default function MaterialRequestPage() {
             isDeleting={isDeleting}
           />
         ) : (
-          <Link href="/operations/doctype/material-request/new" passHref>
+          <Link href="/operations/doctype/spare-indent/new" passHref>
             <button className="btn btn--primary flex items-center gap-2">
               <Plus className="w-4 h-4" /> New Material Request
             </button>
@@ -389,13 +389,12 @@ export default function MaterialRequestPage() {
         <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
           <input
             type="text"
-            placeholder="Search ID, Title, Type..."
-            className="form-control w-full pl-10"
+            placeholder="Search Material Requests..."
+            className="form-control w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             aria-label="Search Material Requests"
           />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
         </div>
 
         {/* Sort & View Switcher */}

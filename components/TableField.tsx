@@ -10,8 +10,6 @@ import { useFieldArray, useFormContext, Controller } from "react-hook-form";
 import { FormField } from "./DynamicFormComponent";
 import { Button } from "@/components/ui/button";
 import { Upload, X, Eye, Edit, Download, Upload as UploadIcon } from "lucide-react"; // Import icons
-import axios from "axios";
-import { useAuth } from "@/context/AuthContext";
 // import SelectInput from "./form/Select"; // Remove if not used
 
 // NEW IMPORT: Add this
@@ -331,34 +329,9 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
         <label className="form-label">{field.label}</label>
 
         <div className="stock-table-container">
-          <table className="stock-table child-form-table">
-            <thead>
-              <tr>
-                <th style={{ width: 40 }} className="child-table-checkbox-cell">
-                  <input
-                    type="checkbox"
-                    className="form-control"
-                    style={{ width: 16, height: 16 }}
-                    checked={allSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = someSelected;
-                    }}
-                    onChange={toggleSelectAll}
-                    aria-label="Select all rows"
-                  />
-                </th>
-                {(field.columns || []).map((c) => (
-                  <th key={c.name}>{c.label}</th>
-                ))}
-                <th style={{ width: 60, position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-          </table>
-          <div className="table-scroll-container" style={{ maxHeight: "400px", overflowY: "auto" }}>
+          <div className="table-scroll-container" style={{ maxHeight: "400px", overflow: "auto" }}>
             <table className="stock-table child-form-table">
-              <thead style={{ visibility: "hidden", height: 0 }}>
+              <thead>
                 <tr>
                   <th style={{ width: 40 }} className="child-table-checkbox-cell">
                     <input

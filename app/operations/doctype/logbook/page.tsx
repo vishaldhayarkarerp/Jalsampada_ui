@@ -388,7 +388,7 @@ export default function LogbookPage() {
             isDeleting={isDeleting}
           />
         ) : (
-          <Link href="/lis-management/doctype/logbook/new" passHref>
+          <Link href="/operations/doctype/logbook/new" passHref>
             <button className="btn btn--primary flex items-center gap-2">
               <Plus className="w-4 h-4" /> Add {title}
             </button>
@@ -411,13 +411,12 @@ export default function LogbookPage() {
         <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
           <input
             type="text"
-            placeholder="Search ID, Status, or LIS..."
-            className="form-control w-full pl-10"
+            placeholder="Search Logbook..."
+            className="form-control w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             aria-label="Search Logbook"
           />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
         </div>
 
         {/* Right: Sort Pill + View Switcher */}
