@@ -33,6 +33,9 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
     const inputRef = React.useRef<HTMLInputElement>(null);
     const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+    // Memoized filters to prevent unnecessary re-renders
+    const filtersString = React.useMemo(() => JSON.stringify(filters), [filters]);
+
     // API Search Logic
     const performSearch = React.useCallback(async (term: string) => {
         if (!isAuthenticated || !apiKey || !linkTarget) return;
@@ -76,26 +79,28 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated, apiKey, apiSecret, linkTarget, filters]);
+    }, [isAuthenticated, apiKey, apiSecret, linkTarget, filtersString]);
 
-    // Debounced search
-    React.useEffect(() => {
+    // Optimized debounced search with useCallback
+    const debouncedSearch = React.useCallback((term: string) => {
         if (searchTimeoutRef.current) {
             clearTimeout(searchTimeoutRef.current);
         }
-
         searchTimeoutRef.current = setTimeout(() => {
-            if (searchTerm !== value) {
-                performSearch(searchTerm);
+            if (term !== value) {
+                performSearch(term);
             }
         }, 300);
+    }, [performSearch, value]);
 
+    React.useEffect(() => {
+        debouncedSearch(searchTerm);
         return () => {
             if (searchTimeoutRef.current) {
                 clearTimeout(searchTimeoutRef.current);
             }
         };
-    }, [searchTerm, performSearch, value]);
+    }, [searchTerm, debouncedSearch]);
 
     // Close dropdown when clicking outside
     React.useEffect(() => {
@@ -111,30 +116,41 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
         };
     }, []);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Filter options based on search term
+    const filteredOptions = React.useMemo(() => {
+        if (!searchTerm?.trim()) {
+            return options;
+        }
+        return options.filter(option =>
+            option.label.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [options, searchTerm]);
+
+    // Memoized event handlers to prevent unnecessary re-renders
+    const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
         setSearchTerm(newValue);
         onChange(newValue);
         setIsOpen(true);
-    };
+    }, [onChange]);
 
-    const handleOptionSelect = (option: LinkInputOption) => {
+    const handleOptionSelect = React.useCallback((option: LinkInputOption) => {
         onChange(option.value);
         setSearchTerm(option.value);
         setIsOpen(false);
-    };
+    }, [onChange]);
 
-    const handleClear = () => {
+    const handleClear = React.useCallback(() => {
         onChange("");
         setSearchTerm("");
         setIsOpen(false);
-    };
+    }, [onChange]);
 
-    const handleFocus = () => {
+    const handleFocus = React.useCallback(() => {
         setSearchTerm(value);
         setIsOpen(true);
         performSearch(value);
-    };
+    }, [value, performSearch]);
 
     return (
         <div className={`relative ${className}`} ref={dropdownRef}>
@@ -147,6 +163,8 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
                     onFocus={handleFocus}
                     placeholder={placeholder || `Select ${linkTarget}...`}
                     className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none form-control focus:border-transparent"
+                    autoComplete="off"
+                    spellCheck="false"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
                     {isLoading ? (
@@ -164,8 +182,8 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
 
             {isOpen && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {options.length > 0 ? (
-                        options.map((option) => (
+                    {filteredOptions.length > 0 ? (
+                        filteredOptions.map((option) => (
                             <div
                                 key={option.value}
                                 onClick={() => handleOptionSelect(option)}
