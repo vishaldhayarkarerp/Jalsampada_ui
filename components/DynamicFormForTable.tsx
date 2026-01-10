@@ -97,7 +97,7 @@ export function DynamicFormForTable({
         }
     }, [data, editingRowIndex]);
 
-    const handleInputChange = async (fieldName: string, value: any) => {
+    const handleInputChange = async (fieldName: string, value: any, _depth: number = 0) => {
         const newFormData = { ...formData, [fieldName]: value };
         setFormData(newFormData);
 
@@ -108,38 +108,68 @@ export function DynamicFormForTable({
 
         // Handle fetchFrom dependencies
         const dependentFields = (fields || []).filter(f => f.fetchFrom?.sourceField === fieldName);
-        if (dependentFields.length > 0 && value) {
-            // Assume all dependents share the same targetDoctype
-            const targetDoctype = dependentFields[0].fetchFrom!.targetDoctype;
-            // Collect unique target fields
-            const targetFieldsSet = new Set(dependentFields.map(f => f.fetchFrom!.targetField));
-            const targetFields = Array.from(targetFieldsSet);
 
-            try {
-                const response = await axios.get(`${API_BASE_URL}api/method/frappe.client.validate_link`, {
-                    params: {
-                        doctype: targetDoctype,
-                        docname: value,
-                        fields: JSON.stringify(targetFields),
-                    },
-                    headers: {
-                        Authorization: `token ${apiKey}:${apiSecret}`,
-                    },
-                });
+        if (dependentFields.length === 0) return;
 
-                const message = response.data.message;
-                if (message) {
-                    dependentFields.forEach(dep => {
-                        const targetField = dep.fetchFrom!.targetField;
-                        const fetchedValue = message[targetField];
-                        if (fetchedValue !== undefined) {
-                            handleInputChange(dep.name, fetchedValue);
-                        }
-                    });
+        if (!value) {
+            // Clear all dependent fields
+            dependentFields.forEach((dep) => {
+                handleInputChange(dep.name, "", _depth + 1);
+            });
+            return;
+        }
+
+        // Prepare API request data
+        const targetDoctype = dependentFields[0].fetchFrom!.targetDoctype;
+        const targetFields = [...new Set(dependentFields.map(f => f.fetchFrom!.targetField))];
+
+        try {
+            const response = await axios.get(`${API_BASE_URL}api/method/frappe.client.validate_link`, {
+                params: {
+                    doctype: targetDoctype,
+                    docname: value,
+                    fields: JSON.stringify(targetFields),
+                },
+                headers: {
+                    Authorization: `token ${apiKey}:${apiSecret}`,
+                },
+            });
+
+            const responseData = response.data?.message || {};
+            console.log("validate_link response:", responseData);
+
+            // Batch update all dependent fields
+            const fieldUpdates: Record<string, any> = {};
+
+            dependentFields.forEach((dep) => {
+                const targetField = dep.fetchFrom!.targetField;
+                const newValue = responseData[targetField] ?? "";
+                fieldUpdates[dep.name] = newValue;
+
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`Setting ${dep.name} ← ${targetField} = ${newValue}`);
                 }
-            } catch (error) {
-                console.error(`Failed to fetch dependent fields for ${fieldName}:`, error);
-            }
+            });
+
+            // Update form state and context in single batch
+            setFormData(current => {
+                const updatedData = { ...current, ...fieldUpdates };
+
+                // Update context if editing
+                if (editingRowIndex !== null) {
+                    updateRow(editingRowIndex, fieldUpdates);
+                }
+
+                return updatedData;
+            });
+
+        } catch (error) {
+            console.error("fetchFrom dependency update failed:", {
+                fieldName,
+                value,
+                targetDoctype,
+                error: error instanceof Error ? error.message : error
+            });
         }
     };
 
@@ -646,8 +676,8 @@ export function DynamicFormForTable({
                 <Button type="button" variant="outline" onClick={onCancel}>
                     Cancel
                 </Button>
-                <Button type="button" onClick={handleSubmit}>
-                    Save Changes
+                <Button type="button" className="btn btn--primary" onClick={handleSubmit}>
+                    Save
                 </Button>
             </div>
         </div>
