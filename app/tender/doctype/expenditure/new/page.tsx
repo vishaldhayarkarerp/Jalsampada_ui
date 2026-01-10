@@ -141,7 +141,13 @@ export default function NewExpenditurePage() {
               targetField: "custom_lis_name"
             }
           },
-          { name: "stage", label: "Stage/ Sub Scheme", type: "Table MultiSelect", linkTarget: "Stage Multiselect" },
+          { name: "stage", label: "Stage/ Sub Scheme", type: "Table MultiSelect", linkTarget: "Stage Multiselect" ,
+             fetchFrom: {
+              sourceField: "tender_number",
+              targetDoctype: "Project",
+              targetField: "custom_stage"
+            }
+          },
           {
             name: "expenditure_details", label: "Expenditure Details", type: "Table", columns: [
               { name: "name_of_work", label: "Name of Work", type: "Text" },

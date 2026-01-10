@@ -193,7 +193,12 @@ export default function FundHeadDetailPage() {
         setRecord(resp.data.data as FundHeadData);
       }
 
+      // Return appropriate status based on docstatus
+      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" : 
+                        resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
+      
       router.push(`/tender/doctype/fund-head/${docname}`);
+      return { status: savedStatus };
     } catch (err: any) {
       console.error("Save error:", err);
 
@@ -258,6 +263,8 @@ export default function FundHeadDetailPage() {
       description={`Update details for record ID ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      initialStatus={record.docstatus === 0 ? "Draft" : record.docstatus === 1 ? "Submitted" : "Cancelled"}
+      docstatus={record.docstatus}
       deleteConfig={{
         doctypeName: doctypeName,
         docName: docname,

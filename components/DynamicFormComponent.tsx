@@ -12,8 +12,8 @@ import {
 } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-// 🟢 1. Added Trash2 icon
-import { Upload, X, MoreVertical, Copy, Trash2 } from "lucide-react";
+// 🟢 1. Removed 'List' icon
+import { Upload, X, MoreVertical, Copy, Trash2, ChevronLeft, ChevronRight, Printer } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
@@ -39,7 +39,7 @@ import { cn, getApiMessages } from "@/lib/utils";
 const DEFAULT_API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Types
+// Types (Unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 export type FieldType =
   | "Data"
@@ -114,21 +114,18 @@ export interface FormField {
   precision?: number;
 }
 
-// Tabbed layout
 export interface TabbedLayout {
   name: string;
   fields: FormField[];
 }
 
-// 🟢 NEW: Delete Configuration Interface
 export interface DeleteConfig {
   doctypeName: string;
   docName: string;
-  redirectUrl?: string; // Optional: If not provided, it will go router.back()
-  baseUrl?: string;     // Optional: Override default API URL
+  redirectUrl?: string;
+  baseUrl?: string;
 }
 
-// Props
 export interface DynamicFormProps {
   tabs: TabbedLayout[];
   onSubmit: (data: Record<string, any>, isDirty: boolean) => Promise<{ status?: string } | void>;
@@ -143,14 +140,12 @@ export interface DynamicFormProps {
   onSubmitDocument?: () => Promise<{ status?: string } | void>;
   onCancelDocument?: () => Promise<{ status?: string } | void>;
   onFormInit?: (form: UseFormReturn<any>) => void;
-
-  // 🟢 Updated Props: Use 'onDelete' for custom logic OR 'deleteConfig' for auto logic
   onDelete?: () => Promise<void> | void;
   deleteConfig?: DeleteConfig;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper: API Fetch
+// Helpers (Unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 async function fetchFieldValue(
   sourceValue: string,
@@ -162,9 +157,6 @@ async function fetchFieldValue(
   try {
     const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
     const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
-
-    console.log(`Making API call to: ${url}`);
-    console.log(`With params: fields=${JSON.stringify([targetField])}`);
 
     const resp = await axios.get(url, {
       params: {
@@ -184,9 +176,6 @@ async function fetchFieldValue(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: Evaluate display depends on conditions (Frappe-style)
-// ─────────────────────────────────────────────────────────────────────────────
 function evaluateDisplayDependsOn(
   condition: string,
   getValue: (name: string) => any
@@ -235,9 +224,6 @@ function evaluateDisplayDependsOn(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: Build dynamic filters for Link fields
-// ─────────────────────────────────────────────────────────────────────────────
 function buildDynamicFilters(
   field: FormField,
   getValue: (name: string) => any
@@ -256,9 +242,6 @@ function buildDynamicFilters(
   return filters;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: default values
-// ─────────────────────────────────────────────────────────────────────────────
 function buildDefaultValues(fields: FormField[]) {
   const dv: Record<string, any> = {};
   for (const f of fields) {
@@ -288,9 +271,6 @@ function buildDefaultValues(fields: FormField[]) {
   return dv;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: validation rules
-// ─────────────────────────────────────────────────────────────────────────────
 function rulesFor(
   field: FormField
 ): RegisterOptions<Record<string, any>, string> {
@@ -328,9 +308,6 @@ function rulesFor(
   return rules;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NEW HELPER: Sanitize Data for Duplication
-// ─────────────────────────────────────────────────────────────────────────────
 function sanitizeForDuplication(data: any): any {
   if (Array.isArray(data)) {
     return data.map((item) => sanitizeForDuplication(item));
@@ -360,9 +337,6 @@ function sanitizeForDuplication(data: any): any {
   return data;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Small UI helpers
-// ─────────────────────────────────────────────────────────────────────────────
 function FieldHelp({ text }: { text?: string }) {
   if (!text) return null;
   return (
@@ -387,7 +361,6 @@ function FieldError({ error }: { error?: any }) {
   );
 }
 
-// 🟢 NEW HELPER: Format slugs for breadcrumbs (e.g., "lis-management" -> "LIS Management")
 const formatSlug = (slug: string) => {
   if (!slug) return "";
   return slug
@@ -410,8 +383,8 @@ export function DynamicForm({
   onSubmitDocument,
   onCancelDocument,
   onFormInit,
-  onDelete, // 🟢 Destructure new props
-  deleteConfig // 🟢 Destructure new props
+  onDelete,
+  deleteConfig
 }: DynamicFormProps) {
   const { apiKey, apiSecret } = useAuth();
 
@@ -421,6 +394,11 @@ export function DynamicForm({
   const router = useRouter();
   const pathname = usePathname();
   const [currentStatus, setCurrentStatus] = React.useState(initialStatus);
+
+  // 🟢 Navigation State
+  const [prevRecord, setPrevRecord] = React.useState<string | null>(null);
+  const [nextRecord, setNextRecord] = React.useState<string | null>(null);
+  const [loadingNeighbors, setLoadingNeighbors] = React.useState(true);
 
   // ── ALL FIELDS (for defaultValues) ───────────────────────────────────────
   const allFields = React.useMemo(() => tabs.flatMap((t) => t.fields), [tabs]);
@@ -445,14 +423,12 @@ export function DynamicForm({
     reset,
   } = methods;
 
-  // 🟢 Expose form instance
   React.useEffect(() => {
     if (onFormInit) {
       onFormInit(methods);
     }
   }, [methods, onFormInit]);
 
-  // ── FORM INITIALIZATION ─────────────────────────────────────────────────────
   React.useEffect(() => {
     reset(defaultValues);
   }, [defaultValues, reset]);
@@ -466,6 +442,95 @@ export function DynamicForm({
     (name: string, options?: any) => register(name, options),
     [register]
   );
+
+  // 🟢 EFFICIENT NEIGHBOR FETCHING (Using Creation Date Logic)
+  React.useEffect(() => {
+    const fetchNeighbors = async () => {
+      const segments = pathname.split("/").filter(Boolean);
+      const doctypeIndex = segments.indexOf("doctype");
+
+      // Stop if not a standard edit path
+      if (doctypeIndex === -1 || segments.length <= doctypeIndex + 2) {
+        setLoadingNeighbors(false);
+        return;
+      }
+
+      const doctypeSlug = segments[doctypeIndex + 1];
+      let currentDocName = segments[segments.length - 1];
+      currentDocName = decodeURIComponent(currentDocName);
+
+      if (currentDocName === "new") {
+        setLoadingNeighbors(false);
+        return;
+      }
+
+      setLoadingNeighbors(true);
+      const doctype = formatSlug(doctypeSlug);
+
+      try {
+        // 1. Get current document creation time
+        const currentDocRes = await axios.get(`${DEFAULT_API_BASE_URL}/${doctype}/${currentDocName}`, {
+          params: { fields: JSON.stringify(["creation"]) },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+          withCredentials: true,
+        });
+
+        const currentCreation = currentDocRes.data.data?.creation;
+        if (!currentCreation) {
+          setLoadingNeighbors(false);
+          return;
+        }
+
+        // 2. Fetch Neighbors relative to current Creation Date
+        // Previous (Newer): Creation > Current (limit 1, Order Ascending)
+        // Next (Older): Creation < Current (limit 1, Order Descending)
+
+        const [prevRes, nextRes] = await Promise.all([
+          axios.get(`${DEFAULT_API_BASE_URL}/${doctype}`, {
+            params: {
+              fields: JSON.stringify(["name"]),
+              filters: JSON.stringify([["creation", ">", currentCreation]]),
+              order_by: "creation asc",
+              limit_page_length: 1
+            },
+            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            withCredentials: true,
+          }),
+          axios.get(`${DEFAULT_API_BASE_URL}/${doctype}`, {
+            params: {
+              fields: JSON.stringify(["name"]),
+              filters: JSON.stringify([["creation", "<", currentCreation]]),
+              order_by: "creation desc",
+              limit_page_length: 1
+            },
+            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            withCredentials: true,
+          })
+        ]);
+
+        setPrevRecord(prevRes.data.data?.[0]?.name || null);
+        setNextRecord(nextRes.data.data?.[0]?.name || null);
+
+      } catch (err) {
+        console.error("Navigation fetch failed:", err);
+      } finally {
+        setLoadingNeighbors(false);
+      }
+    };
+
+    if (apiKey && apiSecret) {
+      fetchNeighbors();
+    } else {
+      setLoadingNeighbors(false);
+    }
+  }, [pathname, apiKey, apiSecret]);
+
+  // Navigation Redirect
+  const navigateToRecord = (recordName: string) => {
+    const segments = pathname.split("/");
+    segments[segments.length - 1] = recordName;
+    router.push(segments.join("/"));
+  };
 
   const onFormSubmit = async (data: Record<string, any>) => {
     try {
@@ -508,7 +573,6 @@ export function DynamicForm({
       : "";
   };
 
-  // ── DUPLICATION LOGIC ────────────────────────────────────────────────────
   const handleDuplicate = React.useCallback(() => {
     const currentData = methods.getValues();
     const cleanData = sanitizeForDuplication(currentData);
@@ -531,9 +595,7 @@ export function DynamicForm({
     router.push(newPath);
   }, [methods, pathname, router]);
 
-  // 🟢 ── INTERNAL DELETE LOGIC ──────────────────────────────────────────────
   const handleDeleteAction = async () => {
-    // 1. If custom handler provided, use it
     if (onDelete) {
       if (window.confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
         await onDelete();
@@ -541,7 +603,6 @@ export function DynamicForm({
       return;
     }
 
-    // 2. If config provided, use standard delete logic
     if (deleteConfig) {
       if (!apiKey || !apiSecret) {
         toast.error("Authentication required to delete.");
@@ -559,7 +620,6 @@ export function DynamicForm({
             withCredentials: true,
           });
 
-          // Handle successful response with ultra-simple handler
           const messages = getApiMessages(response, null, `${doctypeName} deleted successfully`, "Failed to delete record");
 
           if (messages.success) {
@@ -573,9 +633,7 @@ export function DynamicForm({
           }
         } catch (err: any) {
           console.error("Delete error:", err);
-
           const messages = getApiMessages(null, err, `${doctypeName} deleted successfully`, "Failed to delete record");
-
           toast.error(messages.message, { description: messages.description });
         }
       }
@@ -584,15 +642,16 @@ export function DynamicForm({
 
   const showDeleteOption = !!onDelete || !!deleteConfig;
 
-  // ── STATUS MONITORING ─────────────────────────────────────────────────────
   React.useEffect(() => {
     if (isDirty) {
       setCurrentStatus("Not Saved");
       console.log("Not Saved");
+    } else {
+      // Reset to initial status when form is no longer dirty
+      setCurrentStatus(initialStatus);
     }
-  }, [isDirty]);
+  }, [isDirty, initialStatus]);
 
-  // ── KEYBOARD SHORTCUTS ─────────────────────────────────────────────────────
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "s") {
@@ -609,20 +668,102 @@ export function DynamicForm({
         event.preventDefault();
         handleDuplicate();
       }
+
+      // Keyboard Navigation
+      if ((event.ctrlKey || event.metaKey) && event.key === "ArrowLeft" && prevRecord) {
+        event.preventDefault();
+        navigateToRecord(prevRecord);
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === "ArrowRight" && nextRecord) {
+        event.preventDefault();
+        navigateToRecord(nextRecord);
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [handleDuplicate]);
+  }, [handleDuplicate, prevRecord, nextRecord]);
 
-  // 🟢 NEW HELPER: BREADCRUMB RENDERER
+  // ── FETCH FROM FUNCTIONALITY ─────────────────────────────────────────────
+  React.useEffect(() => {
+    if (!apiKey || !apiSecret) return;
+
+    const fieldsWithFetchFrom = tabs
+      .flatMap((tab) => tab.fields)
+      .filter((field) => field.fetchFrom);
+
+    const sourceFieldMap = new Map<string, FormField[]>();
+    fieldsWithFetchFrom.forEach((field) => {
+      if (field.fetchFrom) {
+        const sourceField = field.fetchFrom.sourceField;
+        if (!sourceFieldMap.has(sourceField)) {
+          sourceFieldMap.set(sourceField, []);
+        }
+        sourceFieldMap.get(sourceField)?.push(field);
+      }
+    });
+
+    const previousValues = new Map<string, any>();
+
+    const handleFetchForSource = async (sourceFieldName: string) => {
+      const sourceValue = watch(sourceFieldName);
+      const previousValue = previousValues.get(sourceFieldName);
+
+      if (sourceValue !== previousValue) {
+        previousValues.set(sourceFieldName, sourceValue);
+
+        const dependentFields = sourceFieldMap.get(sourceFieldName) || [];
+
+        for (const field of dependentFields) {
+          if (!field.fetchFrom) continue;
+
+          if (sourceValue) {
+            try {
+              const fetchedValue = await fetchFieldValue(
+                sourceValue,
+                field.fetchFrom.targetDoctype,
+                field.fetchFrom.targetField,
+                apiKey,
+                apiSecret
+              );
+
+              if (fetchedValue !== null && fetchedValue !== undefined) {
+                setValue(field.name, fetchedValue, { shouldDirty: false });
+              }
+            } catch (e) {
+              console.error(`Failed to fetch ${field.name}:`, e);
+            }
+          } else {
+            setValue(field.name, "", { shouldDirty: false });
+          }
+        }
+      }
+    };
+
+    const sourceFields = Array.from(sourceFieldMap.keys());
+    sourceFields.forEach((sourceField) => {
+      previousValues.set(sourceField, watch(sourceField));
+    });
+
+    sourceFields.forEach(handleFetchForSource);
+
+    const subscription = watch((value, { name, type }) => {
+      if (name && sourceFieldMap.has(name)) {
+        setTimeout(() => handleFetchForSource(name), 100);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [tabs, watch, setValue, apiKey, apiSecret]);
+
   const renderHeaderContent = () => {
     const segments = pathname.split("/").filter(Boolean);
     const doctypeIndex = segments.indexOf("doctype");
 
-    // Fallback if not in a standard doctype path
     if (doctypeIndex === -1 || doctypeIndex === 0) {
       return <h2 style={{ margin: 0 }}>{title}</h2>;
     }
@@ -659,7 +800,6 @@ export function DynamicForm({
     );
   };
 
-  // ── RENDER HELPERS ───────────────────────────────────────────────────────
   const renderInput = (field: FormField, type: string = "text") => {
     const rules = rulesFor(field);
     const commonProps: any = {
@@ -675,7 +815,6 @@ export function DynamicForm({
       field.type
     );
 
-    // Precision for Currency fields
     if (field.type === "Currency" && field.precision) {
       commonProps.step = "0.01";
       return (
@@ -1260,10 +1399,10 @@ export function DynamicForm({
             {/* Title Section */}
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                
-                {/* 🟢 Render Breadcrumbs instead of generic H2 */}
+
+                {/* 🟢 Render Breadcrumbs */}
                 {renderHeaderContent()}
-                
+
                 <span
                   className={`status-badge text-xs whitespace-nowrap ${currentStatus === "Not Saved" ? "status-badge-danger" : "status-badge-draft"
                     }`}
@@ -1336,6 +1475,44 @@ export function DynamicForm({
                 </button>
               )}
 
+              {/* 🟢 PREVIOUS / NEXT NAVIGATION GROUP - Always rendered, disabled while loading */}
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-r-none border-r-0 transition-all duration-200 hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5"
+                  onClick={() => prevRecord && navigateToRecord(prevRecord)}
+                  disabled={loadingNeighbors || !prevRecord}
+                  title={loadingNeighbors ? "Loading..." : "Previous Record"}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-l-none transition-all duration-200 hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5"
+                  onClick={() => nextRecord && navigateToRecord(nextRecord)}
+                  disabled={loadingNeighbors || !nextRecord}
+                  title={loadingNeighbors ? "Loading..." : "Next Record"}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Print Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 transition-all duration-200 hover:bg-grey-50 hover:border-grey-600 hover:text-purple-900 hover:shadow-md hover:-translate-y-0.5"
+                title="Print"
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -1351,7 +1528,7 @@ export function DynamicForm({
                     </span>
                   </DropdownMenuItem>
 
-                  {/* 🟢 4. New Delete Action in Dropdown */}
+                  {/* Delete Action in Dropdown */}
                   {showDeleteOption && (
                     <>
                       <DropdownMenuSeparator />

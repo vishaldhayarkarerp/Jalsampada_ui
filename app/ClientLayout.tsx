@@ -168,7 +168,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         <p>© 2025 JALSAMPADA. All rights reserved.</p>
       </footer>
 
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-center" closeButton />
     </div>
   );
 }

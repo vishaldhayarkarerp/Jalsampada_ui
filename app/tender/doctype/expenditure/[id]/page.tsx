@@ -593,7 +593,12 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
         setExpenditure(resp.data.data as ExpenditureData);
       }
 
+      // Return appropriate status based on docstatus
+      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" : 
+                        resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
+      
       router.push(`/tender/doctype/expenditure/${docname}`);
+      return { status: savedStatus };
     } catch (err: any) {
       console.error("Save error:", err);
       console.log("Full server error:", err.response?.data);
@@ -658,6 +663,8 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
       onCancel={handleCancel}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      initialStatus={expenditure.docstatus === 0 ? "Draft" : expenditure.docstatus === 1 ? "Submitted" : "Cancelled"}
+      docstatus={expenditure.docstatus}
       deleteConfig={{
         doctypeName: doctypeName,
         docName: docname,
