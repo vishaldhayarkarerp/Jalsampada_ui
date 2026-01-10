@@ -234,10 +234,15 @@ export default function ItemDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit Item: ${item.item_code || item.name}`}
+      title={`${doctypeName}: ${item.item_code || item.name}`}
       description={`Update basic information for item ${item.item_code || docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      deleteConfig={{
+        doctypeName: doctypeName,
+        docName: docname,
+        redirectUrl: "/operations/doctype/item"
+      }}
     />
   );
 }

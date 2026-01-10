@@ -295,10 +295,15 @@ export default function GateOperationLogbookDetailPage() {
             tabs={formTabs}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
-            title={`Edit Gate Operation Logbook: ${record.name}`}
+            title={`${doctypeName}: ${record.name}`}
             description={`Record ID: ${docname}`}
             submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"
+            deleteConfig={{
+                doctypeName: doctypeName,
+                docName: docname,
+                redirectUrl: "/operations/doctype/gate-operation-logbook"
+            }}
         />
     );
 }

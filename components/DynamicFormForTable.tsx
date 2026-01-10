@@ -8,6 +8,29 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTableRowContext } from "./TableRowContext";
+import { cn } from "@/lib/utils";
+import { Upload, X, Eye } from "lucide-react";
+
+const API_BASE_URL = "http://103.219.1.138:4412/";
+
+// Helper: Build dynamic filters for Link fields
+function buildDynamicFilters(
+    field: FormField,
+    getValue: (name: string) => any
+): Record<string, any> {
+    const filters: Record<string, any> = {};
+    if (field.filterMapping?.length) {
+        field.filterMapping.forEach((mapping) => {
+            const sourceValue = getValue(mapping.sourceField);
+            if (sourceValue) {
+                filters[mapping.targetField] = sourceValue;
+            }
+        });
+    } else if (typeof field.filters === "function") {
+        Object.assign(filters, field.filters(getValue));
+    }
+    return filters;
+}
 
 interface DynamicFormForTableProps {
     fields: FormField['columns'];
@@ -72,7 +95,6 @@ export function DynamicFormForTable({
     }, [data, editingRowIndex]);
 
     const handleInputChange = (fieldName: string, value: any) => {
-        console.log('Field changed:', fieldName, 'to:', value);
         const newFormData = { ...formData, [fieldName]: value };
         setFormData(newFormData);
 
@@ -91,6 +113,11 @@ export function DynamicFormForTable({
         const value = formData[field.name] ?? "";
         console.log(`Rendering Link field for ${field.name}:`, { value, formData: formData[field.name] });
 
+        // Build dynamic filters for Link fields
+        const getValue = (name: string) => formData[name];
+        const filtersToPass = buildDynamicFilters(field, getValue);
+        const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
+
         return (
             <div className="form-group">
                 <label className="form-label">
@@ -98,11 +125,13 @@ export function DynamicFormForTable({
                     {field.required ? " *" : ""}
                 </label>
                 <LinkInput
+                    key={filterKey}
                     value={value}
                     onChange={(val) => handleInputChange(field.name, val)}
                     placeholder={field.placeholder || `Select ${field.label}...`}
                     linkTarget={field.linkTarget}
                     className="w-full"
+                    filters={filtersToPass}
                 />
                 <FieldError error={null} />
                 <FieldHelp text={field.description} />
@@ -112,13 +141,6 @@ export function DynamicFormForTable({
 
     const renderInput = (field: FormField, type: string = "text") => {
         const value = formData[field.name] ?? "";
-        console.log(`Rendering input for ${field.name}:`, {
-            value,
-            formData: formData[field.name],
-            fullFormData: formData,
-            fieldType: field.type
-        });
-
         return (
             <div className="form-group">
                 <label htmlFor={field.name} className="form-label">
@@ -252,6 +274,8 @@ export function DynamicFormForTable({
                         showYearDropdown
                         scrollableYearDropdown
                         yearDropdownItemNumber={100}
+                        withPortal
+                        portalId="root"
                     />
                     <FieldError error={null} />
                     <FieldHelp text={field.description} />
@@ -278,6 +302,247 @@ export function DynamicFormForTable({
         );
     };
 
+    const renderColor = (field: FormField) => {
+        const value = formData[field.name] ?? "#000000";
+
+        return (
+            <div className="form-group">
+                <label htmlFor={field.name} className="form-label">
+                    {field.label}
+                    {field.required ? " *" : ""}
+                </label>
+                <input
+                    id={field.name}
+                    type="color"
+                    className={cn("form-control h-10 p-1")}
+                    value={value}
+                    onChange={(e) => handleInputChange(field.name, e.target.value)}
+                />
+                <FieldError error={null} />
+                <FieldHelp text={field.description} />
+            </div>
+        );
+    };
+
+    const renderDuration = (field: FormField) => {
+        const value = formData[field.name] ?? {};
+        const base = field.name;
+
+        return (
+            <div className="form-group">
+                <label className="form-label">
+                    {field.label}
+                    {field.required ? " *" : ""}
+                </label>
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(3, 1fr)",
+                        gap: 8,
+                    }}
+                >
+                    <input
+                        type="number"
+                        min={0}
+                        className="form-control"
+                        placeholder="Hours"
+                        value={value.hours || ""}
+                        onChange={(e) => handleInputChange(field.name, { ...value, hours: e.target.value })}
+                    />
+                    <input
+                        type="number"
+                        min={0}
+                        className="form-control"
+                        placeholder="Minutes"
+                        value={value.minutes || ""}
+                        onChange={(e) => handleInputChange(field.name, { ...value, minutes: e.target.value })}
+                    />
+                    <input
+                        type="number"
+                        min={0}
+                        className="form-control"
+                        placeholder="Seconds"
+                        value={value.seconds || ""}
+                        onChange={(e) => handleInputChange(field.name, { ...value, seconds: e.target.value })}
+                    />
+                </div>
+                <FieldHelp text={field.description} />
+            </div>
+        );
+    };
+
+    const renderRating = (field: FormField) => {
+        const value = formData[field.name] ?? 0;
+
+        return (
+            <div className="form-group">
+                <label className="form-label">
+                    {field.label}
+                    {field.required ? " *" : ""}
+                </label>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                            key={star}
+                            type="button"
+                            className="btn btn--ghost btn--sm"
+                            onClick={() => handleInputChange(field.name, star)}
+                            style={{
+                                color: star <= value ? '#fbbf24' : '#d1d5db',
+                                padding: '4px 8px',
+                                fontSize: '16px'
+                            }}
+                        >
+                            ★
+                        </button>
+                    ))}
+                </div>
+                <FieldHelp text={field.description} />
+            </div>
+        );
+    };
+
+    const renderReadOnly = (field: FormField) => {
+        const value = formData[field.name];
+        return (
+            <div className="form-group">
+                <label className="form-label">{field.label}</label>
+                <div
+                    style={{
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-base)",
+                        padding: 12,
+                        background: "var(--color-surface-muted, transparent)",
+                    }}
+                >
+                    {field.readOnlyValue ?? value ?? "—"}
+                </div>
+                <FieldHelp text={field.description} />
+            </div>
+        );
+    };
+
+    const renderButton = (field: FormField) => (
+        <div className="form-group">
+            <button
+                type="button"
+                className="btn btn--outline btn--full-width"
+                onClick={() => field.action?.()}
+            >
+                {field.buttonLabel || field.label}
+            </button>
+            <FieldHelp text={field.description} />
+        </div>
+    );
+
+    const renderAttachment = (field: FormField) => {
+        const value = formData[field.name];
+        const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+        const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+
+        React.useEffect(() => {
+            let objectUrl: string | null = null;
+
+            if (value instanceof File) {
+                // Case 1: New file selected by user
+                objectUrl = URL.createObjectURL(value);
+                setPreviewUrl(objectUrl);
+
+            } else if (typeof value === 'string' && (value.startsWith("/files/") || value.startsWith("/private/files/"))) {
+                setPreviewUrl(API_BASE_URL + value);
+
+            } else {
+                setPreviewUrl(null);
+            }
+
+            return () => {
+                if (objectUrl) {
+                    URL.revokeObjectURL(objectUrl);
+                }
+            };
+        }, [value]);
+
+        const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                handleInputChange(field.name, file);
+            }
+        };
+
+        const handleClear = () => {
+            handleInputChange(field.name, null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        };
+
+        return (
+            <div className="form-group flex flex-col gap-2">
+                <label className="form-label font-medium">{field.label}</label>
+
+                <div className="flex items-center gap-2">
+                    <input
+                        type="file"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                    />
+
+                    {!value ? (
+                        // "Browse" button
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="btn--sm"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Upload size={14} className="mr-2" />
+                            Attach
+                        </Button>
+                    ) : (
+                        // Show file name and action buttons
+                        <>
+
+                            <span className="text-sm truncate flex-1" title={typeof value === 'string' ? value : value.name}>
+                                {typeof value === 'string' ? value.split('/').pop() : value.name}
+                            </span>
+
+                            {/* Preview (Eye) Button */}
+                            {previewUrl && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    asChild
+                                >
+                                    <a href={previewUrl} target="_blank" rel="noopener noreferrer" title="Preview">
+                                        <Eye size={16} />
+                                    </a>
+                                </Button>
+                            )}
+
+                            {/* Clear (X) Button */}
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-500"
+                                onClick={handleClear}
+                                title="Clear"
+                            >
+                                <X size={16} />
+                            </Button>
+                        </>
+                    )}
+                </div>
+
+                <FieldHelp text={field.description} />
+            </div>
+        );
+    };
+
     const renderField = (field: FormField) => {
         switch (field.type) {
             case "Data":
@@ -297,18 +562,32 @@ export function DynamicFormForTable({
             case "Currency":
             case "Percent":
                 return renderInput(field, "number");
+            case "Color":
+                return renderColor(field);
             case "Date":
                 return renderDateLike(field, "date");
             case "DateTime":
                 return renderDateLike(field, "datetime-local");
             case "Time":
                 return renderDateLike(field, "time");
+            case "Duration":
+                return renderDuration(field);
             case "Check":
                 return renderCheckbox(field);
             case "Select":
                 return renderSelect(field);
             case "Link":
                 return renderLink(field);
+            case "Barcode":
+                return renderInput(field, "text");
+            case "Read Only":
+                return renderReadOnly(field);
+            case "Rating":
+                return renderRating(field);
+            case "Button":
+                return renderButton(field);
+            case "Attach":
+                return renderAttachment(field);
             default:
                 return renderInput(field, "text");
         }

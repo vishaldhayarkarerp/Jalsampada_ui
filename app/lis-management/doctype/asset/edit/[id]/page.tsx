@@ -10,6 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
 import {
     Loader2,
     FileText,
@@ -39,7 +40,7 @@ interface AssetData {
     asset_name?: string;
     asset_category?: string;
     custom_asset_no?: string;
-    location?: string;
+    // location?: string;
     custom_lis_name?: string;
     custom_stage_no?: string;
     custom_serial_number?: string;
@@ -581,14 +582,17 @@ export default function RecordDetailPage() {
                 name: "Details",
                 fields: fields([
                     { name: "asset_name", label: "Asset Name", type: "Text", required: true },
-                    { name: "company", label: "Company", type: "Link", required: true, linkTarget: "Company" },
+                    // { name: "company", label: "Company", type: "Link", required: true, linkTarget: "Company" },D
                     { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
                     { name: "custom_asset_no", label: "Asset No", type: "Data" },
                     { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location" },
-                    { name: "custom_lis_name", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme" },
+                    { name: "custom_lis_name", label: "Lift Irrigation Scheme", required: true, type: "Link", linkTarget: "Lift Irrigation Scheme" },
                     { name: "custom_lis_phase", label: "LIS Phase", type: "Link", linkTarget: "LIS Phases" },
-                    { name: "custom_stage_no", label: "Stage No.", type: "Link", linkTarget: "Stage No" },
+                    { name: "custom_stage_no", label: "Stage No.", type: "Link", required: true, linkTarget: "Stage No" },
                     { name: "custom_serial_number", label: "Serial Number", type: "Data" },
+
+
+
                     {
                         name: "is_existing_asset",
                         label: "Is Existing Asset",
@@ -612,6 +616,25 @@ export default function RecordDetailPage() {
                         label: "Is Obsolete",
                         type: "Check",
                         displayDependsOn: "is_composite_asset==0 && is_existing_asset==0 && is_composite_component==0",
+                    },
+                    { name: "section_interchange", label: "Interchange Details", type: "Section Break" },
+                    {
+                        name: "custom_current_linked_asset",
+                        label: "Current Linked Motor/Pump",
+                        type: "Link",
+                        linkTarget: "Asset"
+                    },
+                    {
+                        name: "custom_linked_asset_no",
+                        label: "Linked Asset No",
+                        type: "Data",
+                        fetchFrom: { sourceField: "custom_current_linked_asset", targetDoctype: "Asset", targetField: "custom_asset_no" }
+
+                    },
+                    {
+                        name: "custom_interchange_date",
+                        label: "Interchange Date",
+                        type: "Date"
                     },
                     { name: "section_purchase", label: "Purchase Details", type: "Section Break" },
                     {
@@ -639,6 +662,7 @@ export default function RecordDetailPage() {
                     }
                 ]),
             },
+
             {
                 name: "Insurance",
                 fields: fields([
@@ -755,7 +779,12 @@ export default function RecordDetailPage() {
                 maxContentLength: Infinity,
             });
 
-            toast.success("Changes saved!");
+            const messages = getApiMessages(resp, null, "Changes saved!", "Failed to save");
+            if (messages.success) {
+                toast.success(messages.message, { description: messages.description });
+            } else {
+                toast.error(messages.message, { description: messages.description });
+            }
 
             if (resp.data && resp.data.data) {
                 setAsset(resp.data.data);
@@ -767,9 +796,23 @@ export default function RecordDetailPage() {
 
         } catch (err: any) {
             console.error("Save error:", err);
-            toast.error("Failed to save", {
-                description: (err as Error).message || "Check the browser console (F12) for the full server error."
-            });
+
+            const messages = getApiMessages(
+                null,
+                err,
+                "Changes saved!",
+                "Failed to save",
+                (error) => {
+                    if (error.response?.status === 404) return "Asset not found";
+                    if (error.response?.status === 403) return "Unauthorized";
+                    if (error.response?.status === 417) return "Expectation Failed";
+                    return "Failed to save";
+                }
+            );
+
+            if (!messages.success) {
+                toast.error(messages.message, { description: messages.description });
+            }
             return { status: asset?.status };
         } finally {
             setIsSaving(false);
@@ -793,7 +836,12 @@ export default function RecordDetailPage() {
                 withCredentials: true,
             });
 
-            toast.success("Document submitted successfully!");
+            const messages = getApiMessages(resp, null, "Document submitted successfully!", "Failed to submit document");
+            if (messages.success) {
+                toast.success(messages.message, { description: messages.description });
+            } else {
+                toast.error(messages.message, { description: messages.description });
+            }
 
             if (resp.data && resp.data.data) {
                 setAsset(resp.data.data);
@@ -804,9 +852,23 @@ export default function RecordDetailPage() {
 
         } catch (err: any) {
             console.error("Submit error:", err);
-            toast.error("Failed to submit document", {
-                description: (err as Error).message || "Check the browser console (F12) for the full server error."
-            });
+
+            const messages = getApiMessages(
+                null,
+                err,
+                "Document submitted successfully!",
+                "Failed to submit document",
+                (error) => {
+                    if (error.response?.status === 404) return "Document not found";
+                    if (error.response?.status === 403) return "Unauthorized";
+                    if (error.response?.status === 417) return "Expectation Failed";
+                    return "Failed to submit document";
+                }
+            );
+
+            if (!messages.success) {
+                toast.error(messages.message, { description: messages.description });
+            }
         } finally {
             setIsSaving(false);
         }
@@ -829,7 +891,12 @@ export default function RecordDetailPage() {
                 withCredentials: true,
             });
 
-            toast.success("Document cancelled successfully!");
+            const messages = getApiMessages(resp, null, "Document cancelled successfully!", "Failed to cancel document");
+            if (messages.success) {
+                toast.success(messages.message, { description: messages.description });
+            } else {
+                toast.error(messages.message, { description: messages.description });
+            }
 
             if (resp.data && resp.data.data) {
                 setAsset(resp.data.data);
@@ -840,15 +907,29 @@ export default function RecordDetailPage() {
 
         } catch (err: any) {
             console.error("Cancel error:", err);
-            toast.error("Failed to cancel document", {
-                description: (err as Error).message || "Check the browser console (F12) for the full server error."
-            });
+
+            const messages = getApiMessages(
+                null,
+                err,
+                "Document cancelled successfully!",
+                "Failed to cancel document",
+                (error) => {
+                    if (error.response?.status === 404) return "Document not found";
+                    if (error.response?.status === 403) return "Unauthorized";
+                    if (error.response?.status === 417) return "Expectation Failed";
+                    return "Failed to cancel document";
+                }
+            );
+
+            if (!messages.success) {
+                toast.error(messages.message, { description: messages.description });
+            }
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleCancel = () => router.back();
+    const handleCancel = () => router.push('/lis-management/doctype/asset');
 
     /* -------------------------------------------------
        8. DUPLICATE 
@@ -922,7 +1003,7 @@ export default function RecordDetailPage() {
             tabs={formTabs}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
-            title={`Edit Asset: ${asset.name}`}
+            title={`${asset.name}`}
             description={`Status: ${asset?.status || 'Unknown'}`}
             submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"

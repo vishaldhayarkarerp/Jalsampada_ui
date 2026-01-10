@@ -18,9 +18,10 @@ interface LinkInputProps {
     placeholder?: string;
     linkTarget?: string;
     className?: string;
+    filters?: Record<string, any>;
 }
 
-export function LinkInput({ value, onChange, placeholder, linkTarget, className }: LinkInputProps) {
+export function LinkInput({ value, onChange, placeholder, linkTarget, className, filters = {} }: LinkInputProps) {
     const { apiKey, apiSecret, isAuthenticated } = useAuth();
 
     const [searchTerm, setSearchTerm] = React.useState("");
@@ -43,13 +44,20 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className 
                 searchFilters.push([linkTarget, "name", "like", `%${term.trim()}%`]);
             }
 
-            const filters = searchFilters.length > 0 ? JSON.stringify(searchFilters) : undefined;
+            // Apply filters from filterMapping
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value != null && value !== "") {
+                    searchFilters.push([linkTarget, key, "=", value]);
+                }
+            });
+
+            const query = searchFilters.length > 0 ? JSON.stringify(searchFilters) : undefined;
             const response = await axios.get(`${API_BASE_URL}/${linkTarget}`, {
                 headers: {
                     Authorization: `token ${apiKey}:${apiSecret}`,
                 },
                 params: {
-                    filters,
+                    filters: query,
                     fields: JSON.stringify(["name"]),
                     limit_page_length: 20,
                 },
@@ -68,7 +76,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className 
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated, apiKey, apiSecret, linkTarget]);
+    }, [isAuthenticated, apiKey, apiSecret, linkTarget, filters]);
 
     // Debounced search
     React.useEffect(() => {
@@ -138,22 +146,20 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className 
                     onChange={handleInputChange}
                     onFocus={handleFocus}
                     placeholder={placeholder || `Select ${linkTarget}...`}
-                    className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none form-control focus:border-transparent"
                 />
-                {value && (
-                    <button
-                        type="button"
-                        onClick={handleClear}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                        <X size={16} />
-                    </button>
-                )}
-                {isLoading && (
-                    <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-                        <Loader2 size={16} className="animate-spin text-blue-500" />
-                    </div>
-                )}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
+                    {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : value ? (
+                        <X
+                            className="h-4 w-4 cursor-pointer hover:text-gray-600"
+                            onClick={handleClear}
+                        />
+                    ) : (
+                        <Search className="h-4 w-4" />
+                    )}
+                </div>
             </div>
 
             {isOpen && (
@@ -163,10 +169,9 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className 
                             <div
                                 key={option.value}
                                 onClick={() => handleOptionSelect(option)}
-                                className="px-3 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
+                                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors"
                             >
-                                <Search size={14} className="text-gray-400" />
-                                <span>{option.label}</span>
+                                {option.label}
                             </div>
                         ))
                     ) : (

@@ -23,7 +23,7 @@ export default function NewVillagePage() {
           name: "district",
           label: "District",
           type: "Link",
-          linkTarget: "District",
+          linkTarget: "WRD District",
           required: true,
           placeholder: "Select District",
         },
@@ -31,7 +31,7 @@ export default function NewVillagePage() {
           name: "taluka",
           label: "Taluka",
           type: "Link",
-          linkTarget: "Taluka",
+          linkTarget: "WRD Taluka",
           required: true,
           placeholder: "Select Taluka",
           // 🟢 Filter: Only show Talukas belonging to the selected District
@@ -46,15 +46,10 @@ export default function NewVillagePage() {
           required: true,
           placeholder: "e.g. Bedag",
         },
-      ],
-    },
-    {
-      name: "LIS Details",
-      fields: [
         // 🟢 Child Table based on your CSV
         {
           name: "lis_wise_village_details",
-          label: "LIS Wise Details",
+          label: "Village LIS Wise Details",
           type: "Table",
           columns: [
             { 

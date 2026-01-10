@@ -117,7 +117,7 @@ export default function LISPhaseDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={() => router.back()}
-      title={`Edit LIS Phase`}
+      title={`${doctypeName}: ${lisDoc?.lis_phase || docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
       deleteConfig={{

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 // 🟢 CONFIG
-const DOCTYPE = "Taluka";
+const DOCTYPE = "WRD Taluka";
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ export default function TalukaListPage() {
   }, [fetchData]);
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/taluka/${id}`);
+    router.push(`/lis-management/doctype/wrd-taluka/${id}`);
   };
 
   // ── Renderers ────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ export default function TalukaListPage() {
           <h2 className="text-2xl font-bold">Taluka</h2>
           <p className="text-muted-foreground">Manage Talukas</p>
         </div>
-        <Link href="/lis-management/doctype/taluka/new" passHref>
+        <Link href="/lis-management/doctype/wrd-taluka/new" passHref>
           <button className="btn btn--primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add Taluka
           </button>

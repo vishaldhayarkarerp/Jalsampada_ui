@@ -213,10 +213,16 @@ export default function GateDetailPage() {
             tabs={formTabs}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
-            title={`Edit Gate: ${record.name}`}
+            title={`${doctypeName}: ${record.name}`}
             description={`Record ID: ${docname}`}
             submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"
+            deleteConfig={{
+                doctypeName: doctypeName,
+                docName: docname,
+                redirectUrl: "/operations/doctype/gate"
+            }}
+            
         />
     );
 }

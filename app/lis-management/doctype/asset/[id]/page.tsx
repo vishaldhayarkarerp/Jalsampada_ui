@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
 import {
   Download, QrCode,
   BarChart3, History, Settings, X, Pencil, Loader2,
@@ -80,7 +81,22 @@ export default function AssetDetailPage() {
         setAsset(resp.data.data);
       } catch (err: any) {
         console.error("API Error:", err);
-        setError("Failed to load asset details. Check connection.");
+        
+        const messages = getApiMessages(
+          null,
+          err,
+          "Asset loaded successfully!",
+          "Failed to load asset details. Check connection.",
+          (error) => {
+            if (error.response?.status === 404) return "Asset not found";
+            if (error.response?.status === 403) return "Unauthorized";
+            return "Failed to load asset details";
+          }
+        );
+        
+        if (!messages.success) {
+          setError(messages.message);
+        }
       } finally {
         setLoading(false);
       }
@@ -125,8 +141,22 @@ export default function AssetDetailPage() {
         setQrUrl(optimizedQrUrl);
       }
     } catch (err) {
-      toast.error("QR Generation failed");
       console.error(err);
+      
+      const messages = getApiMessages(
+        null,
+        err,
+        "QR code generated successfully!",
+        "QR Generation failed",
+        (error) => {
+          if (error.response?.status === 500) return "Server error during QR generation";
+          return "Failed to generate QR code";
+        }
+      );
+      
+      if (!messages.success) {
+        toast.error(messages.message, { description: messages.description });
+      }
     } finally {
       setIsGeneratingQr(false);
     }
@@ -150,8 +180,23 @@ export default function AssetDetailPage() {
         window.open(pdfFullUrl, '_blank');
       }
     } catch (err) {
-      toast.error("Failed to open PDF");
       console.error(err);
+      
+      const messages = getApiMessages(
+        null,
+        err,
+        "PDF opened successfully!",
+        "Failed to open PDF",
+        (error) => {
+          if (error.response?.status === 404) return "PDF not found";
+          if (error.response?.status === 403) return "Unauthorized to access PDF";
+          return "Failed to open PDF";
+        }
+      );
+      
+      if (!messages.success) {
+        toast.error(messages.message, { description: messages.description });
+      }
     }
   };
 

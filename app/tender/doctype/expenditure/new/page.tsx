@@ -119,14 +119,14 @@ export default function NewExpenditurePage() {
         fields: [
           { name: "fiscal_year", label: "Fiscal Year", type: "Link", linkTarget: "Fiscal Year" },
           { name: "tender_number", label: "Tender Number", type: "Link", linkTarget: "Project" },
-          { name: "tender_amount", label: "Tender Amount", type: "Currency" },
+          { name: "tender_amount", label: "Tender Amount", type: "Currency",precision: 2 },
           { name: "posting_date", label: "Bill Date", type: "Date" },
           { name: "prev_bill_no", label: "Previous Bill Number", type: "Data" },
           { name: "bill_number", label: "Bill Number", type: "Data" },
-          { name: "prev_bill_amt", label: "Previous Bill Amount", type: "Currency" },
-          { name: "bill_amount", label: "Bill Amount", type: "Currency" },
-          { name: "bill_upto", label: "Bill Upto Amount", type: "Currency" },
-          { name: "remaining_amount", label: "Remaining Amount", type: "Currency" },
+          { name: "prev_bill_amt", label: "Previous Bill Amount", type: "Currency",precision: 2 },
+          { name: "bill_amount", label: "Bill Amount", type: "Currency",precision: 2 },
+          { name: "bill_upto", label: "Bill Upto Amount", type: "Currency",precision: 2 },
+          { name: "remaining_amount", label: "Remaining Amount", type: "Currency",precision: 2 },
           { name: "bill_type", label: "Bill Type", type: "Select", options: [{ label: "Running", value: "Running" }, { label: "Final", value: "Final" }] },
           { name: "page_no", label: "Page No", type: "Data" },
           { name: "mb_no", label: "MB No", type: "Data" },
@@ -150,7 +150,7 @@ export default function NewExpenditurePage() {
               { name: "asset", label: "Asset", type: "Link", linkTarget: "Asset" },
               { name: "work_subtype", label: "Work Subtype", type: "Link", linkTarget: "Work Subtype" },
               { name: "asset_name", label: "Asset Name", type: "Data" },
-              { name: "bill_amount", label: "Expenditure Amount", type: "Currency" },
+              { name: "bill_amount", label: "Expenditure Amount", type: "Currency",precision: 2 },
               { name: "have_asset", label: "Have Asset", type: "Check" },
               { name: "asset_no", label: "Asset No", type: "Data" },
               { name: "from_date", label: "From Date", type: "Date" },
@@ -161,7 +161,7 @@ export default function NewExpenditurePage() {
               { name: "remarks", label: "Work Details", type: "Text" }
             ]
           },
-          { name: "saved_amount", label: "Saved Amount", type: "Currency" },
+          { name: "saved_amount", label: "Saved Amount", type: "Currency",precision: 2 },
           { name: "work_description", label: "Work Description", type: "Long Text" }
 
         ],

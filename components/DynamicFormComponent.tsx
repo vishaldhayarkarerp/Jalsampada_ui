@@ -1,6 +1,7 @@
 "use client";
 import { Controller } from "react-hook-form";
 import * as React from "react";
+import Link from "next/link";
 import {
   useForm,
   FormProvider,
@@ -93,6 +94,8 @@ export interface FormField {
     type: FieldType;
     linkTarget?: string;
     options?: string | { label: string; value: string }[];
+    precision?: number;
+    filterMapping?: { sourceField: string; targetField: string }[];
   }[];
   action?: () => void;
   buttonLabel?: string;
@@ -108,6 +111,7 @@ export interface FormField {
     targetField: string;
   };
   customElement?: React.ReactNode;
+  precision?: number;
 }
 
 // Tabbed layout
@@ -383,6 +387,15 @@ function FieldError({ error }: { error?: any }) {
   );
 }
 
+// 🟢 NEW HELPER: Format slugs for breadcrumbs (e.g., "lis-management" -> "LIS Management")
+const formatSlug = (slug: string) => {
+  if (!slug) return "";
+  return slug
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 export function DynamicForm({
   tabs,
   onSubmit,
@@ -604,6 +617,48 @@ export function DynamicForm({
     };
   }, [handleDuplicate]);
 
+  // 🟢 NEW HELPER: BREADCRUMB RENDERER
+  const renderHeaderContent = () => {
+    const segments = pathname.split("/").filter(Boolean);
+    const doctypeIndex = segments.indexOf("doctype");
+
+    // Fallback if not in a standard doctype path
+    if (doctypeIndex === -1 || doctypeIndex === 0) {
+      return <h2 style={{ margin: 0 }}>{title}</h2>;
+    }
+
+    const moduleSlug = segments[doctypeIndex - 1];
+    const doctypeSlug = segments[doctypeIndex + 1];
+
+    const moduleName = formatSlug(moduleSlug);
+    const doctypeName = formatSlug(doctypeSlug);
+
+    const moduleUrl = `/${segments.slice(0, doctypeIndex).join("/")}`;
+    const listUrl = `/${segments.slice(0, doctypeIndex + 2).join("/")}`;
+
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xl font-bold">
+        <Link
+          href={moduleUrl}
+          className="text-muted-foreground hover:text-primary hover:underline transition-colors"
+        >
+          {moduleName}
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <Link
+          href={listUrl}
+          className="text-muted-foreground hover:text-primary hover:underline transition-colors"
+        >
+          {doctypeName}
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-foreground font-semibold text-primary">
+          {title}
+        </span>
+      </div>
+    );
+  };
+
   // ── RENDER HELPERS ───────────────────────────────────────────────────────
   const renderInput = (field: FormField, type: string = "text") => {
     const rules = rulesFor(field);
@@ -619,6 +674,37 @@ export function DynamicForm({
     const valueAsNumber = ["Int", "Float", "Currency", "Percent"].includes(
       field.type
     );
+
+    // Precision for Currency fields
+    if (field.type === "Currency" && field.precision) {
+      commonProps.step = "0.01";
+      return (
+        <Controller
+          name={field.name}
+          control={control}
+          rules={rules}
+          render={({ field: controllerField }) => (
+            <div className="form-group">
+              <label htmlFor={field.name} className="form-label">
+                {field.label}{field.required ? " *" : ""}
+              </label>
+              <input
+                type={type}
+                value={controllerField.value ? parseFloat(controllerField.value).toFixed(field.precision) : ""}
+                onChange={(e) => controllerField.onChange(e.target.value ? parseFloat(e.target.value) : "")}
+                onBlur={(e) => {
+                  const val = parseFloat(e.target.value);
+                  if (!isNaN(val)) controllerField.onChange(parseFloat(val.toFixed(field.precision)));
+                }}
+                {...commonProps}
+              />
+              <FieldError error={(errors as FieldErrors<Record<string, any>>)[field.name]} />
+              <FieldHelp text={field.description} />
+            </div>
+          )}
+        />
+      );
+    }
 
     return (
       <div className="form-group">
@@ -1174,7 +1260,10 @@ export function DynamicForm({
             {/* Title Section */}
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <h2 style={{ margin: 0 }}>{title}</h2>
+                
+                {/* 🟢 Render Breadcrumbs instead of generic H2 */}
+                {renderHeaderContent()}
+                
                 <span
                   className={`status-badge text-xs whitespace-nowrap ${currentStatus === "Not Saved" ? "status-badge-danger" : "status-badge-draft"
                     }`}

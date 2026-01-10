@@ -9,6 +9,7 @@ import * as React from "react";
 import { useFieldArray, useFormContext, Controller } from "react-hook-form";
 import { FormField } from "./DynamicFormComponent";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, X, Eye, Edit, Download, Upload as UploadIcon } from "lucide-react"; // Import icons
 // import SelectInput from "./form/Select"; // Remove if not used
 
@@ -17,7 +18,10 @@ import { TableLinkCell } from "./TableLinkCell"; // Adjust path if needed
 import { Modal } from "./Modal";
 import { DynamicFormForTable } from "./DynamicFormForTable";
 import { TableRowProvider, useTableRowContext } from "./TableRowContext";
+import DatePicker from "react-datepicker";
+import { cn } from "@/lib/utils";
 import "./TableField.css";
+import "react-datepicker/dist/react-datepicker.css";
 
 const API_BASE_URL = "http://103.219.1.138:4412/";
 const LINK_API_BASE_URL = "http://103.219.1.138:4412//api/resource";
@@ -34,11 +38,168 @@ interface TableFieldProps {
   errors: any;
 }
 
+// Helper functions for table field rendering
+const renderTableInput = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+  <input
+    className="form-control-borderless"
+    type="text"
+    placeholder={c.label}
+    value={(rows[idx] as any)?.[c.name] || ""}
+    onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+  />
+);
+
+const renderTableTextarea = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+  <textarea
+    className="form-control-borderless"
+    rows={3}
+    placeholder={c.label}
+    value={(rows[idx] as any)?.[c.name] || ""}
+    onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+    style={{ minHeight: '60px', resize: 'vertical' }}
+  />
+);
+
+const renderTableNumber = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+  <input
+    className="form-control-borderless"
+    type="number"
+    placeholder={c.label}
+    value={(rows[idx] as any)?.[c.name] || ""}
+    onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+    step={c.type === "Float" || c.type === "Currency" || c.type === "Percent" ? "0.01" : "1"}
+  />
+);
+
+const renderTableCheckbox = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+  <Checkbox
+    checked={!!(rows[idx] as any)?.[c.name]}
+    onCheckedChange={(checked) => handleTableInputChange(idx, c.name, checked)}
+  />
+);
+
+const renderTableSelect = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => {
+  const options = typeof c.options === "string"
+    ? c.options.split("\n").map((o: string) => ({ label: o, value: o }))
+    : c.options;
+
+  return (
+    <select
+      className="form-control-borderless"
+      value={(rows[idx] as any)?.[c.name] || ""}
+      onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+    >
+      <option value="">Select...</option>
+      {options?.map((opt: any) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+const renderTableColor = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+  <input
+    className="form-control-borderless"
+    type="color"
+    value={(rows[idx] as any)?.[c.name] || "#000000"}
+    onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+    style={{ width: '100%', height: '32px' }}
+  />
+);
+
+const renderTableDuration = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => {
+  const value = (rows[idx] as any)?.[c.name] || {};
+  return (
+    <div style={{ display: 'flex', gap: '4px' }}>
+      <input
+        className="form-control-borderless"
+        type="number"
+        placeholder="HH"
+        value={value.hours || ""}
+        onChange={(e) => handleTableInputChange(idx, c.name, { ...value, hours: e.target.value })}
+        min={0}
+        style={{ width: '50px' }}
+      />
+      <input
+        className="form-control-borderless"
+        type="number"
+        placeholder="MM"
+        value={value.minutes || ""}
+        onChange={(e) => handleTableInputChange(idx, c.name, { ...value, minutes: e.target.value })}
+        min={0}
+        style={{ width: '50px' }}
+      />
+      <input
+        className="form-control-borderless"
+        type="number"
+        placeholder="SS"
+        value={value.seconds || ""}
+        onChange={(e) => handleTableInputChange(idx, c.name, { ...value, seconds: e.target.value })}
+        min={0}
+        style={{ width: '50px' }}
+      />
+    </div>
+  );
+};
+
+const renderTableRating = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => {
+  const value = (rows[idx] as any)?.[c.name] || 0;
+  return (
+    <div style={{ display: 'flex', gap: '2px' }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          className="btn btn--ghost btn--sm"
+          onClick={() => handleTableInputChange(idx, c.name, star)}
+          style={{
+            color: star <= value ? '#fbbf24' : '#d1d5db',
+            padding: '2px 4px',
+            fontSize: '14px'
+          }}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+};
+
+const renderTableReadOnly = (c: any, idx: number, rows: any[]) => (
+  <div style={{
+    padding: '8px',
+    background: 'var(--color-surface-muted, #f9fafb)',
+    border: '1px solid var(--color-border, #e5e7eb)',
+    borderRadius: '4px',
+    minHeight: '32px'
+  }}>
+    {(rows[idx] as any)?.[c.name] || "—"}
+  </div>
+);
+
+const renderTableButton = (c: any, idx: number, rows: any[]) => (
+  <button
+    type="button"
+    className="btn btn--outline btn--sm"
+    onClick={() => c.action?.(rows[idx], idx)}
+  >
+    {c.buttonLabel || c.label}
+  </button>
+);
+
 /**
  * This is the new "smart" cell for attachments.
  * It handles its own state for previewing and clearing.
  */
-function AttachmentCell({ fieldName, control }: { fieldName: string, control: any }) {
+function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChange }: {
+  fieldName: string,
+  control: any,
+  rowIndex?: number,
+  columnName?: string,
+  onValueChange?: (value: any) => void
+}) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const { watch, setValue } = useFormContext();
@@ -72,11 +233,19 @@ function AttachmentCell({ fieldName, control }: { fieldName: string, control: an
     const file = e.target.files?.[0];
     if (file) {
       setValue(fieldName, file, { shouldDirty: true });
+      // Also update the context if provided
+      if (onValueChange && rowIndex !== undefined && columnName !== undefined) {
+        onValueChange(file);
+      }
     }
   };
 
   const handleClear = () => {
     setValue(fieldName, null, { shouldDirty: true });
+    // Also update the context if provided
+    if (onValueChange && rowIndex !== undefined && columnName !== undefined) {
+      onValueChange(null);
+    }
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -373,38 +542,80 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
 
                     {(field.columns || []).map((c) => (
                       <td key={c.name} className="child-table-input-cell">
-
                         {c.type === "Attach" ? (
                           <AttachmentCell
                             control={formMethods.control}
                             fieldName={`${field.name}.${idx}.${c.name}`}
+                            rowIndex={idx}
+                            columnName={c.name}
+                            onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
                           />
                         ) : c.type === "Link" ? (
-                          // NEW: Use TableLinkCell instead of old LinkCell
                           <TableLinkCell
                             control={formMethods.control}
                             fieldName={`${field.name}.${idx}.${c.name}`}
                             column={c}
-                          // filters={...} // Pass filters if needed, e.g., dynamic based on row
                           />
-                        ) : c.type === "Text" ? (
+                        ) : c.type === "Date" ? (
+                          <DatePicker
+                            selected={(rows[idx] as any)?.[c.name] ? new Date((rows[idx] as any)[c.name]) : null}
+                            onChange={(date: Date | null) => {
+                              handleTableInputChange(idx, c.name, date ? date.toISOString().split('T')[0] : '');
+                            }}
+                            dateFormat="dd/MM/yyyy"
+                            className={cn("form-control-borderless w-full", "")}
+                            placeholderText="DD/MM/YYYY"
+                            showYearDropdown
+                            scrollableYearDropdown
+                            yearDropdownItemNumber={100}
+                            withPortal
+                            portalId="root"
+                          />
+                        ) : c.type === "Data" || c.type === "Small Text" || c.type === "Text" ? (
+                          renderTableInput(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Long Text" || c.type === "Markdown Editor" ? (
+                          renderTableTextarea(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Code" ? (
+                          renderTableTextarea(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Password" ? (
                           <input
                             className="form-control-borderless"
-                            type="text"
+                            type="password"
                             placeholder={c.label}
                             value={(rows[idx] as any)?.[c.name] || ""}
                             onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
                           />
+                        ) : c.type === "Int" ? (
+                          renderTableNumber(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Float" || c.type === "Currency" || c.type === "Percent" ? (
+                          renderTableNumber(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Color" ? (
+                          renderTableColor(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "DateTime" || c.type === "Time" ? (
+                          <input
+                            className="form-control-borderless"
+                            type={c.type === "DateTime" ? "datetime-local" : "time"}
+                            placeholder={c.label}
+                            value={(rows[idx] as any)?.[c.name] || ""}
+                            onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+                          />
+                        ) : c.type === "Duration" ? (
+                          renderTableDuration(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Check" ? (
+                          renderTableCheckbox(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Select" ? (
+                          renderTableSelect(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Barcode" ? (
+                          renderTableInput(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Read Only" ? (
+                          renderTableReadOnly(c, idx, rows)
+                        ) : c.type === "Rating" ? (
+                          renderTableRating(c, idx, rows, handleTableInputChange)
+                        ) : c.type === "Button" ? (
+                          renderTableButton(c, idx, rows)
                         ) : (
-                          <input
-                            className="form-control-borderless"
-                            type={c.type === "Int" ? "number" : c.type === "Float" ? "number" : "text"}
-                            placeholder={c.label}
-                            value={(rows[idx] as any)?.[c.name] || ""}
-                            onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
-                          />
+                          renderTableInput(c, idx, rows, handleTableInputChange)
                         )}
-
                       </td>
                     ))}
 

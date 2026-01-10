@@ -1252,11 +1252,15 @@ body {
 
 .stock-table th {
   background-color: var(--color-bg-1);
-  padding: var(--space-6) var(--space-10);
+  padding: var(--space-4) var(--space-10);
   text-align: left;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
   border-bottom: 1px solid var(--color-border);
+  height: 40px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .stock-table td {
@@ -1698,7 +1702,7 @@ body {
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   /* This is important: adds space between filters and table */
-  margin-bottom: 24px;
+  margin-top: 10px;
 }
 
 .form-group {

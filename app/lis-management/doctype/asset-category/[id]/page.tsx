@@ -234,7 +234,7 @@ export default function RecordDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit ${doctypeName}: ${category.name}`}
+      title={`${doctypeName}: ${category.name}`}
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"

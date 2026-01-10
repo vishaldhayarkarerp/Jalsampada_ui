@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getApiMessages } from "@/lib/utils";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -389,6 +390,17 @@ export default function RecordDetailPage() {
         );
       }
 
+      if (payload.custom_tender_extension_history) {
+        await Promise.all(
+          payload.custom_tender_extension_history.map(async (row: any, index: number) => {
+            const original = data.custom_tender_extension_history?.[index]?.attach;
+            if (original instanceof File) {
+              row.attach = await uploadFile(original, apiKey, apiSecret, baseUrl);
+            }
+          })
+        );
+      }
+
       const nonDataFields = new Set<string>();
       formTabs.forEach((tab) => {
         tab.fields.forEach((field) => {
@@ -431,7 +443,13 @@ export default function RecordDetailPage() {
         }
       );
 
-      toast.success("Changes saved!");
+      const messages = getApiMessages(resp, null, "Changes saved!", "Failed to save");
+      if (messages.success) {
+        toast.success(messages.message, { description: messages.description });
+      } else {
+        toast.error(messages.message, { description: messages.description });
+      }
+
       if (resp.data && resp.data.data) {
         setRecord(resp.data.data as TenderProjectData);
       }
@@ -439,9 +457,24 @@ export default function RecordDetailPage() {
       router.push(`/tender/doctype/tender/${docname}`);
     } catch (err: any) {
       console.error("Save error:", err);
-      toast.error("Failed to save", {
-        description: err.response?.data?.exception || err.message || "Unknown error",
-      });
+
+      const messages = getApiMessages(
+        null,
+        err,
+        "Changes saved!",
+        "Failed to save",
+        (error) => {
+          // Custom handler for save errors
+          if (error.response?.status === 404) return "Record not found";
+          if (error.response?.status === 403) return "Unauthorized";
+          if (error.response?.status === 417) return "Expectation Failed";
+          return "Failed to save";
+        }
+      );
+
+      if (!messages.success) {
+        toast.error(messages.message, { description: messages.description });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -500,7 +533,7 @@ export default function RecordDetailPage() {
         tabs={formTabs}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
-        title={`Edit Tender ${record.name}`}
+        title={`Tender : ${record.name}`}
         description={`Update details for record ID ${docname}`}
         submitLabel={isSaving ? "Saving..." : "Save"}
         cancelLabel="Cancel"

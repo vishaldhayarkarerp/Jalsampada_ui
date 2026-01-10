@@ -440,10 +440,15 @@ export default function LisIncidentRecordDetailPage() {
             tabs={formTabs}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
-            title={`Edit LIS Incident Record: ${record.name}`}
+            title={`${doctypeName}: ${record.name}`}
             description={`Record ID: ${docname}`}
             submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"
+            deleteConfig={{
+                doctypeName: doctypeName,
+                docName: docname,
+                redirectUrl: "/lis-management/doctype/issue"
+            }}
         />
     );
 }

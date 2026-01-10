@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 // 🟢 CONFIG
-const DOCTYPE = "Village";
+const DOCTYPE = "WRD Village";
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ export default function VillageListPage() {
   }, [fetchData]);
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/village/${id}`);
+    router.push(`/lis-management/doctype/wrd-village/${id}`);
   };
 
   // ── Renderers ────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ export default function VillageListPage() {
           <h2 className="text-2xl font-bold">Village</h2>
           <p className="text-muted-foreground">Manage Villages</p>
         </div>
-        <Link href="/lis-management/doctype/village/new" passHref>
+        <Link href="/lis-management/doctype/wrd-village/new" passHref>
           <button className="btn btn--primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add Village
           </button>

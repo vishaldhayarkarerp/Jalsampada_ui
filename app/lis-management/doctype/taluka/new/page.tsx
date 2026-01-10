@@ -23,7 +23,7 @@ export default function NewTalukaPage() {
           name: "district",
           label: "District",
           type: "Link",
-          linkTarget: "District", // Connects to the District doctype
+          linkTarget: "WRD District", // Connects to the District doctype
           required: true,
           placeholder: "Select District",
           description: "Select the district this Taluka belongs to"

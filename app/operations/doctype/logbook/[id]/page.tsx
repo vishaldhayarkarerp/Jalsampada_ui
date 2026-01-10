@@ -214,8 +214,15 @@ export default function RecordDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={() => router.back()}
-      title={`Edit Logbook: ${logbook.name}`}
+      title={`${doctypeName}: ${logbook.name}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
+      deleteConfig={{
+        doctypeName: doctypeName,
+        docName: docname,
+        redirectUrl: "/operations/doctype/logbook"
+      }}
+      isSubmittable={true}
+      
     />
   );
 }

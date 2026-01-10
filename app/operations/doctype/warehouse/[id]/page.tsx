@@ -224,10 +224,15 @@ export default function WarehouseDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit Warehouse: ${warehouse.name}`}
+      title={`${doctypeName}: ${warehouse.name}`}
       description={`Update basic warehouse information`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      deleteConfig={{
+        doctypeName: doctypeName,
+        docName: docname,
+        redirectUrl: "/operations/doctype/warehouse"
+      }}
     />
   );
 }

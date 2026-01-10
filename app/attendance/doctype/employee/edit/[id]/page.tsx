@@ -301,7 +301,7 @@ export default function EditEmployeePage() {
       </div>
 
       <DynamicForm
-        title="Edit Employee"
+        title={`Employee: ${defaultValues?.employee_name || defaultValues?.name || id}`}
         tabs={layoutWithValues} // Pass the layout with injected values
         onSubmit={handleUpdate}
         onCancel={() => router.back()}

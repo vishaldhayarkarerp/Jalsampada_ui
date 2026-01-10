@@ -9,7 +9,7 @@ import {
   TabbedLayout,
   FormField,
 } from "@/components/DynamicFormComponent";
-
+import { getApiMessages } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
@@ -148,13 +148,22 @@ export default function RecordDetailPage() {
         setExpenditure(resp.data.data as ExpenditureData);
       } catch (err: any) {
         console.error("API Error:", err);
-        setError(
-          err.response?.status === 404
-            ? "Record not found"
-            : err.response?.status === 403
-              ? "Unauthorized"
-              : "Failed to load record"
+
+        const messages = getApiMessages(
+          null,
+          err,
+          "Record loaded successfully",
+          "Failed to load record",
+          (error) => {
+            // Custom handler for load errors with status codes
+            if (error.response?.status === 404) return "Record not found";
+            if (error.response?.status === 403) return "Unauthorized";
+            if (error.response?.status === 417) return "Expectation Failed - Server cannot meet requirements";
+            return "Failed to load record";
+          }
         );
+
+        setError(messages.description || messages.message);
       } finally {
         setLoading(false);
       }
@@ -189,6 +198,7 @@ export default function RecordDetailPage() {
             label: "Fiscal Year",
             type: "Link",
             linkTarget: "Fiscal Year",
+            required: true,
           },
           {
             name: "prev_bill_no",
@@ -199,6 +209,7 @@ export default function RecordDetailPage() {
             name: "bill_upto",
             label: "Bill Upto Amount",
             type: "Currency",
+            precision: 2,
           },
 
           {
@@ -206,6 +217,8 @@ export default function RecordDetailPage() {
             label: "Tender Number",
             type: "Link",
             linkTarget: "Project",
+            required: true,
+
           },
           {
             name: "bill_number",
@@ -216,17 +229,20 @@ export default function RecordDetailPage() {
             name: "remaining_amount",
             label: "Remaining Amount",
             type: "Currency",
+            precision: 2,
           },
 
           {
             name: "tender_amount",
             label: "Tender Amount",
             type: "Currency",
+            precision: 2,
           },
           {
             name: "prev_bill_amt",
             label: "Previous Bill Amount",
             type: "Currency",
+            precision: 2,
           },
           {
             name: "bill_type",
@@ -248,6 +264,8 @@ export default function RecordDetailPage() {
             name: "bill_amount",
             label: "Bill Amount",
             type: "Currency",
+            required: true,
+            precision: 2,
           },
           {
             name: "page_no",
@@ -265,6 +283,7 @@ export default function RecordDetailPage() {
             label: "Lift Irrigation Scheme",
             type: "Link",
             linkTarget: "Lift Irrigation Scheme",
+            required: true,
             fetchFrom: {
               sourceField: "tender_number",
               targetDoctype: "Project",
@@ -319,6 +338,9 @@ export default function RecordDetailPage() {
                 label: "Work Subtype",
                 type: "Link",
                 linkTarget: "Work Subtype",
+                filterMapping: [
+                  { sourceField: "work_type", targetField: "work_type" }
+                ]
               },
               {
                 name: "asset_name",
@@ -329,6 +351,7 @@ export default function RecordDetailPage() {
                 name: "bill_amount",
                 label: "Expenditure Amount",
                 type: "Currency",
+                precision: 2,
               },
               {
                 name: "have_asset",
@@ -376,6 +399,7 @@ export default function RecordDetailPage() {
           {
             name: "saved_amount",
             label: "Saved Amount",
+            precision: 2,
             type: "Currency",
           },
           {
@@ -556,7 +580,14 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
         }
       );
 
-      toast.success("Amount verification successful. Changes saved!");
+      // Handle successful response
+      const messages = getApiMessages(resp, null, "Changes saved!", "Failed to save");
+
+      if (messages.success) {
+        toast.success(messages.message, { description: messages.description });
+      } else {
+        toast.error(messages.message, { description: messages.description });
+      }
 
       if (resp.data && resp.data.data) {
         setExpenditure(resp.data.data as ExpenditureData);
@@ -566,11 +597,22 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
     } catch (err: any) {
       console.error("Save error:", err);
       console.log("Full server error:", err.response?.data);
-      toast.error("Failed to save", {
-        description:
-          (err as Error).message ||
-          "Check the browser console (F12) for the full server error.",
-      });
+
+      const messages = getApiMessages(
+        null,
+        err,
+        "Changes saved!",
+        "Failed to save",
+        (error) => {
+          // Custom handler for save errors with status codes
+          if (error.response?.status === 404) return "Record not found";
+          if (error.response?.status === 403) return "Unauthorized";
+          if (error.response?.status === 417) return "Expectation Failed - Server cannot meet requirements";
+          return "Failed to save record";
+        }
+      );
+
+      toast.error(messages.message, { description: messages.description });
     } finally {
       setIsSaving(false);
     }

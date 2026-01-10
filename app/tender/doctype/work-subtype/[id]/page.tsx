@@ -266,7 +266,7 @@ export default function WorkSubtypeDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit Work Subtype ${record.name}`}
+      title={`${doctypeName}: ${record.name}`}
       description={`Update details for record ID ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"

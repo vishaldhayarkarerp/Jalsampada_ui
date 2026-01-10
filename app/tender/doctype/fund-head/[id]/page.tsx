@@ -254,7 +254,7 @@ export default function FundHeadDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit Fund Head ${record.name}`}
+      title={`${doctypeName}: ${record.name}`}
       description={`Update details for record ID ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"

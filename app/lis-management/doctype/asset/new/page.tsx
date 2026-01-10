@@ -63,13 +63,12 @@ export default function NewRecordPage() {
           { name: "asset_name", label: "Asset Name", type: "Text", required: true, defaultValue: getValue("asset_name") },
           { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category", defaultValue: getValue("asset_category") },
           { name: "custom_asset_no", label: "Asset No", type: "Data", defaultValue: getValue("custom_asset_no") },
-          { name: "company", label: "Company", type: "Link", required: true, linkTarget: "Company", defaultValue: getValue("company") },
           { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location", defaultValue: getValue("location") },
-          { name: "custom_lis_name", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme", defaultValue: getValue("custom_lis_name") },
+          { name: "custom_lis_name", label: "Lift Irrigation Scheme", required: true, type: "Link", linkTarget: "Lift Irrigation Scheme", defaultValue: getValue("custom_lis_name") },
           { name: "custom_lis_phase", label: "LIS Phase", type: "Link", linkTarget: "LIS Phases" },
-
+          
           {
-            name: "custom_stage_no", label: "Stage No.", type: "Link", linkTarget: "Stage No", defaultValue: getValue("custom_stage_no"),
+            name: "custom_stage_no", label: "Stage No.", type: "Link", required: true, linkTarget: "Stage No", defaultValue: getValue("custom_stage_no"),
             filterMapping: [
               { sourceField: "custom_lis_name", targetField: "lis_name" }
             ]
@@ -88,20 +87,38 @@ export default function NewRecordPage() {
             name: "is_composite_component", label: "Is Composite Component", type: "Check", defaultValue: getValue("is_composite_component", false),
             displayDependsOn: "is_composite_asset==0 && is_existing_asset==0 && custom_obsolete==0"
           },
-          
-          // 🟢 UPDATED: Using a Custom Field as a Vertical Spacer (h-2 = 0.5rem)
-          {
-            name: "spacer_obsolete",
-            label: "",
-            type: "Custom", 
-            customElement: <div className="h-2 w-full" aria-hidden="true" /> // Adds vertical gap
-          },
 
+          // 🟢 UPDATED: Using a Custom Field as a Vertical Spacer (h-2 = 0.5rem)
+          
           {
             name: "custom_obsolete", label: "Is Obsolete", type: "Check", defaultValue: getValue("custom_obsolete", false),
             displayDependsOn: "is_composite_asset==0 && is_existing_asset==0 && is_composite_component==0"
           },
-
+          {
+            name: "spacer_obsolete",
+            label: "",
+            type: "Custom",
+            customElement: <div className="h-2 w-full" aria-hidden="true" /> // Adds vertical gap
+          },
+          { name: "section_interchange", label: "Interchange Details", type: "Section Break" },
+          {
+            name: "custom_current_linked_asset",
+            label: "Current Linked Motor/Pump",
+            type: "Link",
+            linkTarget: "Asset",
+            readOnly: true
+          },
+          {
+            name: "custom_linked_asset_no",
+            label: "Linked Asset No",
+            type: "Data",
+            fetchFrom: { sourceField: "custom_current_linked_asset", targetDoctype: "Asset", targetField: "custom_asset_no" }
+          },
+          {
+            name: "custom_interchange_date",
+            label: "Interchange Date",
+            type: "Date"
+          },
           { name: "section_purchase", label: "Purchase Details", type: "Section Break" },
 
           // --- FIX #1: Make 'purchase_date' required ---
@@ -275,15 +292,6 @@ export default function NewRecordPage() {
         return;
       }
 
-      const lisPrefix = String(finalPayload.custom_lis_name).slice(0, 3).toUpperCase();
-      const stagePrefix = String(finalPayload.custom_stage_no).toUpperCase();
-      const categoryPrefix = String(finalPayload.asset_category).slice(0, 2).toUpperCase();
-      const assetSuffix = String(finalPayload.custom_asset_no);
-      const customDocName = `${lisPrefix}${stagePrefix}${categoryPrefix}${assetSuffix}`;
-
-      finalPayload.name = customDocName;
-      finalPayload.custom_doctype_name = customDocName;
-
       console.log("Sending this NEW DOC to Frappe:", finalPayload);
 
       const headers: HeadersInit = {
@@ -311,7 +319,9 @@ export default function NewRecordPage() {
 
       toast.success("Asset created successfully!");
 
-      router.push(`/lis-management/doctype/asset`);
+      // Navigate to the newly created record using the document name
+      const docName = responseData.data.name;
+      router.push(`/lis-management/doctype/asset/edit/${docName}`);
 
     } catch (err: any) {
       console.error("Save error:", err);
@@ -333,7 +343,7 @@ export default function NewRecordPage() {
     }
   };
 
-  const handleCancel = () => router.back();
+  const handleCancel = () => router.push('/lis-management/doctype/asset');
 
   /* -------------------------------------------------
      3. RENDER FORM

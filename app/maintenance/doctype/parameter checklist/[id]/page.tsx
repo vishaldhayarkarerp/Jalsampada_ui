@@ -225,7 +225,7 @@ export default function ParameterDataDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit Parameter Data: ${record.name}`}
+      title={`${doctypeName}: ${record.name}`}
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"

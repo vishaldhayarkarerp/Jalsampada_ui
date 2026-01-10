@@ -106,23 +106,30 @@ export default function NewPrapanSuchiPage() {
             label: "Fiscal Year",
             type: "Link",
             linkTarget: "Fiscal Year",
+            // required: true,
+
           },
           {
             name: "lis_name",
             label: "LIS Name",
             type: "Link",
             linkTarget: "Lift Irrigation Scheme",
+            required: true,
+
           },
           {
             name: "type",
             label: "Fund Head",
             type: "Link",
             linkTarget: "Fund Head",
+            required: true,
+
           },
           {
             name: "amount",
             label: "Amount",
             type: "Currency",
+            required: true,
           },
           {
             name: "stage",
@@ -137,6 +144,7 @@ export default function NewPrapanSuchiPage() {
             name: "work_name",
             label: "Name of Work",
             type: "Text",
+            required: true,
           },
           {
             name: "description",

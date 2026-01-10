@@ -50,7 +50,6 @@ export default function NewStageNoPage() {
             name: "lis_phase",
             label: "LIS Phase",
             type: "Link", // Assuming this links to the LIS doctype
-            required: true,
             linkTarget: "LIS Phases", // Specify the target doctype
             description: "Links to Lift Irrigation Scheme"
           },

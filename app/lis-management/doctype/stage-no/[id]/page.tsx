@@ -105,7 +105,6 @@ export default function RecordDetailPage() {
             name: "lis_phase",
             label: "LIS Phase",
             type: "Link", // Assuming this links to the LIS doctype
-            required: true,
             linkTarget: "LIS Phases", // Specify the target doctype
             description: "Links to Lift Irrigation Scheme"
           },
@@ -193,7 +192,7 @@ export default function RecordDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit ${doctypeName}: ${stage.stage_no}`} // <-- CHANGED
+      title={` ${doctypeName}: ${stage.stage_no}`} // <-- CHANGED
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"

@@ -10,6 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -117,7 +118,7 @@ export default function NewTenderPage() {
         name: "custom_tender_id",
         label: "Tender ID",
         type: "Data",
-        required: true,
+        // required: true,
       },
       {
         name: "custom_work_order",
@@ -396,7 +397,12 @@ export default function NewTenderPage() {
         maxContentLength: Infinity,
       });
 
-      toast.success("Tender created successfully!");
+      const messages = getApiMessages(response, null, "Tender created successfully!", "Failed to create Tender");
+      if (messages.success) {
+        toast.success(messages.message, { description: messages.description });
+      } else {
+        toast.error(messages.message, { description: messages.description });
+      }
 
       // Navigate to the newly created record using name
       const docName = response.data.data.name;
@@ -408,18 +414,27 @@ export default function NewTenderPage() {
 
     } catch (err: any) {
       console.error("Create error:", err);
+      
       const serverData = err.response?.data;
-      const serverMessage =
-        serverData?.exception ||
-        serverData?._server_messages ||
-        err.message ||
-        "Check console for details.";
-
-      console.log("Full server error:", serverData || serverMessage);
-
-      toast.error("Failed to create Tender", {
-        description: serverMessage,
-      });
+      const serverMessage = serverData?.exception || serverData?.message || err.message || "Unknown error";
+      
+      const messages = getApiMessages(
+        null,
+        err,
+        "Tender created successfully!",
+        "Failed to create Tender",
+        (error) => {
+          // Custom handler for create errors
+          if (error.response?.status === 404) return "Record not found";
+          if (error.response?.status === 403) return "Unauthorized";
+          if (error.response?.status === 417) return "Expectation Failed";
+          return "Failed to create Tender";
+        }
+      );
+      
+      if (!messages.success) {
+        toast.error(messages.message, { description: messages.description });
+      }
     } finally {
       setIsSaving(false);
     }

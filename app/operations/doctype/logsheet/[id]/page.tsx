@@ -312,10 +312,15 @@ export default function LogSheetDetailPage() {
             tabs={formTabs}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
-            title={`Edit Log Sheet: ${record.name}`}
+            title={`${doctypeName}: ${record.name}`}
             description={`Record ID: ${docname}`}
             submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"
+            deleteConfig={{
+                doctypeName: doctypeName,
+                docName: docname,
+                redirectUrl: "/operations/doctype/logsheet"
+            }}
         />
     );
 }

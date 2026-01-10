@@ -95,11 +95,6 @@ export default function NewLogbookPage() {
             linkTarget: "Pump Stop Reasons",
             defaultValue: getValue("pump_stop_reason"),
           },
-        ],
-      },
-      {
-        name: "Primary List",
-        fields: [
           {
             name: "primary_list",
             label: "Primary List",
@@ -107,15 +102,11 @@ export default function NewLogbookPage() {
             defaultValue: getValue("primary_list", []),
             columns: [
               { name: "pump", label: "Pump", type: "Link", linkTarget: "Asset" },
+              { name: "motor", label: "Motor", type: "Link", linkTarget: "Asset" },
               { name: "pump_no", label: "Pump No", type: "Int" },
               { name: "check", label: "Check", type: "Check" },
             ],
           },
-        ],
-      },
-      {
-        name: "Secondary List",
-        fields: [
           {
             name: "secondary_list",
             label: "Secondary List",

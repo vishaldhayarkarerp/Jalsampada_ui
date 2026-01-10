@@ -128,7 +128,7 @@ export default function PrapanSuchiDetailPage() {
 
         setRecord(resp.data.data as PrapanSuchi);
       } catch (err: any) {
-        console.error("API Error:", err);
+
         const messages = getApiMessages(
           null,
           err,
@@ -171,23 +171,28 @@ export default function PrapanSuchiDetailPage() {
             label: "Fiscal Year",
             type: "Link",
             linkTarget: "Fiscal Year",
+            required: true,
           },
           {
             name: "lis_name",
             label: "LIS Name",
             type: "Link",
             linkTarget: "Lift Irrigation Scheme",
+            required: true,
           },
           {
             name: "type",
             label: "Fund Head",
             type: "Link",
             linkTarget: "Fund Head",
+            required: true,
           },
           {
             name: "amount",
             label: "Amount",
             type: "Currency",
+            required: true,
+
           },
           {
             name: "stage",
@@ -202,6 +207,7 @@ export default function PrapanSuchiDetailPage() {
             name: "work_name",
             label: "Name of Work",
             type: "Text",
+            required: true,
           },
           {
             name: "description",
@@ -363,7 +369,7 @@ export default function PrapanSuchiDetailPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
-      title={`Edit Prapan Suchi: ${record.name}`}
+      title={`${doctypeName}: ${record.name}`}
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
