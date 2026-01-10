@@ -96,6 +96,11 @@ export interface FormField {
     options?: string | { label: string; value: string }[];
     precision?: number;
     filterMapping?: { sourceField: string; targetField: string }[];
+    fetchFrom?: {
+      sourceField: string;
+      targetDoctype: string;
+      targetField: string;
+    };
   }[];
   action?: () => void;
   buttonLabel?: string;
@@ -1145,16 +1150,16 @@ export function DynamicForm({
     return (
       <div className="form-group">
         <label className="form-label">{field.label}</label>
-        <div
+        <input
+          type="text"
+          className={cn("form-control", getErrorClass(field.name))}
+          value={field.readOnlyValue ?? val ?? ""}
+          readOnly
           style={{
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-base)",
-            padding: 12,
             background: "var(--color-surface-muted, transparent)",
+            cursor: "default"
           }}
-        >
-          {field.readOnlyValue ?? val ?? "—"}
-        </div>
+        />
         <FieldHelp text={field.description} />
       </div>
     );
@@ -1519,8 +1524,11 @@ export function DynamicForm({
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleDuplicate}>
+                <DropdownMenuContent align="end" className="bg-white border border-gray-200 rounded-md shadow-lg">
+                  <DropdownMenuItem 
+                    onClick={handleDuplicate}
+                    className="transition-all duration-200 hover:bg-gray-50 hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+                  >
                     <Copy className="mr-2 h-4 w-4" />
                     <span>Duplicate</span>
                     <span className="ml-auto text-xs tracking-widest opacity-60">
@@ -1534,7 +1542,7 @@ export function DynamicForm({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={handleDeleteAction}
-                        className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/10 cursor-pointer"
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/10 cursor-pointer transition-all duration-200 hover:bg-red-50 hover:shadow-md hover:-translate-y-0.5"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         <span>Delete</span>

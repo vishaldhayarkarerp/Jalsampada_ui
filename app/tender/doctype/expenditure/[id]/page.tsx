@@ -346,6 +346,11 @@ export default function RecordDetailPage() {
                 name: "asset_name",
                 label: "Asset Name",
                 type: "Data",
+                fetchFrom: {
+                  sourceField: "asset",
+                  targetDoctype: "Asset",
+                  targetField: "asset_name"
+                }
               },
               {
                 name: "bill_amount",
@@ -362,6 +367,11 @@ export default function RecordDetailPage() {
                 name: "asset_no",
                 label: "Asset No",
                 type: "Data",
+                fetchFrom: {
+                  sourceField: "asset",
+                  targetDoctype: "Asset",
+                  targetField: "custom_asset_no"
+                }
               },
               {
                 name: "from_date",
@@ -594,9 +604,9 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
       }
 
       // Return appropriate status based on docstatus
-      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" : 
-                        resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
-      
+      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" :
+        resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
+
       router.push(`/tender/doctype/expenditure/${docname}`);
       return { status: savedStatus };
     } catch (err: any) {

@@ -10,6 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useTableRowContext } from "./TableRowContext";
 import { cn } from "@/lib/utils";
 import { Upload, X, Eye } from "lucide-react";
+import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 
 const API_BASE_URL = "http://103.219.1.138:4412/";
 
@@ -73,6 +75,7 @@ export function DynamicFormForTable({
     title = "Edit Row"
 }: DynamicFormForTableProps) {
     const { editingRowIndex, updateRow, getRowData } = useTableRowContext();
+    const { apiKey, apiSecret } = useAuth();
 
     // We'll use controlled components instead of form hooks to avoid nested forms
     const [formData, setFormData] = React.useState<Record<string, any>>({});
@@ -94,13 +97,49 @@ export function DynamicFormForTable({
         }
     }, [data, editingRowIndex]);
 
-    const handleInputChange = (fieldName: string, value: any) => {
+    const handleInputChange = async (fieldName: string, value: any) => {
         const newFormData = { ...formData, [fieldName]: value };
         setFormData(newFormData);
 
         // Real-time update to the context if we have an editing row
         if (editingRowIndex !== null) {
             updateRow(editingRowIndex, { [fieldName]: value });
+        }
+
+        // Handle fetchFrom dependencies
+        const dependentFields = (fields || []).filter(f => f.fetchFrom?.sourceField === fieldName);
+        if (dependentFields.length > 0 && value) {
+            // Assume all dependents share the same targetDoctype
+            const targetDoctype = dependentFields[0].fetchFrom!.targetDoctype;
+            // Collect unique target fields
+            const targetFieldsSet = new Set(dependentFields.map(f => f.fetchFrom!.targetField));
+            const targetFields = Array.from(targetFieldsSet);
+
+            try {
+                const response = await axios.get(`${API_BASE_URL}api/method/frappe.client.validate_link`, {
+                    params: {
+                        doctype: targetDoctype,
+                        docname: value,
+                        fields: JSON.stringify(targetFields),
+                    },
+                    headers: {
+                        Authorization: `token ${apiKey}:${apiSecret}`,
+                    },
+                });
+
+                const message = response.data.message;
+                if (message) {
+                    dependentFields.forEach(dep => {
+                        const targetField = dep.fetchFrom!.targetField;
+                        const fetchedValue = message[targetField];
+                        if (fetchedValue !== undefined) {
+                            handleInputChange(dep.name, fetchedValue);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error(`Failed to fetch dependent fields for ${fieldName}:`, error);
+            }
         }
     };
 

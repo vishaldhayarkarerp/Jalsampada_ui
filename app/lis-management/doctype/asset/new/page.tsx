@@ -66,7 +66,7 @@ export default function NewRecordPage() {
           { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location", defaultValue: getValue("location") },
           { name: "custom_lis_name", label: "Lift Irrigation Scheme", required: true, type: "Link", linkTarget: "Lift Irrigation Scheme", defaultValue: getValue("custom_lis_name") },
           { name: "custom_lis_phase", label: "LIS Phase", type: "Link", linkTarget: "LIS Phases" },
-          
+
           {
             name: "custom_stage_no", label: "Stage No.", type: "Link", required: true, linkTarget: "Stage No", defaultValue: getValue("custom_stage_no"),
             filterMapping: [
@@ -89,7 +89,7 @@ export default function NewRecordPage() {
           },
 
           // 🟢 UPDATED: Using a Custom Field as a Vertical Spacer (h-2 = 0.5rem)
-          
+
           {
             name: "custom_obsolete", label: "Is Obsolete", type: "Check", defaultValue: getValue("custom_obsolete", false),
             displayDependsOn: "is_composite_asset==0 && is_existing_asset==0 && is_composite_component==0"
@@ -186,6 +186,11 @@ export default function NewRecordPage() {
               { name: "details", label: "Details", type: "Text" },
             ],
             defaultValue: getValue("custom_asset_specifications", []),
+            fetchFrom: {
+              sourceField: "asset_category",
+              targetDoctype: "Asset Category",
+              targetField: "custom_asset_specifications"
+            },
           },
         ],
       },

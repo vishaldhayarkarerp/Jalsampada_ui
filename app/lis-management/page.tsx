@@ -17,24 +17,27 @@ import {
 } from "lucide-react";
 
 const masterDoctypes: Doctype[] = [
-  { name: "asset", title: "Asset", icon: Database },
-  { name: "asset-category", title: "Asset Category", icon: Database },
-  { name: "lift-irrigation-scheme", title: "Lift Irrigation Scheme", icon: Droplets },
-  { name: "lis-phases", title: "LIS Phases", icon: Layers },
-  { name: "stage-no", title: "Stage No", icon: Layers },
-  { name: "equipment-make", title: "Equipement Make", icon: Factory },
-  { name: "equipement-model", title: "Equipement Model", icon: Package },
-  { name: "equipement-capacity", title: "Equipement Capacity", icon: Ruler },
-  { name: "rating", title: "Rating", icon: Star },
-  { name: "district", title: "District", icon: MapPin },  // Change icon to represent a district location
-  { name: "taluka", title: "Taluka", icon: Star },        // You could keep Star for Taluka as a general icon
-  { name: "village", title: "Village", icon: Home }
+  { name: "doctype/asset", title: "Asset", icon: Database },
+  { name: "doctype/asset-category", title: "Asset Category", icon: Database },
+  { name: "doctype/lift-irrigation-scheme", title: "Lift Irrigation Scheme", icon: Droplets },
+  { name: "doctype/lis-phases", title: "LIS Phases", icon: Layers },
+  { name: "doctype/stage-no", title: "Stage No", icon: Layers },
+  { name: "doctype/equipment-make", title: "Equipement Make", icon: Factory },
+  { name: "doctype/equipement-model", title: "Equipement Model", icon: Package },
+  { name: "doctype/equipement-capacity", title: "Equipement Capacity", icon: Ruler },
+  { name: "doctype/rating", title: "Rating", icon: Star },
+  { name: "doctype/district", title: "District", icon: MapPin },  // Change icon to represent a district location
+  { name: "doctype/taluka", title: "Taluka", icon: Star },        // You could keep Star for Taluka as a general icon
+  { name: "doctype/village", title: "Village", icon: Home }
 ];
 
 const transactionDoctypes: Doctype[] = [
   // Add transaction doctypes here as needed
-  { name: "transaction-1", title: "Transaction 1", icon: Database },
-  { name: "transaction-2", title: "Transaction 2", icon: Layers }
+  { name: "transaction-1", title: "Asset Interchange", icon: Database },
+];
+const reportDoctypes: Doctype[] = [
+  // Add transaction doctypes here as needed
+  { name: "reports/asset_register_report", title: "Asset Register Report", icon: Package },
 ];
 
 const doctypeGroups: DoctypeGroup[] = [
@@ -46,6 +49,10 @@ const doctypeGroups: DoctypeGroup[] = [
     title: "Master",
     doctypes: masterDoctypes
   },
+  {
+    title: "Reports",
+    doctypes: reportDoctypes
+  },
 
 ];
 
@@ -55,7 +62,7 @@ export default function AssetsWorkspacePage() {
       title="LIS Management Workspace"
       description="Manage Lift Irrigation Scheme assets and transactions"
       doctypeGroups={doctypeGroups}
-      basePath="/lis-management/doctype"
+      basePath="/lis-management/"
     />
   );
 }

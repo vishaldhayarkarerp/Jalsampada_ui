@@ -20,25 +20,55 @@ import {
 } from "lucide-react";
 
 
-const operationsDoctypes: Doctype[] = [
-  { name: "item", title: "Item", icon: Box },
-  { name: "logbook", title: "Log Book", icon: Book },
-  { name: "warehouse", title: "Warehouse", icon: Warehouse },
-  { name: "logsheet", title: "Log Sheet", icon: FileText },
+const masterDoctypes: Doctype[] = [
+  // Master
   { name: "temperature", title: "Temperature", icon: Thermometer },
-  { name: "gate-operation-logbook", title: "Gate Operation Logbook", icon: ClipboardList },
   { name: "gate", title: "Gate", icon: DoorOpen },
+  { name: "item", title: "Item", icon: Box },
+  { name: "warehouse", title: "Store Location", icon: Warehouse },
+];
+
+const operationLogsDoctypes: Doctype[] = [
+  // Operation Logs
+  { name: "logbook", title: "Log Book", icon: Book },
+  { name: "logsheet", title: "Log Sheet", icon: FileText },
+  { name: "gate-operation-logbook", title: "Gate Operation Logbook", icon: ClipboardList },
   { name: "repair-work-requirement", title: "Repair Work Requirement", icon: Wrench },
   { name: "lis-incident-record", title: "LIS Incident Record", icon: AlertTriangle },
+];
+
+
+const stockTransactionDoctypes: Doctype[] = [
+  // Stock Transaction
   { name: "spare-indent", title: "Spare Indent", icon: FilePlus },
   { name: "stock-entry", title: "Stock Entry", icon: ArrowDownUp },
-  // { name: "stock-reconciliation", title: "Stock Reconciliation", icon: ListChecks }
+  { name: "stock-reconciliation", title: "Stock Reconciliation", icon: ListChecks },
+];
+
+const reportsDoctypes: Doctype[] = [
+  // Reports
+  { name: "logbook-report", title: "Logbook Report", icon: FileText },
+  { name: "logsheet-report", title: "Logsheet Report", icon: FileText },
+  { name: "lis-incident-report", title: "LIS Incident Report", icon: FileText },
+  { name: "gate-logbook-report", title: "Gate Logbook Report", icon: FileText },
 ];
 
 const operationsDoctypeGroups: DoctypeGroup[] = [
   {
-    title: "Operations",
-    doctypes: operationsDoctypes
+    title: "Master",
+    doctypes: masterDoctypes
+  },
+  {
+    title: "Operation Logs",
+    doctypes: operationLogsDoctypes
+  },
+  {
+    title: "Stock Transaction",
+    doctypes: stockTransactionDoctypes
+  },
+  {
+    title: "Reports",
+    doctypes: reportsDoctypes
   }
 ];
 

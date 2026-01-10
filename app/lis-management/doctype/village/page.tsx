@@ -80,7 +80,7 @@ export default function VillageListPage() {
   }, [fetchData]);
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/wrd-village/${id}`);
+    router.push(`/lis-management/doctype/village/${id}`);
   };
 
   // ── Renderers ────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ export default function VillageListPage() {
           <h2 className="text-2xl font-bold">Village</h2>
           <p className="text-muted-foreground">Manage Villages</p>
         </div>
-        <Link href="/lis-management/doctype/wrd-village/new" passHref>
+        <Link href="/lis-management/doctype/village/new" passHref>
           <button className="btn btn--primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add Village
           </button>
@@ -162,7 +162,6 @@ export default function VillageListPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         </div>
 
         <button

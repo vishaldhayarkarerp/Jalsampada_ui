@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
-const DOCTYPE = "Taluka";
+const DOCTYPE = "WRD Taluka";
 
 export default function NewTalukaPage() {
   const router = useRouter();

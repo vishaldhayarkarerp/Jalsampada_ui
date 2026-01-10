@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 // 🟢 CONFIG
-const DOCTYPE = "District";
+const DOCTYPE = "WRD District";
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ export default function DistrictListPage() {
   // ── Render Helpers ──────────────────────────────────────────────
   const handleCardClick = (id: string) => {
     // Optional: Route to detail page if you create one later
-    // router.push(`/lis-management/doctype/district/${id}`);
+    router.push(`/lis-management/doctype/district/${id}`);
   };
 
   const renderListView = () => (
@@ -109,7 +109,11 @@ export default function DistrictListPage() {
         <tbody>
           {rows.length ? (
             rows.map((row) => (
-              <tr key={row.name} className="hover:bg-muted/50 cursor-default">
+              <tr 
+                key={row.name} 
+                className="hover:bg-muted/50 cursor-pointer"
+                onClick={() => handleCardClick(row.name)}
+              >
                 <td className="p-3 font-medium">{row.name}</td>
                 <td className="p-3">{row.district}</td>
                 <td className="p-3 text-muted-foreground text-sm">{row.modified}</td>
@@ -172,7 +176,6 @@ export default function DistrictListPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         </div>
 
         <div className="flex gap-2">

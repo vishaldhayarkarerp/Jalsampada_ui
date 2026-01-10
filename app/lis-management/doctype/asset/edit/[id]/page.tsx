@@ -621,20 +621,18 @@ export default function RecordDetailPage() {
                     {
                         name: "custom_current_linked_asset",
                         label: "Current Linked Motor/Pump",
-                        type: "Link",
-                        linkTarget: "Asset"
+                        type: "Read Only"
                     },
                     {
                         name: "custom_linked_asset_no",
                         label: "Linked Asset No",
-                        type: "Data",
+                        type: "Read Only",
                         fetchFrom: { sourceField: "custom_current_linked_asset", targetDoctype: "Asset", targetField: "custom_asset_no" }
-
                     },
                     {
                         name: "custom_interchange_date",
                         label: "Interchange Date",
-                        type: "Date"
+                        type: "Read Only"
                     },
                     { name: "section_purchase", label: "Purchase Details", type: "Section Break" },
                     {
@@ -704,7 +702,7 @@ export default function RecordDetailPage() {
                         type: "Table",
                         columns: [
                             { name: "specification_type", label: "Specification Type", type: "Link", linkTarget: "Specifications" },
-                            { name: "details", label: "Details", type: "Data" },
+                            { name: "details", label: "Details", type: "Read Only" },
                         ],
                     },
                 ]),

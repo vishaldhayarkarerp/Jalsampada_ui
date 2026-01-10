@@ -168,15 +168,16 @@ const renderTableRating = (c: any, idx: number, rows: any[], handleTableInputCha
 };
 
 const renderTableReadOnly = (c: any, idx: number, rows: any[]) => (
-  <div style={{
-    padding: '8px',
-    background: 'var(--color-surface-muted, #f9fafb)',
-    border: '1px solid var(--color-border, #e5e7eb)',
-    borderRadius: '4px',
-    minHeight: '32px'
-  }}>
-    {(rows[idx] as any)?.[c.name] || "—"}
-  </div>
+  <input
+    type="text"
+    className="form-control-borderless"
+    value={(rows[idx] as any)?.[c.name] || ""}
+    readOnly
+    style={{
+      background: 'var(--color-surface-muted, #f9fafb)',
+      cursor: 'default'
+    }}
+  />
 );
 
 const renderTableButton = (c: any, idx: number, rows: any[]) => (

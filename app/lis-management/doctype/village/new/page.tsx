@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
-const DOCTYPE = "Village";
+const DOCTYPE = "WRD Village";
 
 export default function NewVillagePage() {
   const router = useRouter();
@@ -41,57 +41,60 @@ export default function NewVillagePage() {
         },
         {
           name: "village",
-          label: "Village Name",
+          label: "Village",
           type: "Data",
           required: true,
           placeholder: "e.g. Bedag",
         },
+        // { name: "section_lis", label: "Village LIS Wise Details", type: "Section Break" },
         // 🟢 Child Table based on your CSV
         {
           name: "lis_wise_village_details",
           label: "Village LIS Wise Details",
           type: "Table",
           columns: [
-            { 
-              name: "lis_name", 
-              label: "LIS Name", 
-              type: "Link", 
+            {
+              name: "lis_name",
+              label: "LIS Name",
+              type: "Link",
               linkTarget: "Lift Irrigation Scheme" // Assuming this doctype exists
             },
-            { 
-              name: "no_of_beneficiaries", 
-              label: "No. Beneficiaries", 
-              type: "Int" 
+            {
+              name: "no_of_beneficiaries",
+              label: "No. Beneficiaries",
+              type: "Int"
             },
-            { 
-              name: "lis_status", 
-              label: "LIS Status", 
+            {
+              name: "lis_status",
+              label: "LIS Status",
               type: "Select",
               options: [
                 { label: "Functional", value: "Functional" },
                 { label: "Non-Functional", value: "Non-Functional" },
-                { label: "Under Construction", value: "Under Construction" },
-                { label: "Proposed", value: "Proposed" }
-              ] 
-            },
-            { 
-              name: "contemplated_ayacut_acres", 
-              label: "Ayacut (Acres)", 
-              type: "Float" 
-            },
-            { 
-              name: "commissioned__new", 
-              label: "Commissioned / New", 
-              type: "Select",
-              options: [
-                { label: "Commissioned", value: "Commissioned" },
-                { label: "New", value: "New" }
+                { label: "Abandoned", value: "Abandoned" },                
               ]
             },
-            { 
-              name: "source_of_water", 
-              label: "Source of Water", 
-              type: "Data" 
+            {
+              name: "contemplated_ayacut_acres",
+              label: "Ayacut (Acres)",
+              type: "Float"
+            },
+            {
+              name: "commissioned__new",
+              label: "Commissioned / New",
+              type: "Select",
+              options: [
+                { label: "Proposed", value: "Proposed" },
+                { label: "Work in Progress", value: "Work in Progress" },
+                { label: "Commissioned", value: "Commissioned" },
+                { label: "Closed", value: "Closed" },
+
+              ]
+            },
+            {
+              name: "source_of_water",
+              label: "Source of Water",
+              type: "Data"
             },
           ],
         },
@@ -124,7 +127,7 @@ export default function NewVillagePage() {
       }
 
       toast.success("Village created successfully!");
-      router.push("/lis-management/doctype/village");
+      router.push("/lis-management/doctype/wrd-village");
     } catch (err: any) {
       console.error("Save error:", err);
       toast.error(err.message || "Error saving record");
