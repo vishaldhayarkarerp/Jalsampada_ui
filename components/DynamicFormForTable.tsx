@@ -343,8 +343,6 @@ export function DynamicFormForTable({
                         showYearDropdown
                         scrollableYearDropdown
                         yearDropdownItemNumber={100}
-                        withPortal
-                        portalId="root"
                     />
                     <FieldError error={null} />
                     <FieldHelp text={field.description} />
