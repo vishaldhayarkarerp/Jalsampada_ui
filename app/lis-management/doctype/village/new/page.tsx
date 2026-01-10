@@ -52,6 +52,8 @@ export default function NewVillagePage() {
           name: "lis_wise_village_details",
           label: "Village LIS Wise Details",
           type: "Table",
+          showDownloadUpload: true,
+
           columns: [
             {
               name: "lis_name",
@@ -71,7 +73,7 @@ export default function NewVillagePage() {
               options: [
                 { label: "Functional", value: "Functional" },
                 { label: "Non-Functional", value: "Non-Functional" },
-                { label: "Abandoned", value: "Abandoned" },                
+                { label: "Abandoned", value: "Abandoned" },
               ]
             },
             {

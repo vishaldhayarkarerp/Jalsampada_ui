@@ -42,7 +42,7 @@ export function Workspace({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+      <div className="columns-1 xl:columns-2 gap-10 space-y-10">
         {doctypeGroups.map((group, index) => {
           const isMaster = group.title.toLowerCase() === "master";
           const themeColor = isMaster ? "text-emerald-600" : "text-blue-600";
@@ -50,10 +50,13 @@ export function Workspace({
           const dotColor = isMaster ? "bg-emerald-500" : "bg-blue-500";
 
           return (
-            <Card
+            <div
               key={index}
-              className={`border-none border-t-[5px] ${borderColor} shadow-sm bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50`}
+              className="break-inside-avoid mb-10"
             >
+              <Card
+                className={`border-none border-t-[5px] ${borderColor} shadow-sm bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50`}
+              >
               <CardHeader className="pt-8 pb-6 px-8">
                 <CardTitle className={`text-2xl font-bold flex items-center gap-3 ${themeColor}`}>
                   <span className={`w-3 h-3 rounded-full ${dotColor} animate-pulse`} />
@@ -93,7 +96,8 @@ export function Workspace({
                   ))}
                 </div>
               </CardContent>
-            </Card>
+              </Card>
+            </div>
           );
         })}
       </div>

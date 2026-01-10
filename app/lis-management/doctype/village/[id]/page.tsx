@@ -134,6 +134,7 @@ export default function VillageDetailPage() {
             name: "lis_wise_village_details",
             label: "Village LIS Wise Details",
             type: "Table",
+            showDownloadUpload: true,
             columns: [
               {
                 name: "lis_name",

@@ -309,6 +309,8 @@ export default function RecordDetailPage() {
             name: "expenditure_details",
             label: "Expenditure Details",
             type: "Table",
+            showDownloadUpload: true,
+
             columns: [
               {
                 name: "name_of_work",
@@ -332,6 +334,7 @@ export default function RecordDetailPage() {
                 label: "Asset",
                 type: "Link",
                 linkTarget: "Asset",
+                displayDependsOn: "have_asset==1"
               },
               {
                 name: "work_subtype",
@@ -350,7 +353,8 @@ export default function RecordDetailPage() {
                   sourceField: "asset",
                   targetDoctype: "Asset",
                   targetField: "asset_name"
-                }
+                },
+
               },
               {
                 name: "bill_amount",

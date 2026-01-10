@@ -101,6 +101,7 @@ export interface FormField {
       targetDoctype: string;
       targetField: string;
     };
+    displayDependsOn?: string;
   }[];
   action?: () => void;
   buttonLabel?: string;

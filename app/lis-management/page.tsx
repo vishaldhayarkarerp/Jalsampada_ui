@@ -42,7 +42,7 @@ const reportDoctypes: Doctype[] = [
 
 const doctypeGroups: DoctypeGroup[] = [
   {
-    title: "Transaction",
+    title: "Transactions",
     doctypes: transactionDoctypes
   },
   {

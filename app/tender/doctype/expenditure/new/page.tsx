@@ -119,14 +119,14 @@ export default function NewExpenditurePage() {
         fields: [
           { name: "fiscal_year", label: "Fiscal Year", type: "Link", linkTarget: "Fiscal Year" },
           { name: "tender_number", label: "Tender Number", type: "Link", linkTarget: "Project" },
-          { name: "tender_amount", label: "Tender Amount", type: "Currency",precision: 2 },
+          { name: "tender_amount", label: "Tender Amount", type: "Currency", precision: 2 },
           { name: "posting_date", label: "Bill Date", type: "Date" },
           { name: "prev_bill_no", label: "Previous Bill Number", type: "Data" },
           { name: "bill_number", label: "Bill Number", type: "Data" },
-          { name: "prev_bill_amt", label: "Previous Bill Amount", type: "Currency",precision: 2 },
-          { name: "bill_amount", label: "Bill Amount", type: "Currency",precision: 2 },
-          { name: "bill_upto", label: "Bill Upto Amount", type: "Currency",precision: 2 },
-          { name: "remaining_amount", label: "Remaining Amount", type: "Currency",precision: 2 },
+          { name: "prev_bill_amt", label: "Previous Bill Amount", type: "Currency", precision: 2 },
+          { name: "bill_amount", label: "Bill Amount", type: "Currency", precision: 2 },
+          { name: "bill_upto", label: "Bill Upto Amount", type: "Currency", precision: 2 },
+          { name: "remaining_amount", label: "Remaining Amount", type: "Currency", precision: 2 },
           { name: "bill_type", label: "Bill Type", type: "Select", options: [{ label: "Running", value: "Running" }, { label: "Final", value: "Final" }] },
           { name: "page_no", label: "Page No", type: "Data" },
           { name: "mb_no", label: "MB No", type: "Data" },
@@ -141,24 +141,38 @@ export default function NewExpenditurePage() {
               targetField: "custom_lis_name"
             }
           },
-          { name: "stage", label: "Stage/ Sub Scheme", type: "Table MultiSelect", linkTarget: "Stage Multiselect" ,
-             fetchFrom: {
+          {
+            name: "stage", label: "Stage/ Sub Scheme", type: "Table MultiSelect", linkTarget: "Stage Multiselect",
+            fetchFrom: {
               sourceField: "tender_number",
               targetDoctype: "Project",
               targetField: "custom_stage"
             }
           },
           {
+            showDownloadUpload: true,
             name: "expenditure_details", label: "Expenditure Details", type: "Table", columns: [
               { name: "name_of_work", label: "Name of Work", type: "Text" },
               { name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No" },
               { name: "work_type", label: "Work Type", type: "Link", linkTarget: "Work Type" },
               { name: "asset", label: "Asset", type: "Link", linkTarget: "Asset" },
               { name: "work_subtype", label: "Work Subtype", type: "Link", linkTarget: "Work Subtype" },
-              { name: "asset_name", label: "Asset Name", type: "Data" },
-              { name: "bill_amount", label: "Expenditure Amount", type: "Currency",precision: 2 },
-              { name: "have_asset", label: "Have Asset", type: "Check" },
-              { name: "asset_no", label: "Asset No", type: "Data" },
+              {
+                name: "asset_name", label: "Asset Name", type: "Data", fetchFrom: {
+                  sourceField: "asset",
+                  targetDoctype: "Asset",
+                  targetField: "asset_name"
+                }
+              },
+              { name: "bill_amount", label: "Expenditure Amount", type: "Currency", precision: 2 },
+              { name: "have_asset", label: "Have Asset", type: "Check", },
+              {
+                name: "asset_no", label: "Asset No", type: "Data", fetchFrom: {
+                  sourceField: "asset",
+                  targetDoctype: "Asset",
+                  targetField: "custom_asset_no"
+                }
+              },
               { name: "from_date", label: "From Date", type: "Date" },
               { name: "attach", label: "Attach", type: "Attach" },
               { name: "to_date", label: "To Date", type: "Date" },
@@ -167,7 +181,7 @@ export default function NewExpenditurePage() {
               { name: "remarks", label: "Work Details", type: "Text" }
             ]
           },
-          { name: "saved_amount", label: "Saved Amount", type: "Currency",precision: 2 },
+          { name: "saved_amount", label: "Saved Amount", type: "Currency", precision: 2 },
           { name: "work_description", label: "Work Description", type: "Long Text" }
 
         ],
@@ -333,7 +347,7 @@ export default function NewExpenditurePage() {
       description="Create a new expenditure record"
       submitLabel={isSaving ? "Saving..." : "New Expenditure"}
       cancelLabel="Cancel"
-    
+
     />
   );
 }

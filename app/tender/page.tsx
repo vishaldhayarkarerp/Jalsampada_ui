@@ -29,13 +29,13 @@ const transactionDoctypes: Doctype[] = [
 
 const tenderDoctypeGroups: DoctypeGroup[] = [
   {
-    title: "Masters",
-    doctypes: masterDoctypes
-  },
-  {
     title: "Transactions",
     doctypes: transactionDoctypes
-  }
+  },
+  {
+    title: "Master",
+    doctypes: masterDoctypes
+  },
 ];
 
 export default function TenderPage() {
