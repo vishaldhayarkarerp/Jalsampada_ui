@@ -28,6 +28,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
     const [options, setOptions] = React.useState<LinkInputOption[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
     const [isOpen, setIsOpen] = React.useState(false);
+    const [isFocused, setIsFocused] = React.useState(false);
 
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const inputRef = React.useRef<HTMLInputElement>(null);
@@ -93,6 +94,14 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
         }, 300);
     }, [performSearch, value]);
 
+    // Sync external value when not focused
+    React.useEffect(() => {
+        if (!isFocused) {
+            setSearchTerm(value || "");
+        }
+    }, [value, isFocused]);
+
+    // Debounced search effect
     React.useEffect(() => {
         debouncedSearch(searchTerm);
         return () => {
@@ -116,6 +125,9 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
         };
     }, []);
 
+    // Display logic
+    const displayValue = isFocused ? searchTerm : (value || "");
+
     // Filter options based on search term
     const filteredOptions = React.useMemo(() => {
         if (!searchTerm?.trim()) {
@@ -126,31 +138,46 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
         );
     }, [options, searchTerm]);
 
-    // Memoized event handlers to prevent unnecessary re-renders
+    // Input handlers
+    const handleFocus = React.useCallback(() => {
+        setIsFocused(true);
+        setSearchTerm(value || "");
+        setIsOpen(true);
+        performSearch(value || "");
+    }, [value, performSearch]);
+
+    const handleBlur = React.useCallback(() => {
+        setTimeout(() => {
+            setIsFocused(false);
+            if (searchTerm !== value) {
+                setSearchTerm(value || ""); // Restore original
+            }
+        }, 200);
+    }, [value, searchTerm]);
+
     const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
         setSearchTerm(newValue);
-        onChange(newValue);
         setIsOpen(true);
+
+        // Only call onChange on clear
+        if (newValue === "") {
+            onChange("");
+        }
     }, [onChange]);
 
     const handleOptionSelect = React.useCallback((option: LinkInputOption) => {
-        onChange(option.value);
         setSearchTerm(option.value);
+        onChange(option.value); // Update on selection
         setIsOpen(false);
+        setIsFocused(false);
     }, [onChange]);
 
     const handleClear = React.useCallback(() => {
-        onChange("");
         setSearchTerm("");
+        onChange("");
         setIsOpen(false);
     }, [onChange]);
-
-    const handleFocus = React.useCallback(() => {
-        setSearchTerm(value);
-        setIsOpen(true);
-        performSearch(value);
-    }, [value, performSearch]);
 
     return (
         <div className={`relative ${className}`} ref={dropdownRef}>
@@ -158,9 +185,10 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
                 <input
                     ref={inputRef}
                     type="text"
-                    value={searchTerm || value}
+                    value={displayValue}
                     onChange={handleInputChange}
                     onFocus={handleFocus}
+                    onBlur={handleBlur}
                     placeholder={placeholder || `Select ${linkTarget}...`}
                     className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none form-control focus:border-transparent"
                     autoComplete="off"

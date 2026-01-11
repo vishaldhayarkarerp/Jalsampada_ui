@@ -41,38 +41,68 @@ export function TableRowProvider({
     const [editingRowIndex, setEditingRowIndex] = React.useState<number | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
 
-    // Update rows when initialRows changes (from parent form)
+    // Track if we're currently syncing to avoid infinite loops
+    const isSyncingRef = React.useRef(false);
+
+    // Sync from parent when initialRows changes (only if not currently syncing)
     React.useEffect(() => {
-        setRows(initialRows);
+        if (!isSyncingRef.current) {
+            console.log('TableRowContext: Syncing from parent initialRows');
+            setRows(initialRows);
+        }
     }, [initialRows]);
 
-    const setRowsWithCallback = (newRows: Record<string, any>[]) => {
+    const setRowsWithCallback = React.useCallback((newRows: Record<string, any>[]) => {
+        console.log('TableRowContext: setRowsWithCallback called');
+        isSyncingRef.current = true;
         setRows(newRows);
-        onRowsChange(newRows);
-    };
 
-    const updateRow = (index: number, data: Record<string, any>) => {
-        const newRows = [...rows];
-        newRows[index] = { ...newRows[index], ...data };
-        setRows(newRows);
-        onRowsChange(newRows);
-    };
+        // Use requestAnimationFrame to ensure this happens after render
+        requestAnimationFrame(() => {
+            onRowsChange(newRows);
+            // Reset sync flag after a brief delay
+            setTimeout(() => {
+                isSyncingRef.current = false;
+            }, 100);
+        });
+    }, [onRowsChange]);
 
-    const openEditModal = (index: number) => {
+    const updateRow = React.useCallback((index: number, data: Record<string, any>) => {
+        console.log('TableRowContext: updateRow called', index, data);
+
+        setRows(currentRows => {
+            const newRows = [...currentRows];
+            newRows[index] = { ...newRows[index], ...data };
+
+            // Schedule the callback for after render completes
+            isSyncingRef.current = true;
+            requestAnimationFrame(() => {
+                onRowsChange(newRows);
+                // Reset sync flag after a brief delay
+                setTimeout(() => {
+                    isSyncingRef.current = false;
+                }, 100);
+            });
+
+            return newRows;
+        });
+    }, [onRowsChange]);
+
+    const openEditModal = React.useCallback((index: number) => {
         setEditingRowIndex(index);
         setIsEditModalOpen(true);
-    };
+    }, []);
 
-    const closeEditModal = () => {
+    const closeEditModal = React.useCallback(() => {
         setEditingRowIndex(null);
         setIsEditModalOpen(false);
-    };
+    }, []);
 
-    const getRowData = (index: number) => {
+    const getRowData = React.useCallback((index: number) => {
         return rows[index] || {};
-    };
+    }, [rows]);
 
-    const value: TableRowContextType = {
+    const value: TableRowContextType = React.useMemo(() => ({
         rows,
         editingRowIndex,
         isEditModalOpen,
@@ -81,7 +111,7 @@ export function TableRowProvider({
         openEditModal,
         closeEditModal,
         getRowData,
-    };
+    }), [rows, editingRowIndex, isEditModalOpen, setRowsWithCallback, updateRow, openEditModal, closeEditModal, getRowData]);
 
     return (
         <TableRowContext.Provider value={value}>

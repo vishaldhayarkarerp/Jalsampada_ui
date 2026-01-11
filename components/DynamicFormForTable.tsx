@@ -77,34 +77,58 @@ export function DynamicFormForTable({
     const { editingRowIndex, updateRow, getRowData } = useTableRowContext();
     const { apiKey, apiSecret } = useAuth();
 
-    // We'll use controlled components instead of form hooks to avoid nested forms
+    // Local form state for the modal
     const [formData, setFormData] = React.useState<Record<string, any>>({});
 
-    // Always get the latest data from context when editingRowIndex changes
+    // Initialize form data when modal opens or data changes
     React.useEffect(() => {
         if (editingRowIndex !== null) {
             const currentRowData = getRowData(editingRowIndex);
-            console.log('DynamicFormForTable getting current data from context:', currentRowData);
-            setFormData(currentRowData || {});
+            console.log('DynamicFormForTable: Initializing with data from context:', currentRowData);
+            setFormData(currentRowData);
+        } else if (data) {
+            console.log('DynamicFormForTable: Initializing with prop data:', data);
+            setFormData(data);
         }
-    }, [editingRowIndex, getRowData]);
+    }, [editingRowIndex, data, getRowData]);
 
-    // Initialize form data when data prop changes (fallback)
-    React.useEffect(() => {
-        if (editingRowIndex === null && data) {
-            console.log('DynamicFormForTable received data prop:', data);
-            setFormData(data || {});
+    // Debounced update to context - prevents excessive updates during typing
+    const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    const debouncedUpdateContext = React.useCallback((newData: Record<string, any>) => {
+        if (editingRowIndex === null) return;
+
+        if (updateTimeoutRef.current) {
+            clearTimeout(updateTimeoutRef.current);
         }
-    }, [data, editingRowIndex]);
+
+        updateTimeoutRef.current = setTimeout(() => {
+            console.log('DynamicFormForTable: Debounced update to context:', newData);
+            updateRow(editingRowIndex, newData);
+        }, 300); // 300ms debounce
+    }, [editingRowIndex, updateRow]);
+
+    // Cleanup timeout on unmount
+    React.useEffect(() => {
+        return () => {
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const handleInputChange = async (fieldName: string, value: any, _depth: number = 0) => {
-        const newFormData = { ...formData, [fieldName]: value };
-        setFormData(newFormData);
+        // Update local state immediately for responsive UI
+        setFormData(current => {
+            const newFormData = { ...current, [fieldName]: value };
 
-        // Real-time update to the context if we have an editing row
-        if (editingRowIndex !== null) {
-            updateRow(editingRowIndex, { [fieldName]: value });
-        }
+            // Debounced update to context (only for non-dependent fields)
+            if (_depth === 0) {
+                debouncedUpdateContext(newFormData);
+            }
+
+            return newFormData;
+        });
 
         // Handle fetchFrom dependencies
         const dependentFields = (fields || []).filter(f => f.fetchFrom?.sourceField === fieldName);
@@ -151,13 +175,13 @@ export function DynamicFormForTable({
                 }
             });
 
-            // Update form state and context in single batch
+            // Update local state with all dependent fields at once
             setFormData(current => {
                 const updatedData = { ...current, ...fieldUpdates };
 
-                // Update context if editing
+                // Update context immediately for dependent fields
                 if (editingRowIndex !== null) {
-                    updateRow(editingRowIndex, fieldUpdates);
+                    updateRow(editingRowIndex, updatedData);
                 }
 
                 return updatedData;
@@ -174,13 +198,23 @@ export function DynamicFormForTable({
     };
 
     const handleSubmit = () => {
-        console.log('Submitting form data:', formData);
+        console.log('DynamicFormForTable: Submitting form data:', formData);
+
+        // Clear any pending debounced updates
+        if (updateTimeoutRef.current) {
+            clearTimeout(updateTimeoutRef.current);
+        }
+        
+        // Final update to context
+        if (editingRowIndex !== null) {
+            updateRow(editingRowIndex, formData);
+        }
+
         onSubmit(formData);
     };
 
     const renderLink = (field: FormField) => {
         const value = formData[field.name] ?? "";
-        console.log(`Rendering Link field for ${field.name}:`, { value, formData: formData[field.name] });
 
         // Build dynamic filters for Link fields
         const getValue = (name: string) => formData[name];
@@ -393,7 +427,6 @@ export function DynamicFormForTable({
 
     const renderDuration = (field: FormField) => {
         const value = formData[field.name] ?? {};
-        const base = field.name;
 
         return (
             <div className="form-group">
@@ -512,13 +545,10 @@ export function DynamicFormForTable({
             let objectUrl: string | null = null;
 
             if (value instanceof File) {
-                // Case 1: New file selected by user
                 objectUrl = URL.createObjectURL(value);
                 setPreviewUrl(objectUrl);
-
             } else if (typeof value === 'string' && (value.startsWith("/files/") || value.startsWith("/private/files/"))) {
                 setPreviewUrl(API_BASE_URL + value);
-
             } else {
                 setPreviewUrl(null);
             }
@@ -557,7 +587,6 @@ export function DynamicFormForTable({
                     />
 
                     {!value ? (
-                        // "Browse" button
                         <Button
                             type="button"
                             variant="outline"
@@ -568,14 +597,11 @@ export function DynamicFormForTable({
                             Attach
                         </Button>
                     ) : (
-                        // Show file name and action buttons
                         <>
-
                             <span className="text-sm truncate flex-1" title={typeof value === 'string' ? value : value.name}>
                                 {typeof value === 'string' ? value.split('/').pop() : value.name}
                             </span>
 
-                            {/* Preview (Eye) Button */}
                             {previewUrl && (
                                 <Button
                                     type="button"
@@ -590,7 +616,6 @@ export function DynamicFormForTable({
                                 </Button>
                             )}
 
-                            {/* Clear (X) Button */}
                             <Button
                                 type="button"
                                 variant="ghost"

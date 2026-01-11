@@ -25,9 +25,10 @@ interface TableLinkCellProps {
         placeholder?: string;
     };
     filters?: Record<string, any>; // Optional filters, similar to LinkField
+    onValueChange?: (value: any) => void; // Callback for parent sync
 }
 
-export function TableLinkCell({ control, fieldName, column, filters = {} }: TableLinkCellProps) {
+export function TableLinkCell({ control, fieldName, column, filters = {}, onValueChange }: TableLinkCellProps) {
     const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
     const [searchTerm, setSearchTerm] = React.useState("");
@@ -126,6 +127,19 @@ export function TableLinkCell({ control, fieldName, column, filters = {} }: Tabl
         };
     }, [isOpen, updateDropdownPosition]);
 
+    // Critical: Handle value changes and sync with parent
+    const handleChange = React.useCallback((newValue: string) => {
+        // Update form immediately for responsive UI
+        // This will be called within the Controller's onChange
+
+        // Notify parent for context sync (deferred to prevent render conflicts)
+        if (onValueChange) {
+            requestAnimationFrame(() => {
+                onValueChange(newValue);
+            });
+        }
+    }, [onValueChange]);
+
     return (
         <div className="relative" ref={dropdownRef} style={{ overflow: 'visible' }}>
             <Controller
@@ -150,13 +164,20 @@ export function TableLinkCell({ control, fieldName, column, filters = {} }: Tabl
 
                         // Clear value if no exact match
                         const exactMatch = options.find(opt => opt.label === newValue);
-                        onChange(exactMatch ? exactMatch.value : "");
+                        const finalValue = exactMatch ? exactMatch.value : "";
+                        onChange(finalValue);
+
+                        // Notify parent for context sync
+                        handleChange(finalValue);
                     };
 
                     const handleOptionSelect = (option: TableLinkOption) => {
                         setSearchTerm(option.label);
                         onChange(option.value);
                         setIsOpen(false);
+
+                        // Notify parent for context sync
+                        handleChange(option.value);
                     };
 
                     const handleInputFocus = () => {
@@ -199,6 +220,9 @@ export function TableLinkCell({ control, fieldName, column, filters = {} }: Tabl
                                                 setSearchTerm("");
                                                 onChange("");
                                                 setOptions([]);
+
+                                                // Notify parent for context sync
+                                                handleChange("");
                                             }}
                                         />
                                     ) : (

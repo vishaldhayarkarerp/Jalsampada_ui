@@ -1,8 +1,3 @@
-// Updated TableField.tsx
-// Replace the existing LinkCell function with the new TableLinkCell component.
-// Also, add import for TableLinkCell.
-// Remove the old LinkCell logic and SelectInput import if not used elsewhere.
-
 "use client";
 
 import * as React from "react";
@@ -10,11 +5,8 @@ import { useFieldArray, useFormContext, Controller } from "react-hook-form";
 import { FormField } from "./DynamicFormComponent";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, X, Eye, Edit, Download, Upload as UploadIcon } from "lucide-react"; // Import icons
-// import SelectInput from "./form/Select"; // Remove if not used
-
-// NEW IMPORT: Add this
-import { TableLinkCell } from "./TableLinkCell"; // Adjust path if needed
+import { Upload, X, Eye, Edit, Download, Upload as UploadIcon } from "lucide-react";
+import { TableLinkCell } from "./TableLinkCell";
 import { Modal } from "./Modal";
 import { DynamicFormForTable } from "./DynamicFormForTable";
 import { TableRowProvider, useTableRowContext } from "./TableRowContext";
@@ -24,7 +16,6 @@ import "./TableField.css";
 import "react-datepicker/dist/react-datepicker.css";
 
 const API_BASE_URL = "http://103.219.1.138:4412/";
-const LINK_API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
 interface Option {
   value: string;
@@ -190,10 +181,6 @@ const renderTableButton = (c: any, idx: number, rows: any[]) => (
   </button>
 );
 
-/**
- * This is the new "smart" cell for attachments.
- * It handles its own state for previewing and clearing.
- */
 function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChange }: {
   fieldName: string,
   control: any,
@@ -202,23 +189,18 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
   onValueChange?: (value: any) => void
 }) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-
   const { watch, setValue } = useFormContext();
   const value = watch(fieldName);
-
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let objectUrl: string | null = null;
 
     if (value instanceof File) {
-      // Case 1: New file selected by user
       objectUrl = URL.createObjectURL(value);
       setPreviewUrl(objectUrl);
-
     } else if (typeof value === 'string' && (value.startsWith("/files/") || value.startsWith("/private/files/"))) {
       setPreviewUrl(API_BASE_URL + value);
-
     } else {
       setPreviewUrl(null);
     }
@@ -234,7 +216,6 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
     const file = e.target.files?.[0];
     if (file) {
       setValue(fieldName, file, { shouldDirty: true });
-      // Also update the context if provided
       if (onValueChange && rowIndex !== undefined && columnName !== undefined) {
         onValueChange(file);
       }
@@ -243,7 +224,6 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
 
   const handleClear = () => {
     setValue(fieldName, null, { shouldDirty: true });
-    // Also update the context if provided
     if (onValueChange && rowIndex !== undefined && columnName !== undefined) {
       onValueChange(null);
     }
@@ -262,7 +242,6 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
       />
 
       {!value ? (
-        // "Browse" button
         <Button
           type="button"
           variant="outline"
@@ -273,13 +252,11 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
           Attach
         </Button>
       ) : (
-        // Show file name and action buttons
         <>
           <span className="text-sm truncate flex-1" title={typeof value === 'string' ? value : value.name}>
             {typeof value === 'string' ? value.split('/').pop() : value.name}
           </span>
 
-          {/* Preview (Eye) Button */}
           {previewUrl && (
             <Button
               type="button"
@@ -294,7 +271,6 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
             </Button>
           )}
 
-          {/* Clear (X) Button */}
           <Button
             type="button"
             variant="ghost"
@@ -322,15 +298,15 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
 
   const [selectedIndices, setSelectedIndices] = React.useState<Set<number>>(new Set());
 
+  // Debounce timeout for table input changes
+  const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
   const addRow = () => {
     const row: any = { id: Date.now().toString() + Math.random() };
     (field.columns || []).forEach((c) => (row[c.name] = ""));
-    console.log('Adding new row:', row);
+    console.log('TableField: Adding new row:', row);
 
-    // Add to react-hook-form
     append(row);
-
-    // Also add to context to ensure sync
     setRows([...rows, row]);
   };
 
@@ -350,26 +326,31 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
 
   const deleteSelected = () => {
     const toRemove = Array.from(selectedIndices).sort((a, b) => b - a);
-    console.log('Deleting rows:', toRemove);
+    console.log('TableField: Deleting rows:', toRemove);
 
-    // Remove from react-hook-form
     remove(toRemove);
-
-    // Also update context to ensure sync
     const newRows = rows.filter((_, index) => !selectedIndices.has(index));
     setRows(newRows);
-
     setSelectedIndices(new Set());
   };
 
   const handleEdit = (index: number) => {
-    console.log('Editing row:', index, 'Data:', rows[index]);
+    console.log('TableField: Opening edit modal for row:', index, 'Data:', rows[index]);
     openEditModal(index);
   };
 
   const handleEditSubmit = (data: Record<string, any>) => {
+    console.log('TableField: Edit submit received:', data);
     if (editingRowIndex !== null) {
+      // Update context - this will trigger the effect to update form values
       updateRow(editingRowIndex, data);
+
+      // Update form values directly as well to ensure immediate sync
+      requestAnimationFrame(() => {
+        Object.keys(data).forEach(key => {
+          formMethods.setValue(`${field.name}.${editingRowIndex}.${key}`, data[key], { shouldDirty: true });
+        });
+      });
     }
     closeEditModal();
   };
@@ -378,22 +359,40 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
     closeEditModal();
   };
 
-  // Handle direct table input changes and sync with context
-  const handleTableInputChange = (rowIndex: number, fieldName: string, value: any) => {
-    console.log('Table input changed:', rowIndex, fieldName, value);
-    console.log('Current row data:', rows[rowIndex]);
-    updateRow(rowIndex, { [fieldName]: value });
+  // Optimized handler for table input changes with debouncing
+  const handleTableInputChange = React.useCallback((rowIndex: number, fieldName: string, value: any) => {
+    console.log('TableField: Input changed:', rowIndex, fieldName, value);
 
-    // Also update the form field to maintain react-hook-form sync
+    // Update form immediately for responsive UI
     formMethods.setValue(`${field.name}.${rowIndex}.${fieldName}`, value, { shouldDirty: true });
-  };
+
+    // Debounced update to context - happens AFTER the current render cycle
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    updateTimeoutRef.current = setTimeout(() => {
+      console.log('TableField: Debounced update to context');
+      // Use requestAnimationFrame to ensure this happens outside the render cycle
+      requestAnimationFrame(() => {
+        updateRow(rowIndex, { [fieldName]: value });
+      });
+    }, 150); // 150ms debounce for faster table updates
+  }, [field.name, formMethods, updateRow]);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Download functionality
   const handleDownload = () => {
     const csvContent = [
-      // Headers
       (field.columns || []).map(c => c.label).join(','),
-      // Data rows
       ...rows.map(row =>
         (field.columns || []).map(c => row[c.name] || '').join(',')
       )
@@ -419,10 +418,9 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      console.log('Raw CSV text:', text);
+      console.log('TableField: Parsing CSV');
 
       const lines = text.split('\n').filter(line => line.trim());
-      console.log('Parsed lines:', lines);
 
       if (lines.length < 2) {
         alert('File must contain headers and at least one data row');
@@ -430,55 +428,33 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
       }
 
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      console.log('Headers:', headers);
-
       const columnMap = new Map<string, number>();
 
-      // Map headers to field names
       (field.columns || []).forEach(col => {
         const headerIndex = headers.findIndex(h =>
           h.toLowerCase() === col.label.toLowerCase()
         );
         if (headerIndex !== -1) {
           columnMap.set(col.name, headerIndex);
-          console.log(`Mapped ${col.name} to header index ${headerIndex} (${headers[headerIndex]})`);
-        } else {
-          console.log(`No header found for ${col.name} (looking for: ${col.label})`);
         }
       });
 
-      // Parse data rows
-      const newRows = lines.slice(1).map((line, index) => {
+      const newRows = lines.slice(1).map((line) => {
         const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-        console.log(`Row ${index + 1} values:`, values);
-
         const row: any = { id: Date.now().toString() + Math.random() };
 
         (field.columns || []).forEach(col => {
           const colIndex = columnMap.get(col.name);
-          if (colIndex !== undefined && values[colIndex]) {
-            row[col.name] = values[colIndex];
-            console.log(`Set ${col.name} = "${values[colIndex]}"`);
-          } else {
-            row[col.name] = '';
-            console.log(`Set ${col.name} = "" (no data)`);
-          }
+          row[col.name] = (colIndex !== undefined && values[colIndex]) ? values[colIndex] : '';
         });
 
-        console.log(`Final row ${index + 1}:`, row);
         return row;
       });
 
-      console.log('All new rows to import:', newRows);
+      console.log('TableField: Importing rows:', newRows);
 
-      // Clear existing rows and add new ones
       remove();
-      newRows.forEach((row, index) => {
-        console.log(`Appending row ${index + 1}:`, row);
-        append(row);
-      });
-
-      // Also update the context to ensure sync
+      newRows.forEach(row => append(row));
       setRows(newRows);
 
       alert(`Successfully imported ${newRows.length} rows`);
@@ -556,6 +532,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                             control={formMethods.control}
                             fieldName={`${field.name}.${idx}.${c.name}`}
                             column={c}
+                            onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
                           />
                         ) : c.type === "Date" ? (
                           <DatePicker
@@ -564,7 +541,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                               handleTableInputChange(idx, c.name, date ? date.toISOString().split('T')[0] : '');
                             }}
                             dateFormat="dd/MM/yyyy"
-                            className={cn("form-control-borderless w-full", "")}
+                            className={cn("form-control-borderless w-full")}
                             placeholderText="DD/MM/YYYY"
                             showYearDropdown
                             scrollableYearDropdown
@@ -632,7 +609,6 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                         <Edit size={16} />
                       </Button>
                     </td>
-
                   </tr>
                 ))}
               </tbody>
@@ -693,7 +669,6 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
         </div>
       </div>
 
-      {/* Edit Modal */}
       {isEditModalOpen && editingRowIndex !== null && (
         <Modal
           isOpen={isEditModalOpen}
@@ -721,14 +696,14 @@ export function TableField({ field, control, register, errors }: TableFieldProps
 
   const formMethods = useFormContext();
 
-  const handleRowsChange = (newRows: Record<string, any>[]) => {
-    // Update the form field array with new data
+  const handleRowsChange = React.useCallback((newRows: Record<string, any>[]) => {
+    console.log('TableField: Context rows changed, updating form');
     newRows.forEach((row, index) => {
       Object.keys(row).forEach(key => {
         formMethods.setValue(`${field.name}.${index}.${key}`, row[key], { shouldDirty: true });
       });
     });
-  };
+  }, [field.name, formMethods]);
 
   return (
     <TableRowProvider
