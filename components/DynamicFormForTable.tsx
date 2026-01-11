@@ -179,9 +179,11 @@ export function DynamicFormForTable({
             setFormData(current => {
                 const updatedData = { ...current, ...fieldUpdates };
 
-                // Update context immediately for dependent fields
+                // Update context asynchronously for dependent fields (deferred to prevent render conflicts)
                 if (editingRowIndex !== null) {
-                    updateRow(editingRowIndex, updatedData);
+                    requestAnimationFrame(() => {
+                        updateRow(editingRowIndex, updatedData);
+                    });
                 }
 
                 return updatedData;
@@ -204,7 +206,7 @@ export function DynamicFormForTable({
         if (updateTimeoutRef.current) {
             clearTimeout(updateTimeoutRef.current);
         }
-        
+
         // Final update to context
         if (editingRowIndex !== null) {
             updateRow(editingRowIndex, formData);
