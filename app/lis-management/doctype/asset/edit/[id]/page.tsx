@@ -949,12 +949,24 @@ export default function RecordDetailPage() {
         });
         const encodedData = btoa(JSON.stringify(duplicateData));
         router.push(`/lis-management/doctype/asset/new?duplicate=${encodeURIComponent(encodedData)}`);
-        toast.success("Asset data copied! Creating duplicate...");
     }, [asset, router]);
 
     React.useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.shiftKey && event.key === 'D') {
+            if (event.shiftKey && event.key.toLowerCase() === 'd') {
+                // Prevent when typing in inputs / textareas / contenteditable
+                const el = event.target as HTMLElement;
+                const tag = el.tagName.toLowerCase();
+
+                if (
+                    tag === 'input' ||
+                    tag === 'textarea' ||
+                    tag === 'select' ||
+                    el.isContentEditable
+                ) {
+                    return;
+                }
+
                 event.preventDefault();
                 handleDuplicate();
             }

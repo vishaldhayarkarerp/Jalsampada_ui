@@ -660,6 +660,14 @@ export function DynamicForm({
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Prevent save / duplicate when typing in inputs, textareas, etc.
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement?.tagName === "INPUT" ||
+        activeElement?.tagName === "TEXTAREA" ||
+        activeElement?.tagName === "SELECT" ||
+        (activeElement as HTMLElement)?.isContentEditable;
+
       if ((event.ctrlKey || event.metaKey) && event.key === "s") {
         event.preventDefault();
         const submitButton = formRef.current?.querySelector(
@@ -670,7 +678,11 @@ export function DynamicForm({
         }
       }
 
-      if (event.shiftKey && (event.key === "D" || event.key === "d")) {
+      // Shift + D → Duplicate (only when NOT focused in any input field)
+      if (
+        event.shiftKey &&
+        (event.key === "D" || event.key === "d") && !isInputFocused
+      ) {
         event.preventDefault();
         handleDuplicate();
       }
@@ -1526,7 +1538,7 @@ export function DynamicForm({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white border border-gray-200 rounded-md shadow-lg">
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={handleDuplicate}
                     className="transition-all duration-200 hover:bg-gray-50 hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
                   >
