@@ -8,10 +8,12 @@ import {
   ClipboardList,
   IndianRupee,
   Settings,
+  Users,
 } from "lucide-react";
 
 const masterDoctypes: Doctype[] = [
   // Masters
+  { name: "contractor", title: "Contractor", icon: Users },
   { name: "work-type", title: "Work Type", icon: ClipboardList },
   { name: "work-subtype", title: "Work Subtype", icon: ClipboardList },
   { name: "fund-head", title: "Fund Head", icon: Settings },
