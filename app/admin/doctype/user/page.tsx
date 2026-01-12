@@ -205,7 +205,7 @@ export default function UserDoctypePage() {
 
   const title = "User";
   const handleCardClick = (id: string) => {
-    router.push(`/admin/doctype/user/${id}`);
+    router.push(`/admin/doctype/user/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

@@ -167,7 +167,7 @@ export default function DoctypePage() {
   const title = "Stage No";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/stage-no/${id}`);
+    router.push(`/lis-management/doctype/stage-no/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

@@ -164,7 +164,7 @@ export default function DoctypePage() {
   const title = "Equipement Make";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/equipment-make/${id}`);
+    router.push(`/lis-management/doctype/equipment-make/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

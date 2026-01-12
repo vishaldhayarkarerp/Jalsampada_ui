@@ -283,7 +283,7 @@ export default function MaterialRequestDetailPage() {
                 setRecord(resp.data.data);
             }
 
-            router.push(`/operations/doctype/spare-indent/${docname}`);
+            router.push(`/operations/doctype/spare-indent/${encodeURIComponent(docname)}`);
 
         } catch (err: any) {
             console.error("Save error:", err);

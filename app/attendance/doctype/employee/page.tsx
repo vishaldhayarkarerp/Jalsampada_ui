@@ -230,7 +230,7 @@ export default function EmployeeListPage() {
   };
 
   const handleCardClick = (id: string) => {
-    router.push(`/attendance/doctype/employee/${id}`);
+    router.push(`/attendance/doctype/employee/${encodeURIComponent(id)}`);
   };
 
   // ── Renderers ────────────────────────────────────────────────────

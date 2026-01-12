@@ -212,14 +212,11 @@ export default function RecordDetailPage() {
             precision: 2,
           },
 
-          {
-            name: "tender_number",
-            label: "Tender Number",
-            type: "Link",
-            linkTarget: "Project",
-            required: true,
-
-          },
+          { name: "tender_number", label: "Tender Number", type: "Link", required: true, linkTarget: "Project",
+            filterMapping: [
+              { sourceField: "custom_fiscal_year", targetField: "fiscal_year" }
+            ]
+           },
           {
             name: "bill_number",
             label: "Bill Number",
@@ -232,12 +229,13 @@ export default function RecordDetailPage() {
             precision: 2,
           },
 
-          {
-            name: "tender_amount",
-            label: "Tender Amount",
-            type: "Currency",
-            precision: 2,
-          },
+          { name: "tender_amount", label: "Tender Amount", type: "Currency", precision: 2,
+            fetchFrom: {
+              sourceField: "tender_number",
+              targetDoctype: "Project",
+              targetField: "custom_tender_amount"
+            }
+           },
           {
             name: "prev_bill_amt",
             label: "Previous Bill Amount",

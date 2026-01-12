@@ -326,7 +326,7 @@ export default function NewRecordPage() {
 
       // Navigate to the newly created record using the document name
       const docName = responseData.data.name;
-      router.push(`/lis-management/doctype/asset/edit/${docName}`);
+      router.push(`/lis-management/doctype/asset/edit/${encodeURIComponent(docName)}`);
 
     } catch (err: any) {
       console.error("Save error:", err);

@@ -248,7 +248,7 @@ export default function LisIncidentRecordPage() {
   const title = "LIS Incident Record";
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/lis-incident-record/${id}`);
+    router.push(`/operations/doctype/lis-incident-record/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

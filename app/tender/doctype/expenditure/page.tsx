@@ -169,7 +169,7 @@ export default function DoctypePage() {
   const title = "Expenditure";
 
   const handleCardClick = (id: string) => {
-    router.push(`/tender/doctype/expenditure/${id}`);
+    router.push(`/tender/doctype/expenditure/${encodeURIComponent(id)}`);
   };
 
   const getFieldsForRecord = (record: Expenditure): RecordCardField[] => {

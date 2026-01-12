@@ -406,7 +406,7 @@ export default function LisIncidentRecordDetailPage() {
                 setRecord(resp.data.data);
             }
 
-            router.push(`/lis-management/doctype/issue/${docname}`);
+            router.push(`/operations/doctype/lis-incident-record/${encodeURIComponent(docname)}`);
 
         } catch (err: any) {
             console.error("Save error:", err);

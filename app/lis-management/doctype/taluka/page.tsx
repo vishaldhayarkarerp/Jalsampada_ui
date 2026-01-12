@@ -80,7 +80,7 @@ export default function TalukaListPage() {
   }, [fetchData]);
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/taluka/${id}`);
+    router.push(`/lis-management/doctype/taluka/${encodeURIComponent(id)}`);
   };
 
   // ── Renderers ────────────────────────────────────────────────────

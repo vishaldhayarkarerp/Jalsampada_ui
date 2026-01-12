@@ -231,7 +231,7 @@ export default function RatingPage() {
   const title = "Rating";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/rating/${id}`);
+    router.push(`/lis-management/doctype/rating/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

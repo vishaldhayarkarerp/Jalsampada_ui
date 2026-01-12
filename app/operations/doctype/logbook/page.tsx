@@ -241,7 +241,7 @@ export default function LogbookPage() {
   const title = "Logbook";
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/logbook/${id}`);
+    router.push(`/operations/doctype/logbook/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

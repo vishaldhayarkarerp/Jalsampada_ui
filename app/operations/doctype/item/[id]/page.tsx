@@ -190,7 +190,7 @@ export default function ItemDetailPage() {
         setItem(resp.data.data);
       }
 
-      router.push(`/operations/doctype/item/${docname}`);
+      router.push(`/operations/doctype/item/${encodeURIComponent(docname)}`);
     } catch (err: any) {
       console.error("Save error:", err);
       toast.error("Failed to save item", {

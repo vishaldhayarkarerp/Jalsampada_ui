@@ -166,7 +166,7 @@ export default function DoctypePage() {
   const title = "Prapan Suchi";
 
   const handleCardClick = (id: string) => {
-    router.push(`/tender/doctype/prapan-suchi/${id}`);
+    router.push(`/tender/doctype/prapan-suchi/${encodeURIComponent(id)}`);
   };
 
   const getFieldsForRecord = (record: PrapanSuchi): RecordCardField[] => {

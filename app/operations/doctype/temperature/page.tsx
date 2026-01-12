@@ -230,7 +230,7 @@ export default function TemperatureReadingsPage() {
   const title = "Temperature Readings";
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/temperature/${id}`);
+    router.push(`/operations/doctype/temperature/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

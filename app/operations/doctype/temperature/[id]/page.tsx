@@ -140,7 +140,7 @@ export default function TemperatureReadingDetailPage() {
                 setRecord(resp.data.data);
             }
 
-            router.push(`/operations/doctype/temperature/${docname}`);
+            router.push(`/operations/doctype/temperature/${encodeURIComponent(docname)}`);
 
         } catch (err: any) {
             console.error("Save error:", err);

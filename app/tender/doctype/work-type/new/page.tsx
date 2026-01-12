@@ -88,7 +88,7 @@ export default function NewWorkTypePage() {
       const workTypeName = response.data.data.work_type_name;
       const docName = response.data.data.name;
       const navigationId = workTypeName || docName;
-      router.push(`/tender/doctype/work-type/${navigationId}`);
+      router.push(`/tender/doctype/work-type/${encodeURIComponent(navigationId)}`);
       
     } catch (err: any) {
       console.error("Create error:", err);

@@ -251,7 +251,7 @@ export default function WarehousePage() {
   };
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/warehouse/${id}`);
+    router.push(`/operations/doctype/warehouse/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

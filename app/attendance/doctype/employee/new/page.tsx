@@ -291,7 +291,7 @@ export default function NewEmployeePage() {
 
       toast.success("Employee created successfully!");
       const newId = response.data.data.name;
-      router.push(`/attendance/doctype/employee/${newId}`);
+      router.push(`/attendance/doctype/employee/${encodeURIComponent(newId)}`);
       
     } catch (error: any) {
       console.error("Error creating employee:", error);

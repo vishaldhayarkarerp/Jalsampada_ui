@@ -260,7 +260,7 @@ export default function LogSheetDetailPage() {
                 setRecord(resp.data.data);
             }
 
-            router.push(`/operations/doctype/logsheet/${docname}`);
+            router.push(`/operations/doctype/logsheet/${encodeURIComponent(docname)}`);
 
         } catch (err: any) {
             console.error("Save error:", err);

@@ -154,7 +154,7 @@ export default function DoctypePage() {
   const title = "Draft Tender Paper";
 
   const handleCardClick = (id: string) => {
-    router.push(`/tender/doctype/draft-tender-paper/${id}`);
+    router.push(`/tender/doctype/draft-tender-paper/${encodeURIComponent(id)}`);
   };
 
   const getFieldsForRecord = (record: DraftTenderPaper): RecordCardField[] => {

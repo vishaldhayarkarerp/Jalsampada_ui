@@ -164,7 +164,7 @@ export default function DoctypePage() {
   const title = "Equipement Capacity";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/equipement-capacity/${id}`);
+    router.push(`/lis-management/doctype/equipement-capacity/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

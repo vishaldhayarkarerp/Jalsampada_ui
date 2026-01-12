@@ -269,7 +269,7 @@ export default function LogSheetPage() {
   const title = "LogSheet";
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/logsheet/${id}`);
+    router.push(`/operations/doctype/logsheet/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

@@ -89,7 +89,7 @@ export default function NewFundHeadPage() {
       const procurementType = response.data.data.procurement_type;
       const docName = response.data.data.name;
       const navigationId = procurementType || docName;
-      router.push(`/tender/doctype/fund-head/${navigationId}`);
+      router.push(`/tender/doctype/fund-head/${encodeURIComponent(navigationId)}`);
       
     } catch (err: any) {
       console.error("Create error:", err);

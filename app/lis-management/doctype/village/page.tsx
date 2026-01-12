@@ -80,7 +80,7 @@ export default function VillageListPage() {
   }, [fetchData]);
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/village/${id}`);
+    router.push(`/lis-management/doctype/village/${encodeURIComponent(id)}`);
   };
 
   // ── Renderers ────────────────────────────────────────────────────

@@ -154,7 +154,7 @@ export default function DoctypePage() {
   const title = "Work Type";
 
   const handleCardClick = (id: string) => {
-    router.push(`/tender/doctype/work-type/${id}`);
+    router.push(`/tender/doctype/work-type/${encodeURIComponent(id)}`);
   };
 
   const getFieldsForRecord = (record: WorkType): RecordCardField[] => {

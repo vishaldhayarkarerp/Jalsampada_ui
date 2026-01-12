@@ -152,7 +152,7 @@ export default function FundHeadPage() {
   const title = "Fund Head";
 
   const handleCardClick = (id: string) => {
-    router.push(`/tender/doctype/fund-head/${id}`);
+    router.push(`/tender/doctype/fund-head/${encodeURIComponent(id)}`);
   };
 
   const getFieldsForRecord = (record: FundHead): RecordCardField[] => {

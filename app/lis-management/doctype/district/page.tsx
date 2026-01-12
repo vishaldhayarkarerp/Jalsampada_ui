@@ -93,7 +93,7 @@ export default function DistrictListPage() {
   // ── Render Helpers ──────────────────────────────────────────────
   const handleCardClick = (id: string) => {
     // Optional: Route to detail page if you create one later
-    router.push(`/lis-management/doctype/district/${id}`);
+    router.push(`/lis-management/doctype/district/${encodeURIComponent(id)}`);
   };
 
   const renderListView = () => (

@@ -229,9 +229,10 @@ export default function RecordDetailPage() {
         required: true,
       },
       {
-        name: "custom_work_order",
-        label: "Work Order",
-        type: "Data",
+        name: "custom_tender_amount",
+        label: "Tender Amount",
+        type: "Currency",
+        required: true,
       },
       {
         name: "custom_prapan_suchi_amount",
@@ -244,15 +245,28 @@ export default function RecordDetailPage() {
         }
       },
       {
+        name: "custom_stage",
+        label: "Stage/ Sub Scheme",
+        type: "Table MultiSelect",
+        linkTarget: "Stage No",
+        filterMapping: [
+          { sourceField: "lift_irrigation_scheme", targetField: "lis_name" }
+        ],
+        fetchFrom: {
+          sourceField: "custom_prapan_suchi",
+          targetDoctype: "Prapan Suchi",
+          targetField: "stage"
+        }
+      },
+      {
+        name: "custom_work_order",
+        label: "Work Order",
+        type: "Data",
+      },
+      {
         name: "expected_start_date",
         label: "Work Order Date",
         type: "Date",
-      },
-      {
-        name: "custom_tender_amount",
-        label: "Tender Amount",
-        type: "Currency",
-        required: true,
       },
       {
         name: "custom_posting_date",
@@ -348,17 +362,17 @@ export default function RecordDetailPage() {
 
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) {
-      toast.info("No changes to save.");
+      toast.info("NoChangesToSave.");
       return;
     }
 
     if (!record) {
-      toast.error("Cannot save, data not loaded.");
+      toast.error("CannotSave,DataNotLoaded.");
       return;
     }
 
     if (!apiKey || !apiSecret) {
-      toast.error("Missing API credentials.");
+      toast.error("MissingAPICredentials.");
       return;
     }
 
@@ -455,9 +469,9 @@ export default function RecordDetailPage() {
       }
 
       // Return appropriate status based on docstatus
-      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" : 
-                        resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
-      
+      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" :
+        resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
+
       router.push(`/tender/doctype/tender/${docname}`);
       return { status: savedStatus };
     } catch (err: any) {

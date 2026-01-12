@@ -241,7 +241,7 @@ export default function GatePage() {
   const title = "Gate";
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/gate/${id}`);
+    router.push(`/operations/doctype/gate/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

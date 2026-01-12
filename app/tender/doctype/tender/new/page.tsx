@@ -115,6 +115,20 @@ export default function NewTenderPage() {
         ]
       },
       {
+        name: "custom_stage",
+        label: "Stage/ Sub Scheme",
+        type: "Table MultiSelect",
+        linkTarget: "Stage No",
+        filterMapping: [
+          { sourceField: "custom_lis_name", targetField: "lis_name" }
+        ],
+        fetchFrom: {
+          sourceField: "custom_prapan_suchi",
+          targetDoctype: "Prapan Suchi",
+          targetField: "stage"
+        }
+      },
+      {
         name: "custom_tender_id",
         label: "Tender ID",
         type: "Data",
@@ -407,7 +421,7 @@ export default function NewTenderPage() {
       // Navigate to the newly created record using name
       const docName = response.data.data.name;
       if (docName) {
-        router.push(`/tender/doctype/tender/${docName}`);
+        router.push(`/tender/doctype/tender/${encodeURIComponent(docName)}`);
       } else {
         router.push(`/tender/doctype/tender`);
       }

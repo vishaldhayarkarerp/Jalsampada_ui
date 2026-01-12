@@ -142,7 +142,7 @@ export default function NewDraftTenderPaperPage() {
       // Navigate to the newly created record using name (TDP-.#### naming series)
       const docName = response.data.data.name;
       if (docName) {
-        router.push(`/tender/doctype/draft-tender-paper/${docName}`);
+        router.push(`/tender/doctype/draft-tender-paper/${encodeURIComponent(docName)}`);
       } else {
         router.push(`/tender/doctype/draft-tender-paper`);
       }

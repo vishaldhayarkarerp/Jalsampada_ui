@@ -141,7 +141,7 @@ export default function DoctypePage() {
     };
 
     const handleCardClick = (id: string) => {
-        router.push(`/lis-management/doctype/lis-phases/${id}`);
+        router.push(`/lis-management/doctype/lis-phases/${encodeURIComponent(id)}`);
     };
 
     const getFields = (r: LISPhase): RecordCardField[] => [

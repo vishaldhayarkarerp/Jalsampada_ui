@@ -239,7 +239,7 @@ export default function MaterialRequestPage() {
   };
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/spare-indent/${id}`);
+    router.push(`/operations/doctype/spare-indent/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

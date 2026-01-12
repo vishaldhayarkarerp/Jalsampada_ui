@@ -180,7 +180,7 @@ export default function WarehouseDetailPage() {
         setWarehouse(resp.data.data);
       }
 
-      router.push(`/operations/doctype/warehouse/${docname}`);
+      router.push(`/operations/doctype/warehouse/${encodeURIComponent(docname)}`);
     } catch (err: any) {
       console.error("Save error:", err);
       toast.error("Failed to save warehouse", {

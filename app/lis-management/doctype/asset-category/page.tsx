@@ -157,7 +157,7 @@ export default function DoctypePage() {
   const title = "Asset Category";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/asset-category/${id}`);
+    router.push(`/lis-management/doctype/asset-category/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

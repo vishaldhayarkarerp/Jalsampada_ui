@@ -190,7 +190,7 @@ export default function DoctypePage() {
   const title = "Lift Irrigation Scheme";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/lift-irrigation-scheme/${id}`);
+    router.push(`/lis-management/doctype/lift-irrigation-scheme/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

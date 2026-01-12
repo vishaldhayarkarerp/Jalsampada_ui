@@ -262,7 +262,7 @@ export default function ItemPage() {
   const title = "Item";
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/item/${id}`);
+    router.push(`/operations/doctype/item/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

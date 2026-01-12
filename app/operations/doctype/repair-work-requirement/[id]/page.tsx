@@ -336,7 +336,7 @@ export default function RepairWorkRequirementDetailPage() {
                 setRecord(resp.data.data);
             }
 
-            router.push(`/lis-management/doctype/repair-work-requirement/${docname}`);
+            router.push(`/operations/doctype/repair-work-requirement/${encodeURIComponent(docname)}`);
         } catch (err: any) {
             console.error("Save error:", err);
             toast.error("Failed to Save", {

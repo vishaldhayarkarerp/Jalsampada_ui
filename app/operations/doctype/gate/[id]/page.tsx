@@ -161,7 +161,7 @@ export default function GateDetailPage() {
                 setRecord(resp.data.data);
             }
 
-            router.push(`/operations/doctype/gate/${docname}`);
+            router.push(`/operations/doctype/gate/${encodeURIComponent(docname)}`);
 
         } catch (err: any) {
             console.error("Save error:", err);

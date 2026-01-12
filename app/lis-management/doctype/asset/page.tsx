@@ -337,7 +337,7 @@ export default function DoctypePage() {
   };
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/asset/${id}`);
+    router.push(`/lis-management/doctype/asset/${encodeURIComponent(id)}`);
   };
 
   // ── Renderers ────────────────────────────────────────────────────

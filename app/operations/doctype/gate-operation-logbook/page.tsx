@@ -250,7 +250,7 @@ export default function GateOperationLogbookPage() {
   const title = "Gate Operation Logbook";
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/gate-operation-logbook/${id}`);
+    router.push(`/operations/doctype/gate-operation-logbook/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

@@ -259,7 +259,7 @@ export default function GateOperationLogbookDetailPage() {
                 setRecord(resp.data.data);
             }
 
-            router.push(`/lis-management/doctype/gate-operation-logbook/${docname}`);
+            router.push(`/operations/doctype/gate-operation-logbook/${encodeURIComponent(docname)}`);
 
         } catch (err: any) {
             console.error("Save error:", err);

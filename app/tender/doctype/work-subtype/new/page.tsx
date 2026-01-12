@@ -101,7 +101,7 @@ export default function NewWorkSubtypePage() {
       const workSubtypeName = response.data.data.work_subtype;
       const docName = response.data.data.name;
       const navigationId = workSubtypeName || docName;
-      router.push(`/tender/doctype/work-subtype/${navigationId}`);
+      router.push(`/tender/doctype/work-subtype/${encodeURIComponent(navigationId)}`);
       
     } catch (err: any) {
       console.error("Create error:", err);

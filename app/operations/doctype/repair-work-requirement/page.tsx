@@ -252,7 +252,7 @@ export default function RepairWorkRequirementPage() {
   const title = "Repair Work Requirement";
 
   const handleCardClick = (id: string) => {
-    router.push(`/operations/doctype/repair-work-requirement/${id}`);
+    router.push(`/operations/doctype/repair-work-requirement/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

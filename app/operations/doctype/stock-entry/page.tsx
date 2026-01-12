@@ -244,7 +244,7 @@ export default function StockEntryPage() {
   const title = "Stock Entry";
 
   const handleCardClick = (id: string) => {
-    router.push(`/lis-management/doctype/stock-entry/${id}`);
+    router.push(`/operations/doctype/stock-entry/${encodeURIComponent(id)}`);
   };
 
   /* -------------------------------------------------

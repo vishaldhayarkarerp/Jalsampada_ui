@@ -244,7 +244,7 @@ export default function NewPrapanSuchiPage() {
 
       const docName = response.data.data.name;
       if (docName) {
-        router.push(`/tender/doctype/prapan-suchi/${docName}`);
+        router.push(`/tender/doctype/prapan-suchi/${encodeURIComponent(docName)}`);
       } else {
         router.push(`/tender/doctype/prapan-suchi`);
       }

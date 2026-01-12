@@ -118,8 +118,18 @@ export default function NewExpenditurePage() {
         name: "Details",
         fields: [
           { name: "fiscal_year", label: "Fiscal Year", type: "Link", linkTarget: "Fiscal Year" },
-          { name: "tender_number", label: "Tender Number", type: "Link", linkTarget: "Project" },
-          { name: "tender_amount", label: "Tender Amount", type: "Currency", precision: 2 },
+          { name: "tender_number", label: "Tender Number", type: "Link", linkTarget: "Project",
+            filterMapping: [
+              { sourceField: "custom_fiscal_year", targetField: "fiscal_year" }
+            ]
+           },
+          { name: "tender_amount", label: "Tender Amount", type: "Currency", precision: 2,
+            fetchFrom: {
+              sourceField: "tender_number",
+              targetDoctype: "Project",
+              targetField: "custom_tender_amount"
+            }
+           },
           { name: "posting_date", label: "Bill Date", type: "Date" },
           { name: "prev_bill_no", label: "Previous Bill Number", type: "Data" },
           { name: "bill_number", label: "Bill Number", type: "Data" },
@@ -142,7 +152,13 @@ export default function NewExpenditurePage() {
             }
           },
           {
-            name: "stage", label: "Stage/ Sub Scheme", type: "Table MultiSelect", linkTarget: "Stage Multiselect",
+            name: "stage",
+            label: "Stage/ Sub Scheme",
+            type: "Table MultiSelect",
+            linkTarget: "Stage No",
+            filterMapping: [
+              { sourceField: "lift_irrigation_scheme", targetField: "lis_name" }
+            ],
             fetchFrom: {
               sourceField: "tender_number",
               targetDoctype: "Project",
@@ -315,7 +331,7 @@ export default function NewExpenditurePage() {
       // Navigate using the auto-generated naming series ID (EXP-####)
       const docName = response.data.data.name;
       if (docName) {
-        router.push(`/tender/doctype/expenditure/${docName}`);
+        router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
       } else {
         router.push(`/tender/doctype/expenditure`);
       }
