@@ -33,6 +33,58 @@ function buildDynamicFilters(
     }
     return filters;
 }
+// Helper: Evaluate displayDependsOn condition string
+function evaluateDisplayDependsOn(
+    condition: string,
+    getValue: (name: string) => any
+): boolean {
+    try {
+        const parts = condition
+            .split(/(\&\&|\|\|)/)
+            .map((c) => c.trim())
+            .filter((c) => c);
+
+        const conditions = parts.filter((p) => p !== "&&" && p !== "||");
+        const operators = parts.filter((p) => p === "&&" || p === "||");
+
+        const results = conditions.map((cond) => {
+            const [field, op, valueStr] = cond.split(/([=!<>]=?)/);
+            if (!field || !op || valueStr === undefined) return true;
+
+            const fieldName = field.trim();
+            const fieldValue = getValue(fieldName);
+
+            let compareValue: any = valueStr.trim();
+
+            // Smart type conversion
+            if (compareValue === "true") compareValue = true;
+            else if (compareValue === "false") compareValue = false;
+            else if (/^\d+$/.test(compareValue)) compareValue = parseInt(compareValue, 10);
+            else if (/^\d+\.\d+$/.test(compareValue)) compareValue = parseFloat(compareValue);
+            else compareValue = compareValue.replace(/^['"]|['"]$/g, "");
+
+            switch (op) {
+                case "==": return fieldValue == compareValue;
+                case "!=": return fieldValue != compareValue;
+                case ">": return (fieldValue ?? 0) > (compareValue ?? 0);
+                case "<": return (fieldValue ?? 0) < (compareValue ?? 0);
+                case ">=": return (fieldValue ?? 0) >= (compareValue ?? 0);
+                case "<=": return (fieldValue ?? 0) <= (compareValue ?? 0);
+                default: return true;
+            }
+        });
+
+        if (results.length === 0) return true;
+
+        return results.reduce((acc, result, i) => {
+            const op = operators[i - 1];
+            return op === "&&" ? acc && result : op === "||" ? acc || result : result;
+        });
+    } catch (e) {
+        console.error("Error evaluating displayDependsOn:", condition, e);
+        return true; // fail-safe: show field if condition can't be evaluated
+    }
+}
 
 interface DynamicFormForTableProps {
     fields: FormField['columns'];
@@ -690,11 +742,20 @@ export function DynamicFormForTable({
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {fields?.map((field) => (
-                    <div key={field.name}>
-                        {renderField(field)}
-                    </div>
-                ))}
+                {fields?.map((field) => {
+                    // Evaluate visibility
+                    const isVisible = field.displayDependsOn
+                        ? evaluateDisplayDependsOn(field.displayDependsOn, (name) => formData[name])
+                        : true;
+
+                    if (!isVisible) return null;
+
+                    return (
+                        <div key={field.name}>
+                            {renderField(field)}
+                        </div>
+                    );
+                })}
             </div>
 
             <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
