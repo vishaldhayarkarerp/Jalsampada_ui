@@ -1,0 +1,337 @@
+"use client";
+
+import * as React from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import {
+  DynamicForm,
+  TabbedLayout,
+  FormField,
+} from "@/components/DynamicFormComponent";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
+
+const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+
+interface ContractorData {
+  name: string;
+  contractor_name: string;
+  supplier_group: string;
+  supplier_type: string;
+  address_title: string;
+  address: string;
+  address_type: string;
+  city: string;
+  postal_code: string;
+  county: string;
+  email_address: string;
+  phone: string;
+  docstatus: 0 | 1 | 2;
+}
+
+export default function ContractorDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const router = useRouter();
+  // Unwrap params if using Next.js 15+, otherwise access directly
+  const resolvedParams = React.use(params);
+  const recordId = resolvedParams.id as string;
+
+  const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
+  const doctypeName = "Contractor";
+
+  const [data, setData] = React.useState<ContractorData | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  /* -------------------------------------------------
+   1. Fetch Data
+  ------------------------------------------------- */
+  const fetchData = React.useCallback(async () => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      toast.error("Authentication required");
+      router.push("/login");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const url = `${API_BASE_URL}/${doctypeName}/${decodeURIComponent(recordId)}`;
+      const response = await axios.get(url, {
+        headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        withCredentials: true,
+      });
+
+      setData(response.data.data);
+    } catch (err: any) {
+      console.error("Fetch error:", err);
+      toast.error("Failed to load Contractor details");
+      router.push("/tender/doctype/contractor");
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    recordId,
+    doctypeName,
+    apiKey,
+    apiSecret,
+    isAuthenticated,
+    isInitialized,
+    router,
+  ]);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  /* -------------------------------------------------
+   2. Form Configuration (Mapped to Fields CSV)
+  ------------------------------------------------- */
+  const formTabs: TabbedLayout[] = React.useMemo(() => {
+    if (!data) return [];
+
+    return [
+      {
+        name: "Details",
+        fields: [
+          // --- Main Section ---
+          {
+            name: "contractor_name",
+            label: "Contractor Name",
+            type: "Data",
+            required: true,
+            defaultValue: data.contractor_name,
+          },
+          {
+            name: "supplier_group",
+            label: "Supplier Group",
+            type: "Link",
+            linkTarget: "Supplier Group",
+            defaultValue: data.supplier_group,
+          },
+          {
+            name: "column_break_nkmc",
+            label: "",
+            type: "Column Break",
+          },
+          {
+            name: "supplier_type",
+            label: "Supplier Type",
+            type: "Select",
+            options: "Company\nIndividual\nPartnership",
+            defaultValue: data.supplier_type || "Company",
+          },
+
+          // --- Address and Contact Section ---
+          {
+            name: "address_and_contact_section",
+            label: "Address and Contact",
+            type: "Section Break",
+          },
+          {
+            name: "address_title",
+            label: "Address Title",
+            type: "Data",
+            defaultValue: data.address_title,
+          },
+          {
+            name: "address",
+            label: "Address",
+            type: "Small Text",
+            required: true,
+            defaultValue: data.address,
+          },
+          {
+            name: "column_break_jfzy",
+            label: "",
+            type: "Column Break",
+          },
+          {
+            name: "address_type",
+            label: "Address Type",
+            type: "Select",
+            options:
+              "Billing\nShipping\nOffice\nPersonal\nPlant\nPostal\nShop\nSubsidiary\nWarehouse\nCurrent\nPermanent\nOther",
+            defaultValue: data.address_type,
+          },
+          {
+            name: "city",
+            label: "City",
+            type: "Data",
+            defaultValue: data.city,
+          },
+          {
+            name: "postal_code",
+            label: "Postal Code",
+            type: "Data",
+            defaultValue: data.postal_code,
+          },
+          {
+            name: "column_break_ohij",
+            label: "",
+            type: "Column Break",
+          },
+          {
+            name: "county",
+            label: "County",
+            type: "Data",
+            defaultValue: data.county,
+          },
+          {
+            name: "email_address",
+            label: "Email Address",
+            type: "Data",
+            required: true,
+            defaultValue: data.email_address,
+          },
+          {
+            name: "phone",
+            label: "Phone",
+            type: "Data",
+            required: true,
+            defaultValue: data.phone,
+          },
+        ],
+      },
+    ];
+  }, [data]);
+
+  /* -------------------------------------------------
+   3. Update Handler (PUT)
+  ------------------------------------------------- */
+  const handleUpdate = async (formData: Record<string, any>) => {
+    if (!apiKey || !apiSecret) return;
+
+    setIsSaving(true);
+    try {
+      const payload: Record<string, any> = JSON.parse(JSON.stringify(formData));
+
+      // Remove non-data fields
+      const nonDataFields = new Set([
+        "column_break_nkmc",
+        "address_and_contact_section",
+        "column_break_jfzy",
+        "column_break_ohij",
+      ]);
+      
+      const finalPayload: Record<string, any> = {};
+      for (const key in payload) {
+        if (!nonDataFields.has(key)) {
+          finalPayload[key] = payload[key];
+        }
+      }
+
+      console.log("Updating Payload:", finalPayload);
+
+      const url = `${API_BASE_URL}/${doctypeName}/${decodeURIComponent(recordId)}`;
+      const response = await axios.put(url, finalPayload, {
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
+
+      const messages = getApiMessages(
+        response,
+        null,
+        "Contractor updated successfully!",
+        "Failed to update Contractor"
+      );
+
+      if (messages.success) {
+        toast.success(messages.message);
+        // Refresh data to reflect changes
+        fetchData();
+      } else {
+        toast.error(messages.message, { description: messages.description });
+      }
+    } catch (err: any) {
+      console.error("Update error:", err);
+      const messages = getApiMessages(
+        null,
+        err,
+        "Contractor updated successfully!",
+        "Failed to update Contractor"
+      );
+      toast.error(messages.message, { description: messages.description });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /* -------------------------------------------------
+   4. Submit Handler (Alias for Update)
+  ------------------------------------------------- */
+  const handleSubmit = async (formData: Record<string, any>) => {
+    await handleUpdate(formData);
+  };
+
+  /* -------------------------------------------------
+   5. Cancel Handler
+  ------------------------------------------------- */
+  const handleCancel = () => {
+    router.push("/tender/doctype/contractor");
+  };
+
+  /* -------------------------------------------------
+   6. Delete Handler (DELETE)
+  ------------------------------------------------- */
+  const handleDelete = async () => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete Contractor: ${data?.contractor_name || recordId}?`
+      )
+    ) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const url = `${API_BASE_URL}/${doctypeName}/${decodeURIComponent(recordId)}`;
+      await axios.delete(url, {
+        headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        withCredentials: true,
+      });
+
+      toast.success("Contractor deleted successfully");
+      router.push("/tender/doctype/contractor");
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      toast.error("Failed to delete Contractor", {
+        description: err.response?.data?.exception || err.message,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        Loading Contractor details...
+      </div>
+    );
+  }
+
+  if (!data) {
+    return <div className="p-8 text-center text-red-500">Record not found</div>;
+  }
+
+  return (
+    <DynamicForm
+          tabs={formTabs}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+          title={`${doctypeName}: ${data.name}`}
+          description={`Update details for record ID ${recordId}`}
+          submitLabel={isSaving ? "Saving..." : "Save"}
+          cancelLabel="Cancel"
+    />
+  );
+}
