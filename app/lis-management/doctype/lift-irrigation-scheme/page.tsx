@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { getApiMessages } from "@/lib/utils"; // 🟢 Added import for error handling
 
 // 🟢 New Imports for Bulk Delete & Icons
 import { useSelection } from "@/hooks/useSelection";
@@ -131,7 +132,7 @@ export default function DoctypePage() {
     fetchSchemes();
   }, [fetchSchemes]);
 
-  // 🟢 2. Handle Bulk Delete
+  // 🟢 2. Handle Bulk Delete (UPDATED with Server Message Parsing)
   const handleBulkDelete = async () => {
     const count = selectedIds.size;
     if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
@@ -140,7 +141,7 @@ export default function DoctypePage() {
 
     setIsDeleting(true);
     try {
-      await bulkDeleteRPC(
+      const response = await bulkDeleteRPC(
         doctypeName,
         Array.from(selectedIds),
         API_BASE_URL,
@@ -148,14 +149,39 @@ export default function DoctypePage() {
         apiSecret!
       );
 
+      // 🟢 Added: Check if the response contains server messages indicating errors
+      if (response._server_messages) {
+        // Parse the server messages to check for errors
+        const serverMessages = JSON.parse(response._server_messages);
+        const errorMessages = serverMessages.map((msgStr: string) => {
+          const parsed = JSON.parse(msgStr);
+          return parsed.message;
+        });
+
+        if (errorMessages.length > 0) {
+          // Show error messages from server
+          toast.error("Failed to delete records", { 
+            description: errorMessages.join("\n") 
+          });
+          return; // Don't proceed with success handling
+        }
+      }
+
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
       fetchSchemes(); // Refresh list
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
-      toast.error("Failed to delete records", {
-        description: err.response?.data?.exception || err.message
-      });
+      
+      // 🟢 Added: Consistent error handling using getApiMessages
+      const messages = getApiMessages(
+        null,
+        err,
+        "Records deleted successfully",
+        "Failed to delete records"
+      );
+      
+      toast.error(messages.message, { description: messages.description });
     } finally {
       setIsDeleting(false);
     }

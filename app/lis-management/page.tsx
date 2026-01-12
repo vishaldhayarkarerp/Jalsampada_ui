@@ -59,7 +59,7 @@ const doctypeGroups: DoctypeGroup[] = [
 export default function AssetsWorkspacePage() {
   return (
     <Workspace
-      title="LIS Management Workspace"
+      title="Asset Management Workspace"
       description="Manage Lift Irrigation Scheme assets and transactions"
       doctypeGroups={doctypeGroups}
       basePath="/lis-management/"

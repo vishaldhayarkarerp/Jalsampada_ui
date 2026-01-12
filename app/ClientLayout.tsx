@@ -168,7 +168,29 @@ function AppContent({ children }: { children: React.ReactNode }) {
         <p>© 2025 JALSAMPADA. All rights reserved.</p>
       </footer>
 
-      <Toaster richColors position="top-center" closeButton />
+      {/* UPDATED TOASTER WITH CAPITALIZATION */}
+      <Toaster 
+        richColors 
+        position="top-center" 
+        closeButton
+        toastOptions={{
+          style: {
+            width: '100%',
+            minWidth: '450px',
+            padding: '20px',
+          },
+          classNames: {
+            toast: "shadow-xl border-2 rounded-xl",
+            // ADDED: 'capitalize' class to title
+            title: "text-xl font-bold mb-1 capitalize", 
+            // ADDED: 'capitalize' class to description
+            description: "text-base font-medium opacity-90 capitalize", 
+            actionButton: "text-base font-bold py-2 px-4",
+            cancelButton: "text-base font-medium py-2 px-4",
+            closeButton: "top-4 right-4",
+          }
+        }} 
+      />
     </div>
   );
 }

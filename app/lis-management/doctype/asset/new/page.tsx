@@ -63,16 +63,16 @@ export default function NewRecordPage() {
           { name: "asset_name", label: "Asset Name", type: "Text", required: true, defaultValue: getValue("asset_name") },
           { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category", defaultValue: getValue("asset_category") },
           { name: "custom_asset_no", label: "Asset No", type: "Data", defaultValue: getValue("custom_asset_no") },
-          { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location", defaultValue: getValue("location") },
           { name: "custom_lis_name", label: "Lift Irrigation Scheme", required: true, type: "Link", linkTarget: "Lift Irrigation Scheme", defaultValue: getValue("custom_lis_name") },
           { name: "custom_lis_phase", label: "LIS Phase", type: "Link", linkTarget: "LIS Phases" },
-
+          
           {
             name: "custom_stage_no", label: "Stage No.", type: "Link", required: true, linkTarget: "Stage No", defaultValue: getValue("custom_stage_no"),
             filterMapping: [
               { sourceField: "custom_lis_name", targetField: "lis_name" }
             ]
           },
+          { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location", defaultValue: getValue("location") },
           { name: "custom_serial_number", label: "Serial Number", type: "Data", defaultValue: getValue("custom_serial_number") },
 
           {
