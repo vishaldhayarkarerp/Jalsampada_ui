@@ -182,6 +182,44 @@ async function fetchFieldValue(
   }
 }
 
+async function fetchMultipleFieldValues(
+  sourceValue: string,
+  targetDoctype: string,
+  targetFields: string[],
+  apiKey: string,
+  apiSecret: string
+): Promise<Record<string, any>> {
+  try {
+    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+    const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
+
+    const resp = await axios.get(url, {
+      params: {
+        fields: JSON.stringify(targetFields),
+      },
+      headers: {
+        Authorization: `token ${apiKey}:${apiSecret}`,
+        "Content-Type": "application/json",
+      },
+      withCredentials: true,
+    });
+
+    const result: Record<string, any> = {};
+    targetFields.forEach(field => {
+      result[field] = resp.data.data?.[field] || null;
+    });
+
+    return result;
+  } catch (e: any) {
+    console.error(`Failed to fetch multiple fields from ${targetDoctype}:`, e);
+    const result: Record<string, any> = {};
+    targetFields.forEach(field => {
+      result[field] = null;
+    });
+    return result;
+  }
+}
+
 function evaluateDisplayDependsOn(
   condition: string,
   getValue: (name: string) => any
@@ -734,28 +772,56 @@ export function DynamicForm({
 
         const dependentFields = sourceFieldMap.get(sourceFieldName) || [];
 
-        for (const field of dependentFields) {
-          if (!field.fetchFrom) continue;
+        if (sourceValue) {
+          // Group fields by target doctype to optimize API calls
+          const fieldsByDoctype = new Map<string, FormField[]>();
 
-          if (sourceValue) {
+          dependentFields.forEach((field) => {
+            if (!field.fetchFrom) return;
+
+            const targetDoctype = field.fetchFrom.targetDoctype;
+            if (!fieldsByDoctype.has(targetDoctype)) {
+              fieldsByDoctype.set(targetDoctype, []);
+            }
+            fieldsByDoctype.get(targetDoctype)?.push(field);
+          });
+
+          // Fetch data for each doctype in a single API call
+          for (const [targetDoctype, fields] of fieldsByDoctype) {
             try {
-              const fetchedValue = await fetchFieldValue(
+              const targetFields = fields.map(f => f.fetchFrom!.targetField);
+              const fetchedValues = await fetchMultipleFieldValues(
                 sourceValue,
-                field.fetchFrom.targetDoctype,
-                field.fetchFrom.targetField,
+                targetDoctype,
+                targetFields,
                 apiKey,
                 apiSecret
               );
 
-              if (fetchedValue !== null && fetchedValue !== undefined) {
-                setValue(field.name, fetchedValue, { shouldDirty: false });
-              }
+              // Set values for each field
+              fields.forEach((field) => {
+                if (!field.fetchFrom) return;
+
+                const fetchedValue = fetchedValues[field.fetchFrom.targetField];
+                if (fetchedValue !== null && fetchedValue !== undefined) {
+                  setValue(field.name, fetchedValue, { shouldDirty: false });
+                }
+              });
             } catch (e) {
-              console.error(`Failed to fetch ${field.name}:`, e);
+              console.error(`Failed to fetch fields from ${targetDoctype}:`, e);
+              // Set empty values for all fields in this doctype on error
+              fields.forEach((field) => {
+                if (field.fetchFrom) {
+                  setValue(field.name, "", { shouldDirty: false });
+                }
+              });
             }
-          } else {
-            setValue(field.name, "", { shouldDirty: false });
           }
+        } else {
+          // Clear all dependent fields when source value is empty
+          dependentFields.forEach((field) => {
+            setValue(field.name, "", { shouldDirty: false });
+          });
         }
       }
     };
@@ -835,6 +901,7 @@ export function DynamicForm({
 
     if (field.type === "Currency" && field.precision) {
       commonProps.step = "0.01";
+
       return (
         <Controller
           name={field.name}
@@ -845,23 +912,32 @@ export function DynamicForm({
               <label htmlFor={field.name} className="form-label">
                 {field.label}{field.required ? " *" : ""}
               </label>
+
               <input
                 type={type}
-                value={controllerField.value ? parseFloat(controllerField.value).toFixed(field.precision) : ""}
-                onChange={(e) => controllerField.onChange(e.target.value ? parseFloat(e.target.value) : "")}
+                value={controllerField.value ?? ""}
+                onChange={(e) => {
+                  controllerField.onChange(e.target.value);
+                }}
                 onBlur={(e) => {
                   const val = parseFloat(e.target.value);
-                  if (!isNaN(val)) controllerField.onChange(parseFloat(val.toFixed(field.precision)));
+                  if (!isNaN(val)) {
+                    controllerField.onChange(val.toFixed(field.precision));
+                  }
                 }}
                 {...commonProps}
               />
-              <FieldError error={(errors as FieldErrors<Record<string, any>>)[field.name]} />
+
+              <FieldError
+                error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+              />
               <FieldHelp text={field.description} />
             </div>
           )}
         />
       );
     }
+
 
     return (
       <div className="form-group">
