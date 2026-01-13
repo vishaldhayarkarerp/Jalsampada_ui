@@ -63,10 +63,10 @@ interface SortConfig {
 
 const SORT_OPTIONS: { label: string; key: keyof Warehouse }[] = [
   { label: "Last Updated On", key: "modified" },
-  { label: "Warehouse ID", key: "name" },
+  { label: "Store Location ID", key: "name" },
   { label: "Company", key: "company" },
-  { label: "Parent Warehouse", key: "parent_warehouse" },
-  { label: "Warehouse Type", key: "warehouse_type" },
+  { label: "Parent Store Location", key: "parent_warehouse" },
+  { label: "Store Location Type", key: "warehouse_type" },
 ];
 
 type ViewMode = "grid" | "list";
@@ -272,13 +272,13 @@ export default function WarehousePage() {
               />
             </th>
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("name")}>
-              Warehouse ID
+              Store Location ID
             </th>
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("is_group")}>
               Is Group
             </th>
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("parent_warehouse")}>
-              Parent Warehouse
+              Parent  Store Location
             </th>
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("company")}>
               Company
@@ -326,7 +326,7 @@ export default function WarehousePage() {
           ) : (
             <tr>
               <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
-                No warehouses found.
+                No store location found.
               </td>
             </tr>
           )}
@@ -356,7 +356,7 @@ export default function WarehousePage() {
   if (loading && warehouses.length === 0)
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
-        Loading warehouses...
+        Loading store locations...
       </div>
     );
 
@@ -371,8 +371,8 @@ export default function WarehousePage() {
     <div className="module active">
       <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2>Warehouses</h2>
-          <p>List of warehouses with company, parent, type and account</p>
+          <h2>Store Locations</h2>
+          <p>List of store locations with company, parent, type and account</p>
         </div>
         
         {/* 🟢 3. Header Action Switch */}
@@ -386,7 +386,7 @@ export default function WarehousePage() {
         ) : (
           <Link href="/operations/doctype/warehouse/new" passHref>
             <button className="btn btn--primary flex items-center gap-2">
-              <Plus className="w-4 h-4" /> Add Warehouse
+              <Plus className="w-4 h-4" /> Add Store Location
             </button>
           </Link>
         )}

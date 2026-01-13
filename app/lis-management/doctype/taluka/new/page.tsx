@@ -30,7 +30,7 @@ export default function NewTalukaPage() {
         },
         {
           name: "taluka",
-          label: "Taluka Name",
+          label: "Taluka",
           type: "Data",
           required: true,
           placeholder: "e.g. Miraj, Tasgaon",

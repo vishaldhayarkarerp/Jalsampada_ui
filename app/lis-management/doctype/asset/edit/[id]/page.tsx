@@ -704,6 +704,12 @@ export default function RecordDetailPage() {
                             { name: "specification_type", label: "Specification Type", type: "Link", linkTarget: "Specifications" },
                             { name: "details", label: "Details", type: "Read Only" },
                         ],
+
+                        fetchFrom: {
+                            sourceField: "asset_category",
+                            targetDoctype: "Asset Category",
+                            targetField: "custom_specifications"
+                        },
                     },
                 ]),
             },

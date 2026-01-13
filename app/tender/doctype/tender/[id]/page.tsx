@@ -201,7 +201,7 @@ export default function RecordDetailPage() {
       }));
 
     const detailsFields: FormField[] = withDefaults([
-      {
+       {
         name: "custom_fiscal_year",
         label: "Fiscal Year",
         type: "Link",
@@ -223,16 +223,29 @@ export default function RecordDetailPage() {
         ]
       },
       {
+        name: "custom_stage",
+        label: "Stage/ Sub Scheme",
+        type: "Table MultiSelect",
+        linkTarget: "Stage No",
+        filterMapping: [
+          { sourceField: "custom_lis_name", targetField: "lis_name" }
+        ],
+        fetchFrom: {
+          sourceField: "custom_prapan_suchi",
+          targetDoctype: "Prapan Suchi",
+          targetField: "stage"
+        }
+      },
+      {
         name: "custom_tender_id",
         label: "Tender ID",
         type: "Data",
-        required: true,
+        // required: true,
       },
       {
-        name: "custom_tender_amount",
-        label: "Tender Amount",
-        type: "Currency",
-        required: true,
+        name: "custom_work_order",
+        label: "Work Order",
+        type: "Data",
       },
       {
         name: "custom_prapan_suchi_amount",
@@ -245,28 +258,15 @@ export default function RecordDetailPage() {
         }
       },
       {
-        name: "custom_stage",
-        label: "Stage/ Sub Scheme",
-        type: "Table MultiSelect",
-        linkTarget: "Stage No",
-        filterMapping: [
-          { sourceField: "lift_irrigation_scheme", targetField: "lis_name" }
-        ],
-        fetchFrom: {
-          sourceField: "custom_prapan_suchi",
-          targetDoctype: "Prapan Suchi",
-          targetField: "stage"
-        }
-      },
-      {
-        name: "custom_work_order",
-        label: "Work Order",
-        type: "Data",
-      },
-      {
         name: "expected_start_date",
         label: "Work Order Date",
         type: "Date",
+      },
+      {
+        name: "custom_tender_amount",
+        label: "Tender Amount",
+        type: "Currency",
+        required: true,
       },
       {
         name: "custom_posting_date",
@@ -298,14 +298,65 @@ export default function RecordDetailPage() {
         options: "Extension Period Details",
         columns: [
           { name: "extension_count", label: "Extension Count", type: "Data" },
-          { name: "extension_upto", label: "Extension Upto", type: "Date", },
-          { name: "sanction_letter", label: "Sanction Letter", type: "Data" },
+          { name: "extension_upto", label: "Extension Upto", type: "Date" },
+          { name: "sanction_letter", label: "Sanction Letter", type: "Small Text" },
           { name: "attach", label: "Attach", type: "Attach" },
         ],
         displayDependsOn: "custom_is_extension==1"
       },
-
+      {
+        name: "section_break0",
+        label: "Tender Description",
+        type: "Section Break",
+      },
+      {
+        name: "notes",
+        label: "Description",
+        type: "Long Text",
+      },
+      {
+        name: "custom_tender_extension_history",
+        label: "Contractor Details",
+        type: "Section Break",
+      },
+      {
+        name: "custom_contractor_name",
+        label: "Contractor Name",
+        type: "Link",
+        linkTarget: "Supplier",
+      },
+      {
+        name: "custom_mobile_no",
+        label: "Mobile No",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "phone"
+        }
+      },
+      {
+        name: "custom_supplier_address",
+        label: "Contractor Address",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "address"
+        }
+      },
+      {
+        name: "custom_email_id",
+        label: "Email ID",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "email_address"
+        },
+      },
     ]);
+
 
     const documentsFields: FormField[] = withDefaults([
       {

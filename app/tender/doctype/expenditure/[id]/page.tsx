@@ -211,12 +211,16 @@ export default function RecordDetailPage() {
             type: "Currency",
             precision: 2,
           },
-
-          { name: "tender_number", label: "Tender Number", type: "Link", required: true, linkTarget: "Project",
+          {
+            name: "tender_number",
+            label: "Tender Number",
+            type: "Link",
+            required: true,
+            linkTarget: "Project",
             filterMapping: [
               { sourceField: "custom_fiscal_year", targetField: "fiscal_year" }
             ]
-           },
+          },
           {
             name: "bill_number",
             label: "Bill Number",
@@ -228,14 +232,17 @@ export default function RecordDetailPage() {
             type: "Currency",
             precision: 2,
           },
-
-          { name: "tender_amount", label: "Tender Amount", type: "Currency", precision: 2,
+          {
+            name: "tender_amount",
+            label: "Tender Amount",
+            type: "Currency",
+            precision: 2,
             fetchFrom: {
               sourceField: "tender_number",
               targetDoctype: "Project",
               targetField: "custom_tender_amount"
             }
-           },
+          },
           {
             name: "prev_bill_amt",
             label: "Previous Bill Amount",
@@ -252,7 +259,6 @@ export default function RecordDetailPage() {
               { label: "Final", value: "Final" },
             ],
           },
-
           {
             name: "posting_date",
             label: "Bill Date",
@@ -266,16 +272,15 @@ export default function RecordDetailPage() {
             precision: 2,
           },
           {
-            name: "page_no",
-            label: "Page No",
-            type: "Data",
-          },
-          {
             name: "mb_no",
             label: "MB No",
             type: "Data",
           },
-
+          {
+            name: "page_no",
+            label: "Page No",
+            type: "Data",
+          },
           {
             name: "lift_irrigation_scheme",
             label: "Lift Irrigation Scheme",
@@ -294,7 +299,7 @@ export default function RecordDetailPage() {
             type: "Table MultiSelect",
             linkTarget: "Stage No",
             filterMapping: [
-              { sourceField: "lift_irrigation_scheme", targetField: "lis_name" }
+              { sourceField: "lift_irrigation_scheme", targetField: "lis_name" },
             ],
             fetchFrom: {
               sourceField: "tender_number",
@@ -302,13 +307,11 @@ export default function RecordDetailPage() {
               targetField: "custom_stage"
             }
           },
-
           {
             name: "expenditure_details",
             label: "Expenditure Details",
             type: "Table",
             showDownloadUpload: true,
-
             columns: [
               {
                 name: "name_of_work",
@@ -322,17 +325,15 @@ export default function RecordDetailPage() {
                 linkTarget: "Stage No",
               },
               {
+                name: "section_interchange",
+                label: "",
+                type: "Section Break"
+              },
+              {
                 name: "work_type",
                 label: "Work Type",
                 type: "Link",
                 linkTarget: "Work Type",
-              },
-              {
-                name: "asset",
-                label: "Asset",
-                type: "Link",
-                linkTarget: "Asset",
-                displayDependsOn: "have_asset==1"
               },
               {
                 name: "work_subtype",
@@ -344,17 +345,6 @@ export default function RecordDetailPage() {
                 ]
               },
               {
-                name: "asset_name",
-                label: "Asset Name",
-                type: "Data",
-                fetchFrom: {
-                  sourceField: "asset",
-                  targetDoctype: "Asset",
-                  targetField: "asset_name"
-                },
-
-              },
-              {
                 name: "bill_amount",
                 label: "Expenditure Amount",
                 type: "Currency",
@@ -364,11 +354,31 @@ export default function RecordDetailPage() {
                 name: "have_asset",
                 label: "Have Asset",
                 type: "Check",
+                displayDependsOn: "work_type==Miscellaneous"
+              },
+              {
+                name: "asset",
+                label: "Asset",
+                type: "Link",
+                linkTarget: "Asset",
+                displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1",
+              },
+              {
+                name: "asset_name",
+                label: "Asset Name",
+                type: "Data",
+                displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
+                fetchFrom: {
+                  sourceField: "asset",
+                  targetDoctype: "Asset",
+                  targetField: "asset_name"
+                }
               },
               {
                 name: "asset_no",
                 label: "Asset No",
                 type: "Data",
+                displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
                 fetchFrom: {
                   sourceField: "asset",
                   targetDoctype: "Asset",
@@ -379,22 +389,26 @@ export default function RecordDetailPage() {
                 name: "from_date",
                 label: "From Date",
                 type: "Date",
-              },
-              {
-                name: "attach",
-                label: "Attach",
-                type: "Attach",
+                displayDependsOn: "work_type==Operation || work_type==Security"
               },
               {
                 name: "to_date",
                 label: "To Date",
                 type: "Date",
+                displayDependsOn: "work_type==Operation || work_type==Security"
+              },
+              {
+                name: "tax_amount",
+                label: "Tax Amount",
+                type: "Currency",
+                precision: 2,
               },
               {
                 name: "invoice_number",
                 label: "Invoice Number",
                 type: "Data",
               },
+
               {
                 name: "expenditure_date",
                 label: "Invoice Date",
@@ -405,14 +419,39 @@ export default function RecordDetailPage() {
                 label: "Work Details",
                 type: "Text",
               },
+
+              {
+                name: "attach",
+                label: "Attach",
+                type: "Attach",
+              },
+              {
+                name: "cb",
+                label: "Column Break",
+                type: "Column Break",
+              },
+
+              {
+                name: "job_carried_out",
+                label: "Job Carried Out",
+                type: "Long Text",
+                displayDependsOn: "work_type==Repair"
+              },
+              {
+                name: "spare_replaced",
+                label: "Spare Replaced",
+                type: "Long Text",
+                displayDependsOn: "work_type==Repair"
+              },
+
+
             ],
           },
-
           {
             name: "saved_amount",
             label: "Saved Amount",
-            precision: 2,
             type: "Currency",
+            precision: 2,
           },
           {
             name: "work_description",
@@ -420,7 +459,8 @@ export default function RecordDetailPage() {
             type: "Text",
           },
         ]),
-      },
+      }
+
     ];
   }, [expenditure]);
 

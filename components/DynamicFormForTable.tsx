@@ -124,7 +124,7 @@ export function DynamicFormForTable({
     data,
     onSubmit,
     onCancel,
-    title = "Edit Row"
+    title = ""
 }: DynamicFormForTableProps) {
     const { editingRowIndex, updateRow, getRowData } = useTableRowContext();
     const { apiKey, apiSecret } = useAuth();
@@ -690,58 +690,114 @@ export function DynamicFormForTable({
     };
 
     const renderField = (field: FormField) => {
+        // ── Layout fields ───────────────────────────────────────
+        if (field.type === "Section Break") {
+            return (
+                <div className="col-span-full mt-6 mb-2">
+                    {field.label && (
+                        <h3 className="text-lg font-medium text-foreground border-b pb-2 mb-4">
+                            {field.label}
+                        </h3>
+                    )}
+                    {field.description && (
+                        <p className="text-sm text-muted-foreground mb-4">
+                            {field.description}
+                        </p>
+                    )}
+                    <hr className="border-border" />
+                </div>
+            );
+        }
+
+        if (field.type === "Column Break") {
+            return <div className="col-span-full h-0" aria-hidden="true" />; // just visual break
+        }
+
+        // ── Normal fields ───────────────────────────────────────
         switch (field.type) {
             case "Data":
             case "Small Text":
             case "Text":
                 return renderInput(field, "text");
+
             case "Long Text":
             case "Markdown Editor":
                 return renderTextarea(field, field.rows ?? 4);
+
             case "Code":
                 return renderTextarea(field, field.rows ?? 6);
+
             case "Password":
                 return renderInput(field, "password");
+
             case "Int":
                 return renderInput(field, "number");
+
             case "Float":
             case "Currency":
             case "Percent":
                 return renderInput(field, "number");
+
             case "Color":
                 return renderColor(field);
+
             case "Date":
                 return renderDateLike(field, "date");
+
             case "DateTime":
                 return renderDateLike(field, "datetime-local");
+
             case "Time":
                 return renderDateLike(field, "time");
+
             case "Duration":
                 return renderDuration(field);
+
             case "Check":
                 return renderCheckbox(field);
+
             case "Select":
                 return renderSelect(field);
+
             case "Link":
                 return renderLink(field);
+
             case "Barcode":
                 return renderInput(field, "text");
+
             case "Read Only":
                 return renderReadOnly(field);
+
             case "Rating":
                 return renderRating(field);
+
             case "Button":
                 return renderButton(field);
+
             case "Attach":
                 return renderAttachment(field);
+
+            // You can also support Custom type if you plan to use it
+            case "Custom":
+                return (
+                    <div className="form-group">
+                        {field.label && <label className="form-label">{field.label}</label>}
+                        {field.customElement}
+                    </div>
+                );
+
             default:
-                return renderInput(field, "text");
+                return null; // ← better than fallback to text input
         }
     };
-
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Optional title */}
+            {title && (
+                <h2 className="text-xl font-semibold">{title}</h2>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
                 {fields?.map((field) => {
                     // Evaluate visibility
                     const isVisible = field.displayDependsOn
@@ -751,18 +807,30 @@ export function DynamicFormForTable({
                     if (!isVisible) return null;
 
                     return (
-                        <div key={field.name}>
+                        <div
+                            key={field.name}
+                            className={
+                                field.type === "Section Break" || field.type === "Column Break"
+                                    ? "col-span-full"
+                                    : ""
+                            }
+                        >
                             {renderField(field)}
                         </div>
                     );
                 })}
             </div>
 
-            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+            {/* Buttons */}
+            <div className="flex justify-end gap-3 mt-8 pt-5 border-t">
                 <Button type="button" variant="outline" onClick={onCancel}>
                     Cancel
                 </Button>
-                <Button type="button" className="btn btn--primary" onClick={handleSubmit}>
+                <Button
+                    type="button"
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={handleSubmit}
+                >
                     Save
                 </Button>
             </div>

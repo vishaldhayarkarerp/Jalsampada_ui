@@ -83,16 +83,16 @@ export default function TalukaDetailPage() {
         name: "Details",
         fields: withDefaults([
           {
-            name: "taluka",
-            label: "Taluka Name",
-            type: "Data",
-            required: true,
-          },
-          {
             name: "district",
             label: "District",
             type: "Link",
             linkTarget: "WRD District", // ← Should this be "linkTarget"?
+            required: true,
+          },
+          {
+            name: "taluka",
+            label: "Taluka",
+            type: "Data",
             required: true,
           },
         ]),

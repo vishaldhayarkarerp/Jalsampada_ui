@@ -29,18 +29,18 @@ export default function NewLISPhasePage() {
       name: "Details",
       fields: [
         {
-          name: "lis_phase",
-          label: "LIS Phase",
-          type: "Data",
-          required: true
-        },
-        {
           name: "lis_name",
           label: "Lift Irrigation Scheme",
           type: "Link",
           linkTarget: "Lift Irrigation Scheme",
           required: false,
           description: "Links to Lift Irrigation Scheme"
+        },
+        {
+          name: "lis_phase",
+          label: "LIS Phase",
+          type: "Data",
+          required: true
         }
       ]
     }

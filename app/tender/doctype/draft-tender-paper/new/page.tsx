@@ -49,13 +49,13 @@ export default function NewDraftTenderPaperPage() {
     const mainFields: FormField[] = [
       {
         name: "tendor_name",
-        label: "Tendor Name",
+        label: "Tender Name",
         type: "Data",
         required: true,
       },
       {
         name: "tendor_number",
-        label: "Tendor Number",
+        label: "Tender Number",
         type: "Data",
         required: true,
       },

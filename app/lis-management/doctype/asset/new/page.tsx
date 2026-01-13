@@ -189,7 +189,7 @@ export default function NewRecordPage() {
             fetchFrom: {
               sourceField: "asset_category",
               targetDoctype: "Asset Category",
-              targetField: "custom_asset_specifications"
+              targetField: "custom_specifications"
             },
           },
         ],

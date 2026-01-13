@@ -220,17 +220,32 @@ export default function NewTenderPage() {
       {
         name: "custom_mobile_no",
         label: "Mobile No",
-        type: "Data",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "phone"
+        }
       },
       {
         name: "custom_supplier_address",
         label: "Contractor Address",
-        type: "Data",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "address"
+        }
       },
       {
         name: "custom_email_id",
         label: "Email ID",
-        type: "Data",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "email_address"
+        },
       },
 
 
@@ -428,10 +443,10 @@ export default function NewTenderPage() {
 
     } catch (err: any) {
       console.error("Create error:", err);
-      
+
       const serverData = err.response?.data;
       const serverMessage = serverData?.exception || serverData?.message || err.message || "Unknown error";
-      
+
       const messages = getApiMessages(
         null,
         err,
@@ -445,7 +460,7 @@ export default function NewTenderPage() {
           return "Failed to create Tender";
         }
       );
-      
+
       if (!messages.success) {
         toast.error(messages.message, { description: messages.description });
       }

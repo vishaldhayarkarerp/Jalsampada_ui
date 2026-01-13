@@ -96,10 +96,12 @@ export default function RecordDetailPage() {
         name: "Details",
         fields: fields([
           {
-            name: "stage_no",
-            label: "Stage No",
-            type: "Data",
-            required: true
+            name: "lis_name",
+            label: "Lift Irrigation Scheme",
+            type: "Link", // Assuming this links to the LIS doctype
+            required: true,
+            // Add description if you want to specify the link target
+            description: "Links to Lift Irrigation Scheme"
           },
           {
             name: "lis_phase",
@@ -109,13 +111,11 @@ export default function RecordDetailPage() {
             description: "Links to Lift Irrigation Scheme"
           },
           {
-            name: "lis_name",
-            label: "Lift Irrigation Scheme",
-            type: "Link", // Assuming this links to the LIS doctype
-            required: true,
-            // Add description if you want to specify the link target
-            description: "Links to Lift Irrigation Scheme"
-          }
+            name: "stage_no",
+            label: "Stage No",
+            type: "Data",
+            required: true
+          },
         ]),
       },
     ];

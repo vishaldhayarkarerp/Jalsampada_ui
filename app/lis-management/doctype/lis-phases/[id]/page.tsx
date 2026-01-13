@@ -69,7 +69,6 @@ export default function LISPhaseDetailPage() {
       {
         name: "Details",
         fields: bind([
-          { name: "lis_phase", label: "LIS Phase", type: "Data", required: true },
           {
             name: "lis_name",
             label: "Lift Irrigation Scheme",
@@ -77,6 +76,8 @@ export default function LISPhaseDetailPage() {
             linkTarget: "Lift Irrigation Scheme",
             required: true,
           },
+          { name: "lis_phase", label: "LIS Phase", type: "Data", required: true },
+
         ]),
       },
     ];

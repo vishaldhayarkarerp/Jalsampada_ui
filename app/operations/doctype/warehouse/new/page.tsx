@@ -59,7 +59,7 @@ export default function NewWarehousePage() {
         fields: [
           {
             name: "warehouse_name",
-            label: "Warehouse Name",
+            label: "Store Location Name",
             type: "Data",
             required: true,
             defaultValue: getValue("warehouse_name"),
@@ -67,7 +67,7 @@ export default function NewWarehousePage() {
           },
           {
             name: "parent_warehouse",
-            label: "Parent Warehouse",
+            label: "Parent Store Location",
             type: "Link",
             linkTarget: "Warehouse",
             defaultValue: getValue("parent_warehouse"),
@@ -83,7 +83,7 @@ export default function NewWarehousePage() {
           },
           {
             name: "warehouse_type",
-            label: "Warehouse Type",
+            label: "Store Location Type",
             type: "Select",
             options: [
               { label: "Normal", value: "Normal" },

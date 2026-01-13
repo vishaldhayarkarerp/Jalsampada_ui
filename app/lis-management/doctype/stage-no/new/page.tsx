@@ -41,10 +41,12 @@ export default function NewStageNoPage() {
         name: "Details",
         fields: [
           {
-            name: "stage_no",
-            label: "Stage No",
-            type: "Data",
-            required: true
+            name: "lis_name",
+            label: "Lift Irrigation Scheme",
+            type: "Link", // Assuming this links to the LIS doctype
+            required: true,
+            linkTarget: "Lift Irrigation Scheme", // Specify the target doctype
+            description: "Links to Lift Irrigation Scheme"
           },
           {
             name: "lis_phase",
@@ -54,13 +56,11 @@ export default function NewStageNoPage() {
             description: "Links to Lift Irrigation Scheme"
           },
           {
-            name: "lis_name",
-            label: "Lift Irrigation Scheme",
-            type: "Link", // Assuming this links to the LIS doctype
-            required: true,
-            linkTarget: "Lift Irrigation Scheme", // Specify the target doctype
-            description: "Links to Lift Irrigation Scheme"
-          }
+            name: "stage_no",
+            label: "Stage No",
+            type: "Data",
+            required: true
+          },
         ],
       },
     ];

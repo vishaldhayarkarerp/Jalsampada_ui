@@ -105,26 +105,20 @@ export default function ContractorDetailsPage({
             label: "Contractor Name",
             type: "Data",
             required: true,
-            defaultValue: data.contractor_name,
           },
           {
             name: "supplier_group",
-            label: "Supplier Group",
+            label: "Contractor Group",
             type: "Link",
             linkTarget: "Supplier Group",
-            defaultValue: data.supplier_group,
           },
-          {
-            name: "column_break_nkmc",
-            label: "",
-            type: "Column Break",
-          },
+
           {
             name: "supplier_type",
-            label: "Supplier Type",
+            label: "Contractor Type",
             type: "Select",
             options: "Company\nIndividual\nPartnership",
-            defaultValue: data.supplier_type || "Company",
+            defaultValue: "Company",
           },
 
           // --- Address and Contact Section ---
@@ -133,68 +127,47 @@ export default function ContractorDetailsPage({
             label: "Address and Contact",
             type: "Section Break",
           },
-          {
-            name: "address_title",
-            label: "Address Title",
-            type: "Data",
-            defaultValue: data.address_title,
-          },
-          {
-            name: "address",
-            label: "Address",
-            type: "Small Text",
-            required: true,
-            defaultValue: data.address,
-          },
-          {
-            name: "column_break_jfzy",
-            label: "",
-            type: "Column Break",
-          },
+
           {
             name: "address_type",
             label: "Address Type",
             type: "Select",
             options:
               "Billing\nShipping\nOffice\nPersonal\nPlant\nPostal\nShop\nSubsidiary\nWarehouse\nCurrent\nPermanent\nOther",
-            defaultValue: data.address_type,
           },
           {
             name: "city",
             label: "City",
             type: "Data",
-            defaultValue: data.city,
-          },
-          {
-            name: "postal_code",
-            label: "Postal Code",
-            type: "Data",
-            defaultValue: data.postal_code,
-          },
-          {
-            name: "column_break_ohij",
-            label: "",
-            type: "Column Break",
           },
           {
             name: "county",
             label: "County",
             type: "Data",
-            defaultValue: data.county,
           },
+          {
+            name: "postal_code",
+            label: "Postal Code",
+            type: "Data",
+          },
+
           {
             name: "email_address",
             label: "Email Address",
             type: "Data",
             required: true,
-            defaultValue: data.email_address,
           },
           {
             name: "phone",
             label: "Phone",
             type: "Data",
             required: true,
-            defaultValue: data.phone,
+          },
+          {
+            name: "address",
+            label: "Address",
+            type: "Long Text",
+            required: true,
           },
         ],
       },
@@ -218,7 +191,7 @@ export default function ContractorDetailsPage({
         "column_break_jfzy",
         "column_break_ohij",
       ]);
-      
+
       const finalPayload: Record<string, any> = {};
       for (const key in payload) {
         if (!nonDataFields.has(key)) {
@@ -325,13 +298,13 @@ export default function ContractorDetailsPage({
 
   return (
     <DynamicForm
-          tabs={formTabs}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          title={`${doctypeName}: ${data.name}`}
-          description={`Update details for record ID ${recordId}`}
-          submitLabel={isSaving ? "Saving..." : "Save"}
-          cancelLabel="Cancel"
+      tabs={formTabs}
+      onSubmit={handleSubmit}
+      onCancel={handleCancel}
+      title={`${doctypeName}: ${data.name}`}
+      description={`Update details for record ID ${recordId}`}
+      submitLabel={isSaving ? "Saving..." : "Save"}
+      cancelLabel="Cancel"
     />
   );
 }

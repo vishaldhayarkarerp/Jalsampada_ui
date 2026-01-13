@@ -126,12 +126,6 @@ export default function NewPrapanSuchiPage() {
 
           },
           {
-            name: "amount",
-            label: "Amount",
-            type: "Currency",
-            required: true,
-          },
-          {
             name: "stage",
             label: "Stage/Sub Scheme",
             type: "Table MultiSelect",
@@ -139,6 +133,12 @@ export default function NewPrapanSuchiPage() {
             filterMapping: [
               { sourceField: "lis_name", targetField: "lis_name" }
             ]
+          },
+          {
+            name: "amount",
+            label: "Amount",
+            type: "Currency",
+            required: true,
           },
           {
             name: "work_name",

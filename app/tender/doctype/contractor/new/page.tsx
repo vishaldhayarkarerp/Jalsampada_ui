@@ -60,18 +60,14 @@ export default function NewContractorPage() {
           },
           {
             name: "supplier_group",
-            label: "Supplier Group",
+            label: "Contractor Group",
             type: "Link",
             linkTarget: "Supplier Group",
           },
-          {
-            name: "column_break_nkmc",
-            label: "",
-            type: "Column Break",
-          },
+
           {
             name: "supplier_type",
-            label: "Supplier Type",
+            label: "Contractor Type",
             type: "Select",
             options: "Company\nIndividual\nPartnership",
             defaultValue: "Company",
@@ -83,22 +79,7 @@ export default function NewContractorPage() {
             label: "Address and Contact",
             type: "Section Break",
           },
-          {
-            name: "address_title",
-            label: "Address Title",
-            type: "Data",
-          },
-          {
-            name: "address",
-            label: "Address",
-            type: "Long Text",
-            required: true,
-          },
-          {
-            name: "column_break_jfzy",
-            label: "",
-            type: "Column Break",
-          },
+
           {
             name: "address_type",
             label: "Address Type",
@@ -112,20 +93,16 @@ export default function NewContractorPage() {
             type: "Data",
           },
           {
-            name: "postal_code",
-            label: "Postal Code",
-            type: "Data",
-          },
-          {
-            name: "column_break_ohij",
-            label: "",
-            type: "Column Break",
-          },
-          {
             name: "county",
             label: "County",
             type: "Data",
           },
+          {
+            name: "postal_code",
+            label: "Postal Code",
+            type: "Data",
+          },
+
           {
             name: "email_address",
             label: "Email Address",
@@ -136,6 +113,12 @@ export default function NewContractorPage() {
             name: "phone",
             label: "Phone",
             type: "Data",
+            required: true,
+          },
+          {
+            name: "address",
+            label: "Address",
+            type: "Long Text",
             required: true,
           },
         ],

@@ -188,13 +188,6 @@ export default function PrapanSuchiDetailPage() {
             required: true,
           },
           {
-            name: "amount",
-            label: "Amount",
-            type: "Currency",
-            required: true,
-
-          },
-          {
             name: "stage",
             label: "Stage/Sub Scheme",
             type: "Table MultiSelect",
@@ -202,6 +195,13 @@ export default function PrapanSuchiDetailPage() {
             filterMapping: [
               { sourceField: "lis_name", targetField: "lis_name" }
             ]
+          },
+          {
+            name: "amount",
+            label: "Amount",
+            type: "Currency",
+            required: true,
+
           },
           {
             name: "work_name",

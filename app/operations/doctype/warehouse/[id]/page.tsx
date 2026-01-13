@@ -98,7 +98,7 @@ export default function WarehouseDetailPage() {
           
           {
             name: "parent_warehouse",
-            label: "Parent Warehouse",
+            label: "Parent Store Location",
             type: "Link",
             linkTarget: "Warehouse",
             description: "Parent warehouse (only if this is not a group)",
@@ -112,7 +112,7 @@ export default function WarehouseDetailPage() {
           },
           {
             name: "warehouse_type",
-            label: "Warehouse Type",
+            label: "Store Location Type",
             type: "Select",
             options: [
               { label: "Normal", value: "Normal" },
