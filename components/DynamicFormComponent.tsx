@@ -1133,6 +1133,7 @@ export function DynamicForm({
         <input
           id={field.name}
           type={type}
+          step="1"
           className={cn("form-control", getErrorClass(field.name))}
           {...reg(field.name, rules)}
         />
