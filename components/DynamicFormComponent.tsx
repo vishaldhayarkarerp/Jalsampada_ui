@@ -802,7 +802,10 @@ export function DynamicForm({
               fields.forEach((field) => {
                 if (!field.fetchFrom) return;
 
-                const fetchedValue = fetchedValues[field.fetchFrom.targetField];
+                let fetchedValue = fetchedValues[field.fetchFrom.targetField];
+                if (Array.isArray(fetchedValue)) {
+                  fetchedValue = sanitizeForDuplication(fetchedValue);
+                }
                 if (fetchedValue !== null && fetchedValue !== undefined) {
                   setValue(field.name, fetchedValue, { shouldDirty: false });
                 }
