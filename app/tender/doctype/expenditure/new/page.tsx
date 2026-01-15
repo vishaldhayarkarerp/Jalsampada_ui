@@ -116,24 +116,13 @@ export default function NewExpenditurePage() {
     return [
       {
         name: "Details",
-        fields:([
+        fields: ([
           {
             name: "fiscal_year",
             label: "Fiscal Year",
             type: "Link",
             linkTarget: "Fiscal Year",
             required: true,
-          },
-          {
-            name: "prev_bill_no",
-            label: "Previous Bill Number",
-            type: "Data",
-          },
-          {
-            name: "bill_upto",
-            label: "Bill Upto Amount",
-            type: "Currency",
-            precision: 2,
           },
           {
             name: "tender_number",
@@ -144,17 +133,6 @@ export default function NewExpenditurePage() {
             filterMapping: [
               { sourceField: "custom_fiscal_year", targetField: "fiscal_year" }
             ]
-          },
-          {
-            name: "bill_number",
-            label: "Bill Number",
-            type: "Data",
-          },
-          {
-            name: "remaining_amount",
-            label: "Remaining Amount",
-            type: "Currency",
-            precision: 2,
           },
           {
             name: "tender_amount",
@@ -168,8 +146,44 @@ export default function NewExpenditurePage() {
             }
           },
           {
+            name: "posting_date",
+            label: "Bill Date",
+            type: "Date",
+          },
+
+          {
+            name: "prev_bill_no",
+            label: "Previous Bill Number",
+            type: "Data",
+          },
+          {
+            name: "bill_number",
+            label: "Bill Number",
+            type: "Data",
+          },
+          {
             name: "prev_bill_amt",
             label: "Previous Bill Amount",
+            type: "Currency",
+            precision: 2,
+          },
+          {
+            name: "bill_amount",
+            label: "Bill Amount",
+            type: "Currency",
+            required: true,
+            precision: 2,
+          },
+
+          {
+            name: "bill_upto",
+            label: "Bill Upto Amount",
+            type: "Currency",
+            precision: 2,
+          },
+          {
+            name: "remaining_amount",
+            label: "Remaining Amount",
             type: "Currency",
             precision: 2,
           },
@@ -184,18 +198,6 @@ export default function NewExpenditurePage() {
             ],
           },
           {
-            name: "posting_date",
-            label: "Bill Date",
-            type: "Date",
-          },
-          {
-            name: "bill_amount",
-            label: "Bill Amount",
-            type: "Currency",
-            required: true,
-            precision: 2,
-          },
-          {
             name: "mb_no",
             label: "MB No",
             type: "Data",
@@ -205,6 +207,7 @@ export default function NewExpenditurePage() {
             label: "Page No",
             type: "Data",
           },
+
           {
             name: "lift_irrigation_scheme",
             label: "Lift Irrigation Scheme",
@@ -223,7 +226,7 @@ export default function NewExpenditurePage() {
             type: "Table MultiSelect",
             linkTarget: "Stage No",
             filterMapping: [
-              { sourceField: "lift_irrigation_scheme", targetField: "lis_name" }
+              { sourceField: "lift_irrigation_scheme", targetField: "lis_name" },
             ],
             fetchFrom: {
               sourceField: "tender_number",
@@ -231,146 +234,60 @@ export default function NewExpenditurePage() {
               targetField: "custom_stage"
             }
           },
+
           {
             name: "expenditure_details",
             label: "Expenditure Details",
             type: "Table",
             showDownloadUpload: true,
             columns: [
-              {
-                name: "name_of_work",
-                label: "Name of Work",
-                type: "Text",
-              },
-              {
-                name: "stage",
-                label: "Stage",
-                type: "Link",
-                linkTarget: "Stage No",
-              },
-              {
-                name: "section_interchange",
-                label: "",
-                type: "Section Break"
-              },
-              {
-                name: "work_type",
-                label: "Work Type",
-                type: "Link",
-                linkTarget: "Work Type",
-              },
+              { name: "name_of_work", label: "Name of Work", type: "Text" },
+              { name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No" },
+              { name: "section_interchange", label: "", type: "Section Break" },
+              { name: "work_type", label: "Work Type", type: "Link", linkTarget: "Work Type" },
               {
                 name: "work_subtype",
                 label: "Work Subtype",
                 type: "Link",
                 linkTarget: "Work Subtype",
-                filterMapping: [
-                  { sourceField: "work_type", targetField: "work_type" }
-                ]
+                filterMapping: [{ sourceField: "work_type", targetField: "work_type" }]
               },
-              {
-                name: "bill_amount",
-                label: "Expenditure Amount",
-                type: "Currency",
-                precision: 2,
-              },
-              {
-                name: "have_asset",
-                label: "Have Asset",
-                type: "Check",
-                displayDependsOn: "work_type==Miscellaneous"
-              },
+              { name: "bill_amount", label: "Expenditure Amount", type: "Currency", precision: 2 },
+              { name: "have_asset", label: "Have Asset", type: "Check", displayDependsOn: "work_type==Miscellaneous" },
               {
                 name: "asset",
                 label: "Asset",
                 type: "Link",
                 linkTarget: "Asset",
-                displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1",
+                displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1"
               },
               {
                 name: "asset_name",
                 label: "Asset Name",
                 type: "Data",
                 displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
-                fetchFrom: {
-                  sourceField: "asset",
-                  targetDoctype: "Asset",
-                  targetField: "asset_name"
-                }
+                fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "asset_name" }
               },
               {
                 name: "asset_no",
                 label: "Asset No",
                 type: "Data",
                 displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
-                fetchFrom: {
-                  sourceField: "asset",
-                  targetDoctype: "Asset",
-                  targetField: "custom_asset_no"
-                }
+                fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "custom_asset_no" }
               },
-              {
-                name: "from_date",
-                label: "From Date",
-                type: "Date",
-                displayDependsOn: "work_type==Operation || work_type==Security"
-              },
-              {
-                name: "to_date",
-                label: "To Date",
-                type: "Date",
-                displayDependsOn: "work_type==Operation || work_type==Security"
-              },
-              {
-                name: "tax_amount",
-                label: "Tax Amount",
-                type: "Currency",
-                precision: 2,
-              },
-              {
-                name: "invoice_number",
-                label: "Invoice Number",
-                type: "Data",
-              },
-
-              {
-                name: "expenditure_date",
-                label: "Invoice Date",
-                type: "Date",
-              },
-              {
-                name: "remarks",
-                label: "Work Details",
-                type: "Long Text",
-              },
-
-              {
-                name: "attach",
-                label: "Attach",
-                type: "Attach",
-              },
-              {
-                name: "cb",
-                label: "Column Break",
-                type: "Column Break",
-              },
-
-              {
-                name: "job_carried_out",
-                label: "Job Carried Out",
-                type: "Long Text",
-                displayDependsOn: "work_type==Repair"
-              },
-              {
-                name: "spare_replaced",
-                label: "Spare Replaced",
-                type: "Long Text",
-                displayDependsOn: "work_type==Repair"
-              },
-
-
+              { name: "from_date", label: "From Date", type: "Date", displayDependsOn: "work_type==Operation || work_type==Security" },
+              { name: "to_date", label: "To Date", type: "Date", displayDependsOn: "work_type==Operation || work_type==Security" },
+              { name: "tax_amount", label: "Tax Amount", type: "Currency", precision: 2 },
+              { name: "invoice_number", label: "Invoice Number", type: "Data" },
+              { name: "expenditure_date", label: "Invoice Date", type: "Date" },
+              { name: "remarks", label: "Work Details", type: "Text" },
+              { name: "attach", label: "Attach", type: "Attach" },
+              { name: "cb", label: "Column Break", type: "Column Break" },
+              { name: "job_carried_out", label: "Job Carried Out", type: "Long Text", displayDependsOn: "work_type==Repair" },
+              { name: "spare_replaced", label: "Spare Replaced", type: "Long Text", displayDependsOn: "work_type==Repair" },
             ],
           },
+
           {
             name: "saved_amount",
             label: "Saved Amount",
@@ -380,8 +297,8 @@ export default function NewExpenditurePage() {
           {
             name: "work_description",
             label: "Work Description",
-            type: "Text",
-          },
+            type: "Long Text",
+          }
         ]),
       }
     ];
@@ -545,6 +462,7 @@ export default function NewExpenditurePage() {
       description="Create a new expenditure record"
       submitLabel={isSaving ? "Saving..." : "New Expenditure"}
       cancelLabel="Cancel"
+      doctype={doctypeName}
 
     />
   );

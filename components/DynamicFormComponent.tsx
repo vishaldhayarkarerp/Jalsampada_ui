@@ -148,6 +148,7 @@ export interface DynamicFormProps {
   onFormInit?: (form: UseFormReturn<any>) => void;
   onDelete?: () => Promise<void> | void;
   deleteConfig?: DeleteConfig;
+  doctype?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -428,7 +429,8 @@ export function DynamicForm({
   onCancelDocument,
   onFormInit,
   onDelete,
-  deleteConfig
+  deleteConfig,
+  doctype
 }: DynamicFormProps) {
   const { apiKey, apiSecret } = useAuth();
 
@@ -1674,24 +1676,30 @@ export function DynamicForm({
           </div>
 
           {/* Dynamic grid */}
+          {/* Dynamic grid */}
           <div
-            className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-0"
+            className={`grid grid-cols-1 gap-x-6 gap-y-0 ${doctype === "Project" ? "md:grid-cols-4" : "md:grid-cols-3"
+              }`}
             style={{ overflow: "visible" }}
           >
             {activeTabFields.map((field, idx) => {
-              const isTable = field.type === "Table";
-              const isTableMultiSelect = field.type === "Table MultiSelect";
-              const isSectionBreak = field.type === "Section Break";
-              const isCustom = field.type === "Custom";
+              const isWideField =
+                field.type === "Table" ||
+                field.type === "Table MultiSelect" ||
+                field.type === "Section Break" ||
+                field.type === "Custom";
+
+              // Decide column span based on doctype + field type
+              const colSpanClass = isWideField
+                ? doctype === "Project" || doctype === "Expenditure"
+                  ? "md:col-span-4"
+                  : "md:col-span-3"
+                : "md:col-span-1";
 
               return (
                 <div
                   key={`${field.name}-${idx}`}
-                  className={
-                    isTable || isTableMultiSelect || isSectionBreak || isCustom
-                      ? "md:col-span-3"
-                      : "md:col-span-1"
-                  }
+                  className={colSpanClass}
                   style={{ overflow: "visible" }}
                 >
                   {renderField(field, idx)}

@@ -93,7 +93,7 @@ export default function NewTenderPage() {
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     // Details tab (from Fields-1.csv) [file:6]
     const detailsFields: FormField[] = [
-      {
+       {
         name: "custom_fiscal_year",
         label: "Fiscal Year",
         type: "Link",
@@ -112,32 +112,8 @@ export default function NewTenderPage() {
         linkTarget: "Prapan Suchi",
         filterMapping: [
           { sourceField: "custom_lis_name", targetField: "lis_name" },
+          { sourceField: "custom_fiscal_year", targetField: "fiscal_year" },
         ]
-      },
-      {
-        name: "custom_stage",
-        label: "Stage/ Sub Scheme",
-        type: "Table MultiSelect",
-        linkTarget: "Stage No",
-        filterMapping: [
-          { sourceField: "custom_lis_name", targetField: "lis_name" }
-        ],
-        fetchFrom: {
-          sourceField: "custom_prapan_suchi",
-          targetDoctype: "Prapan Suchi",
-          targetField: "stage"
-        }
-      },
-      {
-        name: "custom_tender_id",
-        label: "Tender ID",
-        type: "Data",
-        // required: true,
-      },
-      {
-        name: "custom_work_order",
-        label: "Work Order",
-        type: "Data",
       },
       {
         name: "custom_prapan_suchi_amount",
@@ -150,14 +126,46 @@ export default function NewTenderPage() {
         }
       },
       {
-        name: "expected_start_date",
-        label: "Work Order Date",
-        type: "Date",
+        name: "custom_stage",
+        label: "Stage/ Sub Scheme",
+        type: "Table MultiSelect",
+        linkTarget: "Stage No",
+        filterMapping: [
+          { sourceField: "lift_irrigation_scheme", targetField: "lis_name" }
+        ],
+        fetchFrom: {
+          sourceField: "custom_prapan_suchi",
+          targetDoctype: "Prapan Suchi",
+          targetField: "stage"
+        }
+      },
+      {
+        name: "custom_tender_id",
+        label: "Tender ID",
+        type: "Data",
+        required: true,
       },
       {
         name: "custom_tender_amount",
         label: "Tender Amount",
         type: "Currency",
+        required: true,
+      },
+      
+      {
+        name: "custom_work_order",
+        label: "Work Order",
+        type: "Data",
+      },
+      {
+        name: "expected_start_date",
+        label: "Work Order Date",
+        type: "Date",
+      },
+      {
+        name: "custom_expected_date",
+        label: "Scheduled Completion Date",
+        type: "Date",
         required: true,
       },
       {
@@ -173,12 +181,6 @@ export default function NewTenderPage() {
         defaultValue: "Ongoing",
       },
       {
-        name: "custom_expected_date",
-        label: "Scheduled Completion Date",
-        type: "Date",
-        required: true,
-      },
-      {
         name: "custom_is_extension",
         label: "Is Extension",
         type: "Check",
@@ -190,8 +192,8 @@ export default function NewTenderPage() {
         options: "Extension Period Details",
         columns: [
           { name: "extension_count", label: "Extension Count", type: "Data" },
-          { name: "extension_upto", label: "Extension Upto", type: "Date" },
-          { name: "sanction_letter", label: "Sanction Letter", type: "Small Text" },
+          { name: "extension_upto", label: "Extension Upto", type: "Date", },
+          { name: "sanction_letter", label: "Sanction Letter", type: "Data" },
           { name: "attach", label: "Attach", type: "Attach" },
         ],
         displayDependsOn: "custom_is_extension==1"
@@ -483,6 +485,8 @@ export default function NewTenderPage() {
       description="Create a new tender/project"
       submitLabel={isSaving ? "Saving..." : "New Tender"}
       cancelLabel="Cancel"
+      doctype={doctypeName}
+
     />
   );
 }
