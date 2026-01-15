@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useFormContext } from "react-hook-form";
 import { FormField, FieldType } from "./DynamicFormComponent";
 import { Button } from "@/components/ui/button";
 import { LinkInput } from "./LinkInput";
@@ -128,6 +129,7 @@ export function DynamicFormForTable({
 }: DynamicFormForTableProps) {
     const { editingRowIndex, updateRow, getRowData } = useTableRowContext();
     const { apiKey, apiSecret } = useAuth();
+    const parentGetValues = useFormContext(); // Access parent form context
 
     // Local form state for the modal
     const [formData, setFormData] = React.useState<Record<string, any>>({});
@@ -307,8 +309,15 @@ export function DynamicFormForTable({
     const renderLink = (field: FormField) => {
         const value = formData[field.name] ?? "";
 
-        // Build dynamic filters for Link fields
-        const getValue = (name: string) => formData[name];
+        // Build dynamic filters for Link fields with parent context support
+        const getValue = (name: string) => {
+            // Handle explicit parent access
+            if (name.startsWith("parent.")) {
+                return parentGetValues.getValues(name.replace("parent.", ""));
+            }
+            // Fallback to local form data
+            return formData[name];
+        };
         const filtersToPass = buildDynamicFilters(field, getValue);
         const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
 

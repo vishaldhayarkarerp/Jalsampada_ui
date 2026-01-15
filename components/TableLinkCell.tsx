@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
-import { Controller } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 import { useAuth } from "@/context/AuthContext";
 import { Search, Loader2, X } from "lucide-react";
 
@@ -16,18 +16,20 @@ interface TableLinkOption {
 
 interface TableLinkCellProps {
     control: any;
-    fieldName: string; 
+    fieldName: string;
     column: {
         linkTarget?: string;
         required?: boolean;
         placeholder?: string;
+        filters?: Record<string, any> | ((getValues: (name: string) => any) => Record<string, any>);
     };
-    filters?: Record<string, any>; 
-    onValueChange?: (value: any) => void; 
+    filters?: Record<string, any>;
+    onValueChange?: (value: any) => void;
 }
 
 export function TableLinkCell({ control, fieldName, column, filters = {}, onValueChange }: TableLinkCellProps) {
     const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
+    const { getValues } = useFormContext();
 
     const [searchTerm, setSearchTerm] = React.useState("");
     const [options, setOptions] = React.useState<TableLinkOption[]>([]);
@@ -39,20 +41,46 @@ export function TableLinkCell({ control, fieldName, column, filters = {}, onValu
     const inputRef = React.useRef<HTMLInputElement>(null);
     const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-    // API Search Logic
+    const getCompositeValue = React.useCallback((name: string) => {
+        if (name.startsWith("parent.")) {
+            return getValues(name.replace("parent.", ""));
+        }
+
+        const lastDotIndex = fieldName.lastIndexOf(".");
+        if (lastDotIndex !== -1) {
+            const rowPrefix = fieldName.substring(0, lastDotIndex);
+            const rowValue = getValues(`${rowPrefix}.${name}`);
+            if (rowValue !== undefined) return rowValue;
+        }
+
+        return getValues(name);
+    }, [fieldName, getValues]);
+
     const performSearch = React.useCallback(async (term: string) => {
         if (!isAuthenticated || !apiKey || !column.linkTarget) return;
 
         setIsLoading(true);
         try {
+            let activeFilters = { ...filters };
+            if (typeof column.filters === 'function') {
+                const dynamic = column.filters(getCompositeValue);
+                activeFilters = { ...activeFilters, ...dynamic };
+            } else if (column.filters) {
+                activeFilters = { ...activeFilters, ...column.filters };
+            }
+
             const searchFilters: any[] = [];
             if (term?.trim()) {
                 searchFilters.push([column.linkTarget, "name", "like", `%${term.trim()}%`]);
             }
 
-            Object.entries(filters).forEach(([key, value]) => {
+            Object.entries(activeFilters).forEach(([key, value]) => {
                 if (value != null && value !== "") {
-                    searchFilters.push([column.linkTarget, key, "=", value]);
+                    if (Array.isArray(value)) {
+                        searchFilters.push([column.linkTarget, key, ...value]);
+                    } else {
+                        searchFilters.push([column.linkTarget, key, "=", value]);
+                    }
                 }
             });
 
@@ -77,7 +105,7 @@ export function TableLinkCell({ control, fieldName, column, filters = {}, onValu
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated, apiKey, apiSecret, column.linkTarget, filters]);
+    }, [isAuthenticated, apiKey, apiSecret, column, filters, getCompositeValue]);
 
     const debouncedSearch = React.useCallback((term: string) => {
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -186,9 +214,9 @@ export function TableLinkCell({ control, fieldName, column, filters = {}, onValu
                                     disabled={!isAuthenticated || !isInitialized}
                                 />
                                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
-                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 
-                                     searchTerm ? <X className="h-4 w-4 cursor-pointer hover:text-gray-600" onClick={() => { setSearchTerm(""); onChange(""); setOptions([]); handleChange(""); }} /> : 
-                                     <Search className="h-4 w-4" />}
+                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> :
+                                        searchTerm ? <X className="h-4 w-4 cursor-pointer hover:text-gray-600" onClick={() => { setSearchTerm(""); onChange(""); setOptions([]); handleChange(""); }} /> :
+                                            <Search className="h-4 w-4" />}
                                 </div>
                             </div>
                             {isOpen && createPortal(

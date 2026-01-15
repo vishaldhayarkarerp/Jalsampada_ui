@@ -334,8 +334,10 @@ export default function RecordDetailPage() {
                 type: "Link",
                 linkTarget: "Stage No",
                 filters: (getValues: (name: string) => any) => {
-                  const allowedStages = getAllowedStages({ stage: parentStageRef.current });
-                  if (allowedStages.length === 0) return {};
+                  // Use 'parent.stage' to access the live parent field value
+                  const parentStage = getValues("parent.stage");
+                  const allowedStages = getAllowedStages({ stage: parentStage });
+                  if (!allowedStages || allowedStages.length === 0) return { name: ["in", []] }; // Return empty filter if no stages
                   return { name: ["in", allowedStages] };
                 }
               },
