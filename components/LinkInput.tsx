@@ -51,7 +51,15 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
             // Apply filters from filterMapping
             Object.entries(filters).forEach(([key, value]) => {
                 if (value != null && value !== "") {
-                    searchFilters.push([linkTarget, key, "=", value]);
+                    // Handle "in" filter format for array values
+                    if (Array.isArray(value) && value[0] === "in") {
+                        const arrayValues = value[1];
+                        if (Array.isArray(arrayValues) && arrayValues.length > 0) {
+                            searchFilters.push([linkTarget, key, "in", arrayValues]);
+                        }
+                    } else {
+                        searchFilters.push([linkTarget, key, "=", value]);
+                    }
                 }
             });
 

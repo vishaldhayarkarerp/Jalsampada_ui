@@ -89,6 +89,7 @@ export interface FormField {
   rows?: number;
   showDownloadUpload?: boolean;
   columns?: {
+    filterDeps?: string[];
     name: string;
     label: string;
     type: FieldType;
@@ -102,6 +103,7 @@ export interface FormField {
       targetField: string;
     };
     displayDependsOn?: string;
+    filters?: (getValue: (name: string) => any) => Record<string, any>;
   }[];
   action?: () => void;
   buttonLabel?: string;

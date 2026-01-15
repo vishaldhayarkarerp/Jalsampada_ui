@@ -176,8 +176,18 @@ export default function RecordDetailPage() {
   4. Build tabs once when data is ready
   ------------------------------------------------- */
 
+  // Helper function to get allowed stages from parent stage field
+  const getAllowedStages = React.useCallback((formData: Record<string, any>): string[] => {
+    const parentStage = formData.stage;
+    if (!parentStage || !Array.isArray(parentStage)) return [];
+    return parentStage.map((item: any) => item.stage).filter(Boolean);
+  }, []);
+
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!expenditure) return [];
+
+    // Create a reference to access allowed stages in child table
+    const parentStageRef = { current: expenditure.stage };
 
     const fields = (list: FormField[]): FormField[] =>
       list.map((f) => ({
@@ -318,7 +328,17 @@ export default function RecordDetailPage() {
             showDownloadUpload: true,
             columns: [
               { name: "name_of_work", label: "Name of Work", type: "Text" },
-              { name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No" },
+              {
+                name: "stage",
+                label: "Stage",
+                type: "Link",
+                linkTarget: "Stage No",
+                filters: (getValues: (name: string) => any) => {
+                  const allowedStages = getAllowedStages({ stage: parentStageRef.current });
+                  if (allowedStages.length === 0) return {};
+                  return { name: ["in", allowedStages] };
+                }
+              },
               { name: "section_interchange", label: "", type: "Section Break" },
               { name: "work_type", label: "Work Type", type: "Link", linkTarget: "Work Type" },
               {

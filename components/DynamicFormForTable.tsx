@@ -12,27 +12,10 @@ import { cn } from "@/lib/utils";
 import { Upload, X, Eye } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
+import { buildDynamicFilters } from "./utils/filterUtils";
 
 const API_BASE_URL = "http://103.219.1.138:4412/";
 
-// Helper: Build dynamic filters for Link fields
-function buildDynamicFilters(
-    field: FormField,
-    getValue: (name: string) => any
-): Record<string, any> {
-    const filters: Record<string, any> = {};
-    if (field.filterMapping?.length) {
-        field.filterMapping.forEach((mapping) => {
-            const sourceValue = getValue(mapping.sourceField);
-            if (sourceValue) {
-                filters[mapping.targetField] = sourceValue;
-            }
-        });
-    } else if (typeof field.filters === "function") {
-        Object.assign(filters, field.filters(getValue));
-    }
-    return filters;
-}
 // Helper: Evaluate displayDependsOn condition string
 function evaluateDisplayDependsOn(
     condition: string,
@@ -92,6 +75,7 @@ interface DynamicFormForTableProps {
     onSubmit: (data: Record<string, any>) => void;
     onCancel: () => void;
     title?: string;
+    parentFormData?: Record<string, any>;
 }
 
 // Local UI helper components
@@ -124,7 +108,8 @@ export function DynamicFormForTable({
     data,
     onSubmit,
     onCancel,
-    title = ""
+    title = "",
+    parentFormData = {}
 }: DynamicFormForTableProps) {
     const { editingRowIndex, updateRow, getRowData } = useTableRowContext();
     const { apiKey, apiSecret } = useAuth();
@@ -270,8 +255,14 @@ export function DynamicFormForTable({
     const renderLink = (field: FormField) => {
         const value = formData[field.name] ?? "";
 
-        // Build dynamic filters for Link fields
-        const getValue = (name: string) => formData[name];
+        // Build dynamic filters for Link fields - merge parent form data with row data
+        const getValue = (name: string) => {
+            // First check row data, then fall back to parent form data
+            if (formData.hasOwnProperty(name)) {
+                return formData[name];
+            }
+            return parentFormData[name];
+        };
         const filtersToPass = buildDynamicFilters(field, getValue);
         const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
 

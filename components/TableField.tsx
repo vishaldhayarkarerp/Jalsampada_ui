@@ -12,6 +12,7 @@ import { DynamicFormForTable } from "./DynamicFormForTable";
 import { TableRowProvider, useTableRowContext } from "./TableRowContext";
 import DatePicker from "react-datepicker";
 import { cn } from "@/lib/utils";
+import { buildDynamicFilters } from "./utils/filterUtils";
 import "./TableField.css";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -287,7 +288,7 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
   );
 }
 
-function TableFieldContent({ field, control, register, errors }: TableFieldProps) {
+function TableFieldContent({ field, control, register, errors, watchAll }: TableFieldProps & { watchAll?: Record<string, any> }) {
   const { fields: formRows, append, remove } = useFieldArray({
     control,
     name: field.name,
@@ -527,13 +528,6 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                             columnName={c.name}
                             onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
                           />
-                        ) : c.type === "Link" ? (
-                          <TableLinkCell
-                            control={formMethods.control}
-                            fieldName={`${field.name}.${idx}.${c.name}`}
-                            column={c}
-                            onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
-                          />
                         ) : c.type === "Date" ? (
                           <DatePicker
                             selected={(rows[idx] as any)?.[c.name] ? new Date((rows[idx] as any)[c.name]) : null}
@@ -562,6 +556,14 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                             placeholder={c.label}
                             value={(rows[idx] as any)?.[c.name] || ""}
                             onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+                          />
+                        ) : c.type === "Link" ? (
+                          <TableLinkCell
+                            control={formMethods.control}
+                            fieldName={`${field.name}.${idx}.${c.name}`}
+                            column={c}
+                            onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
+                            filters={buildDynamicFilters(c, (name: string) => watchAll?.[name])}
                           />
                         ) : c.type === "Int" ? (
                           renderTableNumber(c, idx, rows, handleTableInputChange)
@@ -681,6 +683,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
             data={getRowData(editingRowIndex)}
             onSubmit={handleEditSubmit}
             onCancel={handleEditCancel}
+            parentFormData={watchAll}
           />
         </Modal>
       )}
@@ -695,6 +698,7 @@ export function TableField({ field, control, register, errors }: TableFieldProps
   });
 
   const formMethods = useFormContext();
+  const watchAll = formMethods.watch();
 
   const handleRowsChange = React.useCallback((newRows: Record<string, any>[]) => {
     console.log('TableField: Context rows changed, updating form');
@@ -711,7 +715,7 @@ export function TableField({ field, control, register, errors }: TableFieldProps
       field={field}
       onRowsChange={handleRowsChange}
     >
-      <TableFieldContent field={field} control={control} register={register} errors={errors} />
+      <TableFieldContent field={field} control={control} register={register} errors={errors} watchAll={watchAll} />
     </TableRowProvider>
   );
 }
