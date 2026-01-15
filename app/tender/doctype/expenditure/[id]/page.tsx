@@ -355,7 +355,7 @@ export default function RecordDetailPage() {
                 label: "Asset",
                 type: "Link",
                 linkTarget: "Asset",
-                displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1"
+                displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1"
               },
               {
                 name: "asset_name",

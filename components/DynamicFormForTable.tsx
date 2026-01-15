@@ -12,10 +12,27 @@ import { cn } from "@/lib/utils";
 import { Upload, X, Eye } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
-import { buildDynamicFilters } from "./utils/filterUtils";
 
 const API_BASE_URL = "http://103.219.1.138:4412/";
 
+// Helper: Build dynamic filters for Link fields
+function buildDynamicFilters(
+    field: FormField,
+    getValue: (name: string) => any
+): Record<string, any> {
+    const filters: Record<string, any> = {};
+    if (field.filterMapping?.length) {
+        field.filterMapping.forEach((mapping) => {
+            const sourceValue = getValue(mapping.sourceField);
+            if (sourceValue) {
+                filters[mapping.targetField] = sourceValue;
+            }
+        });
+    } else if (typeof field.filters === "function") {
+        Object.assign(filters, field.filters(getValue));
+    }
+    return filters;
+}
 // Helper: Evaluate displayDependsOn condition string
 function evaluateDisplayDependsOn(
     condition: string,
@@ -75,7 +92,6 @@ interface DynamicFormForTableProps {
     onSubmit: (data: Record<string, any>) => void;
     onCancel: () => void;
     title?: string;
-    parentFormData?: Record<string, any>;
 }
 
 // Local UI helper components
@@ -108,8 +124,7 @@ export function DynamicFormForTable({
     data,
     onSubmit,
     onCancel,
-    title = "",
-    parentFormData = {}
+    title = ""
 }: DynamicFormForTableProps) {
     const { editingRowIndex, updateRow, getRowData } = useTableRowContext();
     const { apiKey, apiSecret } = useAuth();
@@ -155,6 +170,48 @@ export function DynamicFormForTable({
     }, []);
 
     const handleInputChange = async (fieldName: string, value: any, _depth: number = 0) => {
+        console.log('handleInputChange:', { fieldName, value, valueType: typeof value, _depth });
+
+        // Handle fetchFrom dependencies
+        const dependentFields = (fields || []).filter(f => f.fetchFrom?.sourceField === fieldName);
+
+        if (dependentFields.length > 0) {
+            console.log('Found dependent fields:', dependentFields.map(f => f.name));
+
+            if (!value || value === "") {
+                console.log('Clearing dependent fields for:', fieldName);
+                // Cancel any pending debounced update to prevent overwriting cleared values
+                if (updateTimeoutRef.current) {
+                    clearTimeout(updateTimeoutRef.current);
+                    updateTimeoutRef.current = null;
+                }
+
+                // Build cleared data object
+                const clearedData: Record<string, any> = { [fieldName]: "" };
+                dependentFields.forEach((dep) => {
+                    clearedData[dep.name] = "";
+                });
+
+                console.log('Cleared data:', clearedData);
+
+                // Update local state with cleared values
+                setFormData(current => {
+                    const updatedData = { ...current, ...clearedData };
+
+                    // Defer context update to avoid setState during render
+                    if (editingRowIndex !== null) {
+                        requestAnimationFrame(() => {
+                            updateRow(editingRowIndex, updatedData);
+                        });
+                    }
+
+                    return updatedData;
+                });
+
+                return;
+            }
+        }
+
         // Update local state immediately for responsive UI
         setFormData(current => {
             const newFormData = { ...current, [fieldName]: value };
@@ -167,18 +224,7 @@ export function DynamicFormForTable({
             return newFormData;
         });
 
-        // Handle fetchFrom dependencies
-        const dependentFields = (fields || []).filter(f => f.fetchFrom?.sourceField === fieldName);
-
         if (dependentFields.length === 0) return;
-
-        if (!value) {
-            // Clear all dependent fields
-            dependentFields.forEach((dep) => {
-                handleInputChange(dep.name, "", _depth + 1);
-            });
-            return;
-        }
 
         // Prepare API request data
         const targetDoctype = dependentFields[0].fetchFrom!.targetDoctype;
@@ -216,7 +262,13 @@ export function DynamicFormForTable({
             setFormData(current => {
                 const updatedData = { ...current, ...fieldUpdates };
 
-                // Update context asynchronously for dependent fields (deferred to prevent render conflicts)
+                // Cancel any pending debounced update to prevent overwriting fetched values
+                if (updateTimeoutRef.current) {
+                    clearTimeout(updateTimeoutRef.current);
+                    updateTimeoutRef.current = null;
+                }
+
+                // Defer context update to avoid setState during render
                 if (editingRowIndex !== null) {
                     requestAnimationFrame(() => {
                         updateRow(editingRowIndex, updatedData);
@@ -255,14 +307,8 @@ export function DynamicFormForTable({
     const renderLink = (field: FormField) => {
         const value = formData[field.name] ?? "";
 
-        // Build dynamic filters for Link fields - merge parent form data with row data
-        const getValue = (name: string) => {
-            // First check row data, then fall back to parent form data
-            if (formData.hasOwnProperty(name)) {
-                return formData[name];
-            }
-            return parentFormData[name];
-        };
+        // Build dynamic filters for Link fields
+        const getValue = (name: string) => formData[name];
         const filtersToPass = buildDynamicFilters(field, getValue);
         const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
 

@@ -1,7 +1,5 @@
-"use client";
-
 import * as React from "react";
-import { useFieldArray, useFormContext, Controller } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form"; // Import useWatch
 import { FormField } from "./DynamicFormComponent";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,11 +10,12 @@ import { DynamicFormForTable } from "./DynamicFormForTable";
 import { TableRowProvider, useTableRowContext } from "./TableRowContext";
 import DatePicker from "react-datepicker";
 import { cn } from "@/lib/utils";
-import { buildDynamicFilters } from "./utils/filterUtils";
+import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 import "./TableField.css";
 import "react-datepicker/dist/react-datepicker.css";
 
-const API_BASE_URL = "http://103.219.1.138:4412/";
+const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 interface Option {
   value: string;
@@ -288,27 +287,74 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
   );
 }
 
-function TableFieldContent({ field, control, register, errors, watchAll }: TableFieldProps & { watchAll?: Record<string, any> }) {
-  const { fields: formRows, append, remove } = useFieldArray({
+function TableFieldContent({ field, control, register, errors }: TableFieldProps) {
+  const { apiKey, apiSecret } = useAuth();
+  const formMethods = useFormContext();
+
+  const { fields, append, remove } = useFieldArray({
     control,
     name: field.name,
   });
 
-  const formMethods = useFormContext();
-  const { rows, updateRow, openEditModal, closeEditModal, isEditModalOpen, editingRowIndex, getRowData, setRows } = useTableRowContext();
+  const watchedRows = useWatch({
+    control,
+    name: field.name,
+  });
 
+  // LIVE DATA Source
+  const rows = watchedRows || [];
+
+  const { openEditModal, closeEditModal, isEditModalOpen, editingRowIndex } = useTableRowContext();
   const [selectedIndices, setSelectedIndices] = React.useState<Set<number>>(new Set());
 
-  // Debounce timeout for table input changes
-  const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  // NEW CLEAN INPUT HANDLER
+  const handleTableInputChange = React.useCallback(async (rowIndex: number, fieldName: string, value: any) => {
+
+    // 1. Immediate Update (RHF only)
+    formMethods.setValue(`${field.name}.${rowIndex}.${fieldName}`, value, { shouldDirty: true });
+
+    // 2. Fetch Logic
+    const dependentColumns = field.columns?.filter(col =>
+      col.fetchFrom && col.fetchFrom.sourceField === fieldName
+    );
+
+    if (dependentColumns && dependentColumns.length > 0) {
+      if (!value || value === "") {
+        // Clear dependents
+        dependentColumns.forEach(col => {
+          formMethods.setValue(`${field.name}.${rowIndex}.${col.name}`, "", { shouldDirty: true });
+        });
+      } else {
+        try {
+          const targetDoctype = dependentColumns[0].fetchFrom!.targetDoctype;
+          const response = await axios.get(
+            `${API_BASE_URL}/${targetDoctype}/${value}`,
+            {
+              headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+              withCredentials: true,
+            }
+          );
+          const fetchedDoc = response.data.data;
+          if (fetchedDoc) {
+            dependentColumns.forEach(col => {
+              const targetField = col.fetchFrom!.targetField;
+              const fetchedValue = fetchedDoc[targetField];
+              // Update dependent field (RHF only)
+              formMethods.setValue(`${field.name}.${rowIndex}.${col.name}`, fetchedValue, { shouldDirty: true });
+            });
+          }
+        } catch (err) {
+          console.error("Fetch failed", err);
+        }
+      }
+    }
+    // NO CONTEXT UPDATES HERE
+  }, [field.name, field.columns, formMethods, apiKey, apiSecret]);
 
   const addRow = () => {
     const row: any = { id: Date.now().toString() + Math.random() };
     (field.columns || []).forEach((c) => (row[c.name] = ""));
-    console.log('TableField: Adding new row:', row);
-
     append(row);
-    setRows([...rows, row]);
   };
 
   const toggleRow = (index: number) => {
@@ -319,38 +365,27 @@ function TableFieldContent({ field, control, register, errors, watchAll }: Table
 
   const toggleSelectAll = () => {
     setSelectedIndices(
-      selectedIndices.size === rows.length
+      selectedIndices.size === fields.length
         ? new Set()
-        : new Set(rows.map((_, i) => i))
+        : new Set(fields.map((_, i) => i))
     );
   };
 
   const deleteSelected = () => {
     const toRemove = Array.from(selectedIndices).sort((a, b) => b - a);
-    console.log('TableField: Deleting rows:', toRemove);
-
     remove(toRemove);
-    const newRows = rows.filter((_, index) => !selectedIndices.has(index));
-    setRows(newRows);
     setSelectedIndices(new Set());
   };
 
   const handleEdit = (index: number) => {
-    console.log('TableField: Opening edit modal for row:', index, 'Data:', rows[index]);
+    // For Modal, we can pass the data directly or let the modal fetch it
     openEditModal(index);
   };
 
   const handleEditSubmit = (data: Record<string, any>) => {
-    console.log('TableField: Edit submit received:', data);
     if (editingRowIndex !== null) {
-      // Update context - this will trigger the effect to update form values
-      updateRow(editingRowIndex, data);
-
-      // Update form values directly as well to ensure immediate sync
-      requestAnimationFrame(() => {
-        Object.keys(data).forEach(key => {
-          formMethods.setValue(`${field.name}.${editingRowIndex}.${key}`, data[key], { shouldDirty: true });
-        });
+      Object.keys(data).forEach(key => {
+        formMethods.setValue(`${field.name}.${editingRowIndex}.${key}`, data[key], { shouldDirty: true });
       });
     }
     closeEditModal();
@@ -360,41 +395,11 @@ function TableFieldContent({ field, control, register, errors, watchAll }: Table
     closeEditModal();
   };
 
-  // Optimized handler for table input changes with debouncing
-  const handleTableInputChange = React.useCallback((rowIndex: number, fieldName: string, value: any) => {
-    console.log('TableField: Input changed:', rowIndex, fieldName, value);
-
-    // Update form immediately for responsive UI
-    formMethods.setValue(`${field.name}.${rowIndex}.${fieldName}`, value, { shouldDirty: true });
-
-    // Debounced update to context - happens AFTER the current render cycle
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
-    }
-
-    updateTimeoutRef.current = setTimeout(() => {
-      console.log('TableField: Debounced update to context');
-      // Use requestAnimationFrame to ensure this happens outside the render cycle
-      requestAnimationFrame(() => {
-        updateRow(rowIndex, { [fieldName]: value });
-      });
-    }, 150); // 150ms debounce for faster table updates
-  }, [field.name, formMethods, updateRow]);
-
-  // Cleanup timeout on unmount
-  React.useEffect(() => {
-    return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-    };
-  }, []);
-
   // Download functionality
   const handleDownload = () => {
     const csvContent = [
       (field.columns || []).map(c => c.label).join(','),
-      ...rows.map(row =>
+      ...rows.map((row: any) =>
         (field.columns || []).map(c => row[c.name] || '').join(',')
       )
     ].join('\n');
@@ -419,8 +424,6 @@ function TableFieldContent({ field, control, register, errors, watchAll }: Table
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      console.log('TableField: Parsing CSV');
-
       const lines = text.split('\n').filter(line => line.trim());
 
       if (lines.length < 2) {
@@ -452,12 +455,8 @@ function TableFieldContent({ field, control, register, errors, watchAll }: Table
         return row;
       });
 
-      console.log('TableField: Importing rows:', newRows);
-
       remove();
       newRows.forEach(row => append(row));
-      setRows(newRows);
-
       alert(`Successfully imported ${newRows.length} rows`);
     };
 
@@ -467,8 +466,8 @@ function TableFieldContent({ field, control, register, errors, watchAll }: Table
     }
   };
 
-  const allSelected = rows.length > 0 && selectedIndices.size === rows.length;
-  const someSelected = selectedIndices.size > 0 && selectedIndices.size < rows.length;
+  const allSelected = fields.length > 0 && selectedIndices.size === fields.length;
+  const someSelected = selectedIndices.size > 0 && selectedIndices.size < fields.length;
 
   return (
     <>
@@ -502,117 +501,123 @@ function TableFieldContent({ field, control, register, errors, watchAll }: Table
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, idx) => (
-                  <tr
-                    key={r.id}
-                    className={selectedIndices.has(idx) ? "row-selected" : ""}
-                  >
-                    <td className="child-table-checkbox-cell">
-                      <input
-                        type="checkbox"
-                        className="form-control"
-                        style={{ width: 16, height: 16 }}
-                        checked={selectedIndices.has(idx)}
-                        onChange={() => toggleRow(idx)}
-                        aria-label={`Select row ${idx + 1}`}
-                      />
-                    </td>
+                {fields.map((fieldItem, idx) => {
+                  // CRITICAL: We use 'fields' for the key (stable ID)
+                  // But we use 'rows' (from useWatch) for the actual data
+                  // This ensures data updates trigger re-renders without breaking React keys
+                  const currentRowData = rows[idx] || {};
 
-                    {(field.columns || []).map((c) => (
-                      <td key={c.name} className="child-table-input-cell">
-                        {c.type === "Attach" ? (
-                          <AttachmentCell
-                            control={formMethods.control}
-                            fieldName={`${field.name}.${idx}.${c.name}`}
-                            rowIndex={idx}
-                            columnName={c.name}
-                            onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
-                          />
-                        ) : c.type === "Date" ? (
-                          <DatePicker
-                            selected={(rows[idx] as any)?.[c.name] ? new Date((rows[idx] as any)[c.name]) : null}
-                            onChange={(date: Date | null) => {
-                              handleTableInputChange(idx, c.name, date ? date.toISOString().split('T')[0] : '');
-                            }}
-                            dateFormat="dd/MM/yyyy"
-                            className={cn("form-control-borderless w-full")}
-                            placeholderText="DD/MM/YYYY"
-                            showYearDropdown
-                            scrollableYearDropdown
-                            yearDropdownItemNumber={100}
-                            withPortal
-                            portalId="root"
-                          />
-                        ) : c.type === "Data" || c.type === "Small Text" || c.type === "Text" ? (
-                          renderTableInput(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Long Text" || c.type === "Markdown Editor" ? (
-                          renderTableTextarea(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Code" ? (
-                          renderTableTextarea(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Password" ? (
-                          <input
-                            className="form-control-borderless"
-                            type="password"
-                            placeholder={c.label}
-                            value={(rows[idx] as any)?.[c.name] || ""}
-                            onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
-                          />
-                        ) : c.type === "Link" ? (
-                          <TableLinkCell
-                            control={formMethods.control}
-                            fieldName={`${field.name}.${idx}.${c.name}`}
-                            column={c}
-                            onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
-                            filters={buildDynamicFilters(c, (name: string) => watchAll?.[name])}
-                          />
-                        ) : c.type === "Int" ? (
-                          renderTableNumber(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Float" || c.type === "Currency" || c.type === "Percent" ? (
-                          renderTableNumber(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Color" ? (
-                          renderTableColor(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "DateTime" || c.type === "Time" ? (
-                          <input
-                            className="form-control-borderless"
-                            type={c.type === "DateTime" ? "datetime-local" : "time"}
-                            placeholder={c.label}
-                            value={(rows[idx] as any)?.[c.name] || ""}
-                            onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
-                          />
-                        ) : c.type === "Duration" ? (
-                          renderTableDuration(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Check" ? (
-                          renderTableCheckbox(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Select" ? (
-                          renderTableSelect(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Barcode" ? (
-                          renderTableInput(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Read Only" ? (
-                          renderTableReadOnly(c, idx, rows)
-                        ) : c.type === "Rating" ? (
-                          renderTableRating(c, idx, rows, handleTableInputChange)
-                        ) : c.type === "Button" ? (
-                          renderTableButton(c, idx, rows)
-                        ) : (
-                          renderTableInput(c, idx, rows, handleTableInputChange)
-                        )}
+                  return (
+                    <tr
+                      key={fieldItem.id}
+                      className={selectedIndices.has(idx) ? "row-selected" : ""}
+                    >
+                      <td className="child-table-checkbox-cell">
+                        <input
+                          type="checkbox"
+                          className="form-control"
+                          style={{ width: 16, height: 16 }}
+                          checked={selectedIndices.has(idx)}
+                          onChange={() => toggleRow(idx)}
+                          aria-label={`Select row ${idx + 1}`}
+                        />
                       </td>
-                    ))}
 
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleEdit(idx)}
-                        title="Edit row"
-                      >
-                        <Edit size={16} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                      {(field.columns || []).map((c) => (
+                        <td key={c.name} className="child-table-input-cell">
+                          {c.type === "Attach" ? (
+                            <AttachmentCell
+                              control={formMethods.control}
+                              fieldName={`${field.name}.${idx}.${c.name}`}
+                              rowIndex={idx}
+                              columnName={c.name}
+                              onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
+                            />
+                          ) : c.type === "Link" ? (
+                            <TableLinkCell
+                              control={formMethods.control}
+                              fieldName={`${field.name}.${idx}.${c.name}`}
+                              column={c}
+                              onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
+                            />
+                          ) : c.type === "Date" ? (
+                            <DatePicker
+                              selected={currentRowData[c.name] ? new Date(currentRowData[c.name]) : null}
+                              onChange={(date: Date | null) => {
+                                handleTableInputChange(idx, c.name, date ? date.toISOString().split('T')[0] : '');
+                              }}
+                              dateFormat="dd/MM/yyyy"
+                              className={cn("form-control-borderless w-full")}
+                              placeholderText="DD/MM/YYYY"
+                              showYearDropdown
+                              scrollableYearDropdown
+                              yearDropdownItemNumber={100}
+                              withPortal
+                              portalId="root"
+                            />
+                          ) : c.type === "Data" || c.type === "Small Text" || c.type === "Text" ? (
+                            renderTableInput(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Long Text" || c.type === "Markdown Editor" ? (
+                            renderTableTextarea(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Code" ? (
+                            renderTableTextarea(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Password" ? (
+                            <input
+                              className="form-control-borderless"
+                              type="password"
+                              placeholder={c.label}
+                              value={currentRowData[c.name] || ""}
+                              onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+                            />
+                          ) : c.type === "Int" ? (
+                            renderTableNumber(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Float" || c.type === "Currency" || c.type === "Percent" ? (
+                            renderTableNumber(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Color" ? (
+                            renderTableColor(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "DateTime" || c.type === "Time" ? (
+                            <input
+                              className="form-control-borderless"
+                              type={c.type === "DateTime" ? "datetime-local" : "time"}
+                              placeholder={c.label}
+                              value={currentRowData[c.name] || ""}
+                              onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+                            />
+                          ) : c.type === "Duration" ? (
+                            renderTableDuration(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Check" ? (
+                            renderTableCheckbox(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Select" ? (
+                            renderTableSelect(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Barcode" ? (
+                            renderTableInput(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Read Only" ? (
+                            renderTableReadOnly(c, idx, rows)
+                          ) : c.type === "Rating" ? (
+                            renderTableRating(c, idx, rows, handleTableInputChange)
+                          ) : c.type === "Button" ? (
+                            renderTableButton(c, idx, rows)
+                          ) : (
+                            renderTableInput(c, idx, rows, handleTableInputChange)
+                          )}
+                        </td>
+                      ))}
+
+                      <td style={{ position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleEdit(idx)}
+                          title="Edit row"
+                        >
+                          <Edit size={16} />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -678,12 +683,12 @@ function TableFieldContent({ field, control, register, errors, watchAll }: Table
           title={`Edit Row ${editingRowIndex + 1}`}
           size="lg"
         >
+          {/* Note: In the new system, we rely on FormProvider in the modal too, or we can fetch current data */}
           <DynamicFormForTable
             fields={field.columns}
-            data={getRowData(editingRowIndex)}
+            data={rows[editingRowIndex] || {}}
             onSubmit={handleEditSubmit}
             onCancel={handleEditCancel}
-            parentFormData={watchAll}
           />
         </Modal>
       )}
@@ -691,31 +696,29 @@ function TableFieldContent({ field, control, register, errors, watchAll }: Table
   );
 }
 
+// THE WRAPPER
 export function TableField({ field, control, register, errors }: TableFieldProps) {
-  const { fields: rows } = useFieldArray({
+  const formMethods = useFormContext();
+
+  // We use useWatch here to lift the state up to the provider
+  const rows = useWatch({
     control,
     name: field.name,
+    defaultValue: []
   });
 
-  const formMethods = useFormContext();
-  const watchAll = formMethods.watch();
-
-  const handleRowsChange = React.useCallback((newRows: Record<string, any>[]) => {
-    console.log('TableField: Context rows changed, updating form');
-    newRows.forEach((row, index) => {
-      Object.keys(row).forEach(key => {
-        formMethods.setValue(`${field.name}.${index}.${key}`, row[key], { shouldDirty: true });
-      });
+  const handleUpdateRow = React.useCallback((index: number, data: Record<string, any>) => {
+    Object.keys(data).forEach(key => {
+      formMethods.setValue(`${field.name}.${index}.${key}`, data[key], { shouldDirty: true });
     });
-  }, [field.name, formMethods]);
+  }, [formMethods, field.name]);
 
   return (
     <TableRowProvider
-      initialRows={rows}
-      field={field}
-      onRowsChange={handleRowsChange}
+      rows={rows || []}
+      onUpdateRow={handleUpdateRow}
     >
-      <TableFieldContent field={field} control={control} register={register} errors={errors} watchAll={watchAll} />
+      <TableFieldContent field={field} control={control} register={register} errors={errors} />
     </TableRowProvider>
   );
 }

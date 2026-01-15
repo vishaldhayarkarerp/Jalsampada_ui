@@ -1,17 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { FormField } from "./DynamicFormComponent";
 
 interface TableRowContextType {
     rows: Record<string, any>[];
     editingRowIndex: number | null;
     isEditModalOpen: boolean;
-    setRows: (rows: Record<string, any>[]) => void;
-    updateRow: (index: number, data: Record<string, any>) => void;
     openEditModal: (index: number) => void;
     closeEditModal: () => void;
     getRowData: (index: number) => Record<string, any>;
+    updateRow: (index: number, data: Record<string, any>) => void;
 }
 
 const TableRowContext = React.createContext<TableRowContextType | undefined>(undefined);
@@ -26,67 +24,17 @@ export function useTableRowContext() {
 
 interface TableRowProviderProps {
     children: React.ReactNode;
-    initialRows: Record<string, any>[];
-    field: FormField;
-    onRowsChange: (rows: Record<string, any>[]) => void;
+    rows: Record<string, any>[];
+    onUpdateRow?: (index: number, data: Record<string, any>) => void;
 }
 
 export function TableRowProvider({
     children,
-    initialRows,
-    field,
-    onRowsChange
+    rows,
+    onUpdateRow,
 }: TableRowProviderProps) {
-    const [rows, setRows] = React.useState<Record<string, any>[]>(initialRows);
     const [editingRowIndex, setEditingRowIndex] = React.useState<number | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
-
-    // Track if we're currently syncing to avoid infinite loops
-    const isSyncingRef = React.useRef(false);
-
-    // Sync from parent when initialRows changes (only if not currently syncing)
-    React.useEffect(() => {
-        if (!isSyncingRef.current) {
-            console.log('TableRowContext: Syncing from parent initialRows');
-            setRows(initialRows);
-        }
-    }, [initialRows]);
-
-    const setRowsWithCallback = React.useCallback((newRows: Record<string, any>[]) => {
-        console.log('TableRowContext: setRowsWithCallback called');
-        isSyncingRef.current = true;
-        setRows(newRows);
-
-        // Use requestAnimationFrame to ensure this happens after render
-        requestAnimationFrame(() => {
-            onRowsChange(newRows);
-            // Reset sync flag after a brief delay
-            setTimeout(() => {
-                isSyncingRef.current = false;
-            }, 100);
-        });
-    }, [onRowsChange]);
-
-    const updateRow = React.useCallback((index: number, data: Record<string, any>) => {
-        console.log('TableRowContext: updateRow called', index, data);
-
-        setRows(currentRows => {
-            const newRows = [...currentRows];
-            newRows[index] = { ...newRows[index], ...data };
-
-            // Schedule the callback for after render completes
-            isSyncingRef.current = true;
-            requestAnimationFrame(() => {
-                onRowsChange(newRows);
-                // Reset sync flag after a brief delay
-                setTimeout(() => {
-                    isSyncingRef.current = false;
-                }, 100);
-            });
-
-            return newRows;
-        });
-    }, [onRowsChange]);
 
     const openEditModal = React.useCallback((index: number) => {
         setEditingRowIndex(index);
@@ -99,19 +47,24 @@ export function TableRowProvider({
     }, []);
 
     const getRowData = React.useCallback((index: number) => {
-        return rows[index] || {};
+        return (rows && rows[index]) ? rows[index] : {};
     }, [rows]);
 
+    const updateRow = React.useCallback((index: number, data: Record<string, any>) => {
+        if (onUpdateRow) {
+            onUpdateRow(index, data);
+        }
+    }, [onUpdateRow]);
+
     const value: TableRowContextType = React.useMemo(() => ({
-        rows,
+        rows: rows || [],
         editingRowIndex,
         isEditModalOpen,
-        setRows: setRowsWithCallback,
-        updateRow,
         openEditModal,
         closeEditModal,
         getRowData,
-    }), [rows, editingRowIndex, isEditModalOpen, setRowsWithCallback, updateRow, openEditModal, closeEditModal, getRowData]);
+        updateRow,
+    }), [rows, editingRowIndex, isEditModalOpen, openEditModal, closeEditModal, getRowData, updateRow]);
 
     return (
         <TableRowContext.Provider value={value}>
