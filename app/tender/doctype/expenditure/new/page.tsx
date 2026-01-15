@@ -110,7 +110,17 @@ export default function NewExpenditurePage() {
   const [isSaving, setIsSaving] = React.useState(false);
 
   /* -------------------------------------------------
-  3. Form tabs configuration
+  3. Helper function to get allowed stages from parent stage field
+  ------------------------------------------------- */
+
+  const getAllowedStages = React.useCallback((formData: Record<string, any>): string[] => {
+    const parentStage = formData.stage;
+    if (!parentStage || !Array.isArray(parentStage)) return [];
+    return parentStage.map((item: any) => item.stage).filter(Boolean);
+  }, []);
+
+  /* -------------------------------------------------
+  4. Form tabs configuration
   ------------------------------------------------- */
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     return [
@@ -242,7 +252,19 @@ export default function NewExpenditurePage() {
             showDownloadUpload: true,
             columns: [
               { name: "name_of_work", label: "Name of Work", type: "Text" },
-              { name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No" },
+              {
+                name: "stage",
+                label: "Stage",
+                type: "Link",
+                linkTarget: "Stage No",
+                filters: (getValues: (name: string) => any) => {
+                  // Use 'parent.stage' to access the live parent field value
+                  const parentStage = getValues("parent.stage");
+                  const allowedStages = getAllowedStages({ stage: parentStage });
+                  if (!allowedStages || allowedStages.length === 0) return { name: ["in", []] }; // Return empty filter if no stages
+                  return { name: ["in", allowedStages] };
+                }
+              },
               { name: "section_interchange", label: "", type: "Section Break" },
               { name: "work_type", label: "Work Type", type: "Link", linkTarget: "Work Type" },
               {
