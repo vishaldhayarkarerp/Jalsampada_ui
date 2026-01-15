@@ -301,6 +301,14 @@ function buildDefaultValues(fields: FormField[]) {
       if (f.type === "Table") dv[f.name] = [];
       if (f.type === "Table MultiSelect") dv[f.name] = [];
     }
+    
+    // Apply precision formatting to Currency fields during initialization
+    if (f.type === "Currency" && f.precision && dv[f.name]) {
+      const value = parseFloat(dv[f.name]);
+      if (!isNaN(value)) {
+        dv[f.name] = value.toFixed(f.precision);
+      }
+    }
   }
 
   if (typeof window !== "undefined") {

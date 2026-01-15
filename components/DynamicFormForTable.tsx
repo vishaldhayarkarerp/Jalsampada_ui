@@ -136,15 +136,32 @@ export function DynamicFormForTable({
 
     // Initialize form data when modal opens or data changes
     React.useEffect(() => {
+        let initialData: Record<string, any>;
+
         if (editingRowIndex !== null) {
             const currentRowData = getRowData(editingRowIndex);
             console.log('DynamicFormForTable: Initializing with data from context:', currentRowData);
-            setFormData(currentRowData);
+            initialData = currentRowData;
         } else if (data) {
             console.log('DynamicFormForTable: Initializing with prop data:', data);
-            setFormData(data);
+            initialData = data;
+        } else {
+            initialData = {};
         }
-    }, [editingRowIndex, data, getRowData]);
+
+        // Apply precision formatting to Currency fields during initialization
+        const formattedData = { ...initialData };
+        (fields || []).forEach(f => {
+            if (f.type === "Currency" && f.precision && formattedData[f.name]) {
+                const value = parseFloat(formattedData[f.name]);
+                if (!isNaN(value)) {
+                    formattedData[f.name] = value.toFixed(f.precision);
+                }
+            }
+        });
+
+        setFormData(formattedData);
+    }, [editingRowIndex, data, getRowData, fields]);
 
     // Debounced update to context - prevents excessive updates during typing
     const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -344,6 +361,16 @@ export function DynamicFormForTable({
 
     const renderInput = (field: FormField, type: string = "text") => {
         const value = formData[field.name] ?? "";
+        
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+            if (field.type === "Currency" && field.precision) {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val)) {
+                    handleInputChange(field.name, val.toFixed(field.precision));
+                }
+            }
+        };
+        
         return (
             <div className="form-group">
                 <label htmlFor={field.name} className="form-label">
@@ -357,6 +384,7 @@ export function DynamicFormForTable({
                     placeholder={field.placeholder}
                     value={value}
                     onChange={(e) => handleInputChange(field.name, e.target.value)}
+                    onBlur={handleBlur}
                     {...(field.step ? { step: field.step } : {})}
                     {...(field.min !== undefined ? { min: field.min } : {})}
                     {...(field.max !== undefined ? { max: field.max } : {})}
