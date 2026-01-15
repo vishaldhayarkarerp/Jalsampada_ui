@@ -31,7 +31,7 @@ export default function NewRecordPage() {
       return decodedData;
     } catch (error) {
       console.error("Error parsing duplicate data:", error);
-      toast.error("Failed to parse duplicate data");
+      toast.error("Failed to parse duplicate data", { duration: Infinity });
       return null;
     }
   }, [searchParams]);
@@ -135,11 +135,13 @@ export default function NewRecordPage() {
       // Handle duplicate entry error specifically
       if (err.response?.data?.exc_type === "DuplicateEntryError") {
         toast.error("Duplicate Entry Error", {
-          description: "A Lift Irrigation Scheme with this name already exists. Please use a different name."
+          description: "A Lift Irrigation Scheme with this name already exists. Please use a different name.",
+          duration: Infinity
         });
       } else {
         toast.error("Failed to create document", {
-          description: err.message || "Check the browser console (F12) for details."
+          description: err.message || "Check the browser console (F12) for details.",
+          duration: Infinity
         });
       }
     } finally {

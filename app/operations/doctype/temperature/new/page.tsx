@@ -31,7 +31,7 @@ export default function NewTemperatureReadingPage() {
       return decodedData;
     } catch (error) {
       console.error("Error parsing duplicate data:", error);
-      toast.error("Failed to parse duplicate data");
+      toast.error("Failed to parse duplicate data", { duration: Infinity });
       return null;
     }
   }, [searchParams]);
@@ -123,11 +123,13 @@ export default function NewTemperatureReadingPage() {
       
       if (err.response?.data?.exc_type === "DuplicateEntryError") {
         toast.error("Duplicate Entry Error", {
-          description: "This record may already exist."
+          description: "This record may already exist.",
+          duration: Infinity
         });
       } else {
         toast.error("Failed to create record", {
-          description: err.message || "Check console for details."
+          description: err.message || "Check console for details.",
+          duration: Infinity
         });
       }
     } finally {

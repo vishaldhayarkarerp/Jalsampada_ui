@@ -141,7 +141,7 @@ export default function RecordDetailPage() {
       }
     } catch (err) {
       console.error("Save error:", err);
-      toast.error("Failed to save. Check console for details.");
+      toast.error("Failed to save. Check console for details.", { duration: Infinity });
     } finally {
       setIsSaving(false);
     }
@@ -154,7 +154,7 @@ export default function RecordDetailPage() {
   ------------------------------------------------- */
   const handleDuplicate = React.useCallback(() => {
     if (!category) {
-      toast.error("Asset Category data not loaded. Cannot duplicate.");
+      toast.error("Asset Category data not loaded. Cannot duplicate.", { duration: Infinity });
       return;
     }
 

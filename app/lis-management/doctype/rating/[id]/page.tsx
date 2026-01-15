@@ -134,7 +134,7 @@ export default function RecordDetailPage() {
       }
     } catch (err) {
       console.error("Save error:", err);
-      toast.error("Failed to save. Check console for details.");
+      toast.error("Failed to save. Check console for details.", { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

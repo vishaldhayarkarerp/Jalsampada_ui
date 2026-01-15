@@ -155,7 +155,7 @@ export default function AssetDetailPage() {
       );
       
       if (!messages.success) {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
     } finally {
       setIsGeneratingQr(false);
@@ -195,7 +195,7 @@ export default function AssetDetailPage() {
       );
       
       if (!messages.success) {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
     }
   };

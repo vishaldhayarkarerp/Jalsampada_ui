@@ -132,7 +132,7 @@ export default function NewVillagePage() {
       router.push("/lis-management/doctype/wrd-village");
     } catch (err: any) {
       console.error("Save error:", err);
-      toast.error(err.message || "Error saving record");
+      toast.error(err.message || "Error saving record", { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

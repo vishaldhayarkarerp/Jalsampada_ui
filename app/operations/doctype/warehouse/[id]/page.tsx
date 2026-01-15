@@ -185,6 +185,7 @@ export default function WarehouseDetailPage() {
       console.error("Save error:", err);
       toast.error("Failed to save warehouse", {
         description: err.message || "Check console for details",
+        duration: Infinity
       });
     } finally {
       setIsSaving(false);

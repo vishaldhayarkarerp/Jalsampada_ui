@@ -297,7 +297,8 @@ export default function DoctypePage() {
         if (errorMessages.length > 0) {
           // Show error messages from server
           toast.error("Failed to delete records", { 
-            description: errorMessages.join("\n") 
+            description: errorMessages.join("\n"),
+            duration: Infinity,
           });
           return; // Don't proceed with success handling
         }
@@ -317,7 +318,7 @@ export default function DoctypePage() {
         "Failed to delete records"
       );
       
-      toast.error(messages.message, { description: messages.description });
+      toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsDeleting(false);
     }

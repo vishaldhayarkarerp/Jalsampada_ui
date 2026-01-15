@@ -104,7 +104,7 @@ export default function LISPhaseDetailPage() {
       toast.success("Saved");
       router.push(`/lis-management/doctype/lis-phases/${encodeURIComponent(data.lis_phase)}`);
     } catch {
-      toast.error("Save failed");
+      toast.error("Save failed", { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

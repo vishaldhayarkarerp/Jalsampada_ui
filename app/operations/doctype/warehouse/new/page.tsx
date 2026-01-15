@@ -30,7 +30,7 @@ export default function NewWarehousePage() {
       return decodedData;
     } catch (error) {
       console.error("Error parsing duplicate data:", error);
-      toast.error("Failed to parse duplicate data");
+      toast.error("Failed to parse duplicate data", { duration: Infinity });
       return null;
     }
   }, [searchParams]);
@@ -171,11 +171,13 @@ export default function NewWarehousePage() {
       
       if (err.response?.data?.exc_type === "DuplicateEntryError") {
         toast.error("Duplicate Entry Error", {
-          description: "A Warehouse with this name already exists."
+          description: "A Warehouse with this name already exists.",
+          duration: Infinity
         });
       } else {
         toast.error("Failed to create Warehouse", {
-          description: err.message || "Check console for details."
+          description: err.message || "Check console for details.",
+          duration: Infinity
         });
       }
     } finally {

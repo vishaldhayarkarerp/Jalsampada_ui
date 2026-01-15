@@ -123,7 +123,7 @@ export default function TalukaDetailPage() {
       router.push(`/lis-management/doctype/taluka/${docname}`);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save changes");
+      toast.error("Failed to save changes", { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

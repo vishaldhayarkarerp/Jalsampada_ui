@@ -145,7 +145,8 @@ export default function TemperatureReadingDetailPage() {
         } catch (err: any) {
             console.error("Save error:", err);
             toast.error("Failed to save", {
-                description: err.response?.data?.message || err.message || "Unknown error"
+                description: err.response?.data?.message || err.message || "Unknown error",
+                duration: Infinity
             });
         } finally {
             setIsSaving(false);

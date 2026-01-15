@@ -132,7 +132,7 @@ export default function RecordDetailPage() {
     }
     
     if (!scheme) {
-      toast.error("Cannot save, data not loaded.");
+      toast.error("Cannot save, data not loaded.", { duration: Infinity });
       return;
     }
 
@@ -182,7 +182,8 @@ export default function RecordDetailPage() {
       console.error("Save error:", err);
       console.log("Full server error:", err.message);
       toast.error("Failed to save", {
-        description: (err as Error).message || "Check console for details."
+        description: (err as Error).message || "Check console for details.",
+        duration: Infinity
       });
     } finally {
       setIsSaving(false);
@@ -196,7 +197,7 @@ export default function RecordDetailPage() {
   ------------------------------------------------- */
   const handleDuplicate = React.useCallback(() => {
     if (!scheme) {
-      toast.error("Lift Irrigation Scheme data not loaded. Cannot duplicate.");
+      toast.error("Lift Irrigation Scheme data not loaded. Cannot duplicate.", { duration: Infinity });
       return;
     }
 

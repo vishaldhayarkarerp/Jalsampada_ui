@@ -30,7 +30,7 @@ export default function NewGatePage() {
       return decodedData;
     } catch (error) {
       console.error("Error parsing duplicate data:", error);
-      toast.error("Failed to parse duplicate data");
+      toast.error("Failed to parse duplicate data", { duration: Infinity });
       return null;
     }
   }, [searchParams]);
@@ -147,11 +147,13 @@ export default function NewGatePage() {
       // Handle duplicate entry error specifically
       if (err.response?.data?.exc_type === "DuplicateEntryError") {
         toast.error("Duplicate Entry Error", {
-          description: "A Gate record with these details may already exist."
+          description: "A Gate record with these details may already exist.",
+          duration: Infinity
         });
       } else {
         toast.error("Failed to create Gate", {
-          description: err.message || "Check the browser console for details."
+          description: err.message || "Check the browser console for details.",
+          duration: Infinity
         });
       }
     } finally {

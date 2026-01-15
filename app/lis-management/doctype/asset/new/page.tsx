@@ -32,7 +32,7 @@ export default function NewRecordPage() {
       return decodedData;
     } catch (error) {
       console.error("Error parsing duplicate data:", error);
-      toast.error("Failed to parse duplicate data");
+      toast.error("Failed to parse duplicate data", { duration: Infinity });
       return null;
     }
   }, [searchParams]);
@@ -293,7 +293,7 @@ export default function NewRecordPage() {
       const missingNameFields = requiredNameFields.filter((field) => !finalPayload[field]);
 
       if (missingNameFields.length) {
-        toast.error("Please fill LIS, Stage, Asset Category and Asset No before saving.");
+        toast.error("Please fill LIS, Stage, Asset Category and Asset No before saving.", { duration: Infinity });
         return;
       }
 
@@ -336,11 +336,13 @@ export default function NewRecordPage() {
       if (err.response?.data?.exc_type === "DuplicateEntryError" || err.message?.includes("DuplicateEntryError")) {
         const duplicateMessage = `Asset with the same LIS, Stage, Asset Category and Asset No already exists`;
         toast.error("Duplicate Asset", {
-          description: duplicateMessage
+          description: duplicateMessage,
+          duration: Infinity
         });
       } else {
         toast.error("Failed to create Asset", {
-          description: err.message || "Check the browser console for the full server error."
+          description: err.message || "Check the browser console for the full server error.",
+          duration: Infinity
         });
       }
     } finally {

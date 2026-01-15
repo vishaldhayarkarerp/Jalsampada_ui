@@ -123,7 +123,7 @@ export default function ParameterDataDetailPage() {
     }
 
     if (!record) {
-      toast.error("Record not loaded. Cannot save.");
+      toast.error("Record not loaded. Cannot save.", { duration: Infinity });
       return;
     }
 
@@ -183,6 +183,7 @@ export default function ParameterDataDetailPage() {
       toast.error("Failed to save", {
         description:
           err.message || "Check the browser console (F12) for the full server error.",
+        duration: Infinity
       });
     } finally {
       setIsSaving(false);

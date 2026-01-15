@@ -143,6 +143,7 @@ export default function DistrictDetailPage() {
       console.error("Save error:", err);
       toast.error("Failed to save district", {
         description: err.message || "Check console for details",
+        duration: Infinity
       });
     } finally {
       setIsSaving(false);

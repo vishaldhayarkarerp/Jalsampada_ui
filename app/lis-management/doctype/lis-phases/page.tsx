@@ -133,7 +133,8 @@ export default function DoctypePage() {
         } catch (err: any) {
             console.error("Bulk Delete Error:", err);
             toast.error("Failed to delete records", {
-                description: err.response?.data?.exception || err.message
+                description: err.response?.data?.exception || err.message,
+                duration: Infinity
             });
         } finally {
             setIsDeleting(false);

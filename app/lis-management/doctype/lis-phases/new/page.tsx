@@ -48,7 +48,7 @@ export default function NewLISPhasePage() {
 
   const handleSubmit = async (data: Record<string, any>) => {
     if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
+      toast.error("Authentication required. Please log in.", { duration: Infinity });
       return;
     }
 
@@ -83,7 +83,7 @@ export default function NewLISPhasePage() {
         err.response?.data?.message ||
         err.response?.data?.error ||
         (err.response?.status === 409 ? "LIS Phase already exists" : "Failed to create LIS Phase. Duplicate Entry");
-      toast.error(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`, { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

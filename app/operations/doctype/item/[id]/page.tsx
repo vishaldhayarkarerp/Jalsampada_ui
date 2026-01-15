@@ -195,6 +195,7 @@ export default function ItemDetailPage() {
       console.error("Save error:", err);
       toast.error("Failed to save item", {
         description: err.message || "Check console for details",
+        duration: Infinity
       });
     } finally {
       setIsSaving(false);

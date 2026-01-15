@@ -47,7 +47,7 @@ export default function NewAssetCategoryPage() {
       return decodedData;
     } catch (error) {
       console.error("Error parsing duplicate data:", error);
-      toast.error("Failed to parse duplicate data");
+      toast.error("Failed to parse duplicate data", { duration: Infinity });
       return null;
     }
   }, [searchParams]);
@@ -95,7 +95,7 @@ export default function NewAssetCategoryPage() {
   ------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>) => {
     if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
+      toast.error("Authentication required. Please log in.", { duration: Infinity });
       return;
     }
 
@@ -138,13 +138,14 @@ export default function NewAssetCategoryPage() {
         const errorMessage = err.response?.data?._server_messages || 
                             "An asset category with this name already exists. Please use a different name.";
         toast.error("Duplicate Entry Error", {
-          description: "Asset Category with this name already exists. Please change the category name and try again."
+          description: "Asset Category with this name already exists. Please change the category name and try again.",
+          duration: Infinity
         });
       } else {
         const errorMessage = err.response?.data?.message || 
                             err.response?.data?.error || 
                             "Failed to create Asset Category. Check console for details.";
-        toast.error(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`, { duration: Infinity });
       }
     } finally {
       setIsSaving(false);

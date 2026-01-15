@@ -787,7 +787,7 @@ export default function RecordDetailPage() {
             if (messages.success) {
                 toast.success(messages.message, { description: messages.description });
             } else {
-                toast.error(messages.message, { description: messages.description });
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
             }
 
             if (resp.data && resp.data.data) {
@@ -815,7 +815,7 @@ export default function RecordDetailPage() {
             );
 
             if (!messages.success) {
-                toast.error(messages.message, { description: messages.description });
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
             }
             return { status: asset?.status };
         } finally {
@@ -844,7 +844,7 @@ export default function RecordDetailPage() {
             if (messages.success) {
                 toast.success(messages.message, { description: messages.description });
             } else {
-                toast.error(messages.message, { description: messages.description });
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
             }
 
             if (resp.data && resp.data.data) {
@@ -871,7 +871,7 @@ export default function RecordDetailPage() {
             );
 
             if (!messages.success) {
-                toast.error(messages.message, { description: messages.description });
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
             }
         } finally {
             setIsSaving(false);
@@ -899,7 +899,7 @@ export default function RecordDetailPage() {
             if (messages.success) {
                 toast.success(messages.message, { description: messages.description });
             } else {
-                toast.error(messages.message, { description: messages.description });
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
             }
 
             if (resp.data && resp.data.data) {
@@ -926,7 +926,7 @@ export default function RecordDetailPage() {
             );
 
             if (!messages.success) {
-                toast.error(messages.message, { description: messages.description });
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
             }
         } finally {
             setIsSaving(false);
@@ -940,7 +940,7 @@ export default function RecordDetailPage() {
        ------------------------------------------------- */
     const handleDuplicate = React.useCallback(() => {
         if (!asset) {
-            toast.error("Asset data not loaded. Cannot duplicate.");
+            toast.error("Asset data not loaded. Cannot duplicate.", { duration: Infinity });
             return;
         }
         const duplicateData: Record<string, any> = {};

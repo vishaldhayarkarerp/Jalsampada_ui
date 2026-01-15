@@ -226,6 +226,7 @@ export default function VillageDetailPage() {
       console.error("Save error:", err);
       toast.error("Failed to save village", {
         description: err.message || "Check console for details",
+        duration: Infinity
       });
     } finally {
       setIsSaving(false);

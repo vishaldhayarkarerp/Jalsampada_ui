@@ -55,7 +55,7 @@ export default function NewEquipmentMakePage() {
   ------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>) => {
     if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
+      toast.error("Authentication required. Please log in.", { duration: Infinity });
       return;
     }
 
@@ -82,7 +82,7 @@ export default function NewEquipmentMakePage() {
     } catch (err: any) {
       console.error("Create error:", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || "Failed to create Equipment Make. Check console for details.";
-      toast.error(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`, { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

@@ -263,8 +263,9 @@ export default function GateOperationLogbookDetailPage() {
 
         } catch (err: any) {
             console.error("Save error:", err);
-            toast.error("Failed to Save", {
-                description: err.response?.data?.message || err.message || "Unknown error"
+        toast.error("Failed to Save", {
+                description: err.response?.data?.message || err.message || "Unknown error",
+                duration: Infinity
             });
         } finally {
             setIsSaving(false);

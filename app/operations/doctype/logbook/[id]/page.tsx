@@ -196,7 +196,7 @@ export default function RecordDetailPage() {
       toast.success("Logbook updated");
       router.back();
     } catch {
-      toast.error("Save failed");
+      toast.error("Save failed", { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

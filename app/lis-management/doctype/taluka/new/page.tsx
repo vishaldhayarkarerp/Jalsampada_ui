@@ -67,7 +67,7 @@ export default function NewTalukaPage() {
       router.push("/lis-management/doctype/taluka");
     } catch (err: any) {
       console.error("Save error:", err);
-      toast.error(err.message || "Error saving record");
+      toast.error(err.message || "Error saving record", { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

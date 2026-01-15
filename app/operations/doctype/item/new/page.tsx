@@ -30,7 +30,7 @@ export default function NewItemPage() {
       return decodedData;
     } catch (error) {
       console.error("Error parsing duplicate data:", error);
-      toast.error("Failed to parse duplicate data");
+      toast.error("Failed to parse duplicate data", { duration: Infinity });
       return null;
     }
   }, [searchParams]);
@@ -73,7 +73,7 @@ export default function NewItemPage() {
       return data.message?.file_url || null;
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error("Failed to upload image. Item creation aborted.");
+      toast.error("Failed to upload image. Item creation aborted.", { duration: Infinity });
       throw error;
     }
   };
@@ -230,11 +230,13 @@ export default function NewItemPage() {
       
       if (err.response?.data?.exc_type === "DuplicateEntryError") {
         toast.error("Duplicate Entry Error", {
-          description: "An Item with this Item Code already exists."
+          description: "An Item with this Item Code already exists.",
+          duration: Infinity
         });
       } else {
         toast.error("Failed to create Item", {
-          description: err.message || "Check console for details."
+          description: err.message || "Check console for details.",
+          duration: Infinity
         });
       }
     } finally {
