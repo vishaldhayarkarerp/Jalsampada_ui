@@ -8,7 +8,7 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Toaster } from "sonner";
+import { Toaster,toast } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/ModeToggle";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -58,6 +58,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
     return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
   };
+
+  /* ------------------- 5. AUTO-DISMISS TOASTS ON NAV ------------------- */
+  // 🟢 NEW: When the URL changes (user navigates), close all toasts.
+  React.useEffect(() => {
+    toast.dismiss();
+  }, [pathname]);
 
   /* ------------------- 1. REDIRECT UNAUTHENTICATED USERS ------------------- */
   React.useEffect(() => {

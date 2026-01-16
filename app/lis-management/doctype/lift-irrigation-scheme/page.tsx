@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { getApiMessages } from "@/lib/utils"; // 🟢 Added import for error handling
+import { getApiMessages} from "@/lib/utils"; // 🟢 Added import for error handling
 
 // 🟢 New Imports for Bulk Delete & Icons
 import { useSelection } from "@/hooks/useSelection";
@@ -14,6 +14,7 @@ import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { Plus, List, LayoutGrid } from "lucide-react";
+import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -161,7 +162,7 @@ export default function DoctypePage() {
         if (errorMessages.length > 0) {
           // Show error messages from server
           toast.error("Failed to delete records", { 
-            description: errorMessages.join("\n"),
+            description: <FrappeErrorDisplay messages={errorMessages} />,
             duration: Infinity
           });
           return; // Don't proceed with success handling

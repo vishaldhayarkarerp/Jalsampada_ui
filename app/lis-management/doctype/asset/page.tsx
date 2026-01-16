@@ -9,12 +9,12 @@ import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
 import { LinkField } from "@/components/LinkField";
 
-// 🟢 New Imports for Bulk Delete
 import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { getApiMessages } from "@/lib/utils";
+import { getApiMessages} from "@/lib/utils";
+import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 import {
   Search,
@@ -296,9 +296,9 @@ export default function DoctypePage() {
 
         if (errorMessages.length > 0) {
           // Show error messages from server
-          toast.error("Failed to delete records", { 
-            description: errorMessages.join("\n"),
-            duration: Infinity,
+         toast.error("Failed to delete records", { 
+            description: <FrappeErrorDisplay messages={errorMessages} />,
+            duration: Infinity
           });
           return; // Don't proceed with success handling
         }
