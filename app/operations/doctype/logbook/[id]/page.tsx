@@ -75,7 +75,7 @@ export default function RecordDetailPage() {
             },
           }
         );
-       
+
         setLogbook(resp.data.data);
       } catch {
         setError("Failed to load Logbook");
@@ -113,7 +113,7 @@ export default function RecordDetailPage() {
             name: "stop_pump",
             label: "Stop Pump",
             type: "Check",
-            
+
           },
           { name: "stop_datetime", label: "Stop Datetime", type: "DateTime" },
 
@@ -121,17 +121,11 @@ export default function RecordDetailPage() {
           { name: "operator_name_1", label: "Operator Name", type: "Data" },
 
           {
-  name: "pump_stop_reason",
-  label: "Pump Stop Reason",
-  type: "Link",
-  linkTarget: "Pump Stop Reasons",
-}
-
-        ]),
-      },
-      {
-        name: "Primary List",
-        fields: fields([
+            name: "pump_stop_reason",
+            label: "Pump Stop Reason",
+            type: "Link",
+            linkTarget: "Pump Stop Reasons",
+          },
           {
             name: "primary_list",
             label: "Primary List",
@@ -142,11 +136,6 @@ export default function RecordDetailPage() {
               { name: "check", label: "Check", type: "Check" },
             ],
           },
-        ]),
-      },
-      {
-        name: "Secondary List",
-        fields: fields([
           {
             name: "secondary_list",
             label: "Secondary List",
@@ -156,14 +145,12 @@ export default function RecordDetailPage() {
               { name: "pump_no", label: "Pump No", type: "Int" },
             ],
           },
+
         ]),
-      },
+      }
     ];
   }, [logbook]);
-
-  /* -------------------------------------------------
-     5. Submit
-  ------------------------------------------------- */
+  
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) {
       toast.info("No changes to save");
@@ -222,7 +209,7 @@ export default function RecordDetailPage() {
         redirectUrl: "/operations/doctype/logbook"
       }}
       isSubmittable={true}
-      
+
     />
   );
 }
