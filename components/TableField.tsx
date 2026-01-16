@@ -351,11 +351,15 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
     // NO CONTEXT UPDATES HERE
   }, [field.name, field.columns, formMethods, apiKey, apiSecret]);
 
-  const addRow = () => {
+  // 🟢 MODIFIED: Use defaultValue from column definition
+  const addRow = React.useCallback(() => {
     const row: any = { id: Date.now().toString() + Math.random() };
-    (field.columns || []).forEach((c) => (row[c.name] = ""));
+    (field.columns || []).forEach((c) => {
+      // Use defaultValue if available, otherwise empty string
+      row[c.name] = c.defaultValue !== undefined ? c.defaultValue : "";
+    });
     append(row);
-  };
+  }, [field.columns, append]);
 
   const toggleRow = (index: number) => {
     const newSel = new Set(selectedIndices);

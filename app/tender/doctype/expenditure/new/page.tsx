@@ -10,6 +10,11 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  fetchWorkNameByTenderNumber,
+  updateWorkNameInTableRows,
+  clearWorkNameInTableRows
+} from "../services";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -109,6 +114,9 @@ export default function NewExpenditurePage() {
   const doctypeName = "Expenditure";
   const [isSaving, setIsSaving] = React.useState(false);
 
+  // 🟢 NEW: State for work name default value
+  const [workName, setWorkName] = React.useState<string>("");
+
   /* -------------------------------------------------
   3. Helper function to get allowed stages from parent stage field
   ------------------------------------------------- */
@@ -117,6 +125,60 @@ export default function NewExpenditurePage() {
     const parentStage = formData.stage;
     if (!parentStage || !Array.isArray(parentStage)) return [];
     return parentStage.map((item: any) => item.stage).filter(Boolean);
+  }, []);
+
+  const [formInstance, setFormInstance] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    if (!formInstance) return;
+
+    console.log("Setting up watch subscription for tender_number");
+
+    const subscription = formInstance.watch((value: any, { name }: { name?: string }) => {
+
+      if (name === "tender_number" && value.tender_number) {
+
+        const fetchWorkName = async () => {
+          try {
+            if (!apiKey || !apiSecret) {
+              console.error("API keys not available");
+              return;
+            }
+
+            const fetchedWorkName = await fetchWorkNameByTenderNumber(
+              value.tender_number,
+              apiKey,
+              apiSecret
+            );
+
+
+            if (fetchedWorkName) {
+              // Update all existing rows in table using service function
+              updateWorkNameInTableRows(formInstance, fetchedWorkName);
+              // Update state for future "Add Row" clicks
+              setWorkName(fetchedWorkName);
+            } else {
+              console.log("No work_name found in response");
+              // Clear work name from existing rows using service function
+              clearWorkNameInTableRows(formInstance);
+              setWorkName("");
+            }
+          } catch (error) {
+            console.error("Failed to fetch work_name:", error);
+          }
+        };
+
+        fetchWorkName();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [formInstance, apiKey, apiSecret]);
+
+  const handleFormInit = React.useCallback((form: any) => {
+    setFormInstance(form);
   }, []);
 
   /* -------------------------------------------------
@@ -251,7 +313,8 @@ export default function NewExpenditurePage() {
             type: "Table",
             showDownloadUpload: true,
             columns: [
-              { name: "name_of_work", label: "Name of Work", type: "Text" },
+              // 🟢 NEW: Added defaultValue from state
+              { name: "name_of_work", label: "Name of Work", type: "Read Only", defaultValue: workName },
               {
                 name: "stage",
                 label: "Stage",
@@ -324,7 +387,7 @@ export default function NewExpenditurePage() {
         ]),
       }
     ];
-  }, []);
+  }, [workName, getAllowedStages]); // 🟢 NEW: Added workName to dependency array
 
   /* -------------------------------------------------
   4. SUBMIT – with file uploading for child table
@@ -485,7 +548,7 @@ export default function NewExpenditurePage() {
       submitLabel={isSaving ? "Saving..." : "New Expenditure"}
       cancelLabel="Cancel"
       doctype={doctypeName}
-
+      onFormInit={handleFormInit}
     />
   );
 }

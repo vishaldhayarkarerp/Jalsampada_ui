@@ -90,6 +90,7 @@ export interface FormField {
   showDownloadUpload?: boolean;
   columns?: {
     filterDeps?: string[];
+    defaultValue?: any;
     name: string;
     label: string;
     type: FieldType;
@@ -301,7 +302,7 @@ function buildDefaultValues(fields: FormField[]) {
       if (f.type === "Table") dv[f.name] = [];
       if (f.type === "Table MultiSelect") dv[f.name] = [];
     }
-    
+
     // Apply precision formatting to Currency fields during initialization
     if (f.type === "Currency" && f.precision && dv[f.name]) {
       const value = parseFloat(dv[f.name]);
@@ -485,8 +486,10 @@ export function DynamicForm({
     }
   }, [methods, onFormInit]);
 
+  // Find this useEffect in DynamicFormComponent.tsx (around line 348)
   React.useEffect(() => {
-    reset(defaultValues);
+    // 🟢 CHANGE: Add { keepValues: true } to prevent clearing form when defaultValues update
+    reset(defaultValues, { keepValues: true });
   }, [defaultValues, reset]);
 
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>(

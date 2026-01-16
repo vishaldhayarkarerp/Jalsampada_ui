@@ -12,6 +12,11 @@ import {
 import { getApiMessages } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  fetchWorkNameByTenderNumber,
+  updateWorkNameInTableRows,
+  clearWorkNameInTableRows
+} from "../services";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -117,6 +122,10 @@ export default function RecordDetailPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
 
+  // NEW: State for work name default value
+  const [workName, setWorkName] = React.useState<string>("");
+  const [formInstance, setFormInstance] = React.useState<any>(null);
+
   /* -------------------------------------------------
   3. FETCH DOCUMENT
   ------------------------------------------------- */
@@ -171,6 +180,50 @@ export default function RecordDetailPage() {
 
     fetchDoc();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
+
+  React.useEffect(() => {
+    if (!formInstance) return;
+
+    const subscription = formInstance.watch((value: any, { name }: { name?: string }) => {
+      if (name === "tender_number" && value.tender_number) {
+        const fetchWorkName = async () => {
+          try {
+            if (!apiKey || !apiSecret) {
+              console.error("API keys not available");
+              return;
+            }
+
+            const fetchedWorkName = await fetchWorkNameByTenderNumber(
+              value.tender_number,
+              apiKey,
+              apiSecret
+            );
+
+            if (fetchedWorkName) {
+              updateWorkNameInTableRows(formInstance, fetchedWorkName);
+              setWorkName(fetchedWorkName);
+            } else {
+              console.log("No work_name found in response");
+              clearWorkNameInTableRows(formInstance);
+              setWorkName("");
+            }
+          } catch (error) {
+            console.error("Failed to fetch work_name:", error);
+          }
+        };
+
+        fetchWorkName();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [formInstance, apiKey, apiSecret]);
+
+  const handleFormInit = React.useCallback((form: any) => {
+    setFormInstance(form);
+  }, []);
 
   /* -------------------------------------------------
   4. Build tabs once when data is ready
@@ -327,7 +380,7 @@ export default function RecordDetailPage() {
             type: "Table",
             showDownloadUpload: true,
             columns: [
-              { name: "name_of_work", label: "Name of Work", type: "Text" },
+              { name: "name_of_work", label: "Name of Work", type: "Read Only", defaultValue: workName },
               {
                 name: "stage",
                 label: "Stage",
@@ -401,7 +454,7 @@ export default function RecordDetailPage() {
       }
 
     ];
-  }, [expenditure]);
+  }, [expenditure, workName]);
 
   /* -------------------------------------------------
   5. SUBMIT – with Validation & file uploading
@@ -652,6 +705,7 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
+      onFormInit={handleFormInit}
       doctype={doctypeName}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
