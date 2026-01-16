@@ -22,6 +22,8 @@ import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
+import { getApiMessages} from "@/lib/utils";
+import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -191,7 +193,7 @@ export default function GateOperationLogbookPage() {
 
     setIsDeleting(true);
     try {
-      await bulkDeleteRPC(
+      const response = await bulkDeleteRPC(
         doctypeName,
         Array.from(selectedIds),
         API_BASE_URL,
@@ -199,15 +201,44 @@ export default function GateOperationLogbookPage() {
         apiSecret!
       );
 
+      // Debug: Log the actual response to understand its structure
+      console.log("Bulk Delete Response:", response);
+
+      // Check if the response contains server messages indicating errors
+      // For bulk delete, error messages are directly in response._server_messages
+      if (response._server_messages) {
+        // Parse the server messages to check for errors
+        const serverMessages = JSON.parse(response._server_messages);
+        const errorMessages = serverMessages.map((msgStr: string) => {
+          const parsed = JSON.parse(msgStr);
+          return parsed.message;
+        });
+
+        if (errorMessages.length > 0) {
+          // Show error messages from server
+          toast.error("Failed to delete records", { 
+            description: <FrappeErrorDisplay messages={errorMessages} />,
+            duration: Infinity
+          });
+          return; // Don't proceed with success handling
+        }
+      }
+
+      // If no error messages, proceed with success
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
       fetchRows(); 
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
-      toast.error("Failed to delete records", {
-        description: err.response?.data?.exception || err.message,
-        duration: Infinity
-      });
+      
+      const messages = getApiMessages(
+        null,
+        err,
+        "Records deleted successfully",
+        "Failed to delete records"
+      );
+      
+      toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsDeleting(false);
     }

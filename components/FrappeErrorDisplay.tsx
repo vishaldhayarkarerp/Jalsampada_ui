@@ -2,9 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ArrowUpRight } from "lucide-react"; // 🟢 Added ArrowUpRight
 
-
+// 🟢 MAP: Define which Doctypes belong to which Module in your Next.js app
 const DOCTYPE_MODULE_MAP: Record<string, string> = {
   // LIS Management
   "lift-irrigation-scheme": "lis-management",
@@ -50,6 +50,12 @@ const DOCTYPE_MODULE_MAP: Record<string, string> = {
   "work-type": "tender",
 };
 
+// 🟢 MAP: Map Frappe doctype names to Next.js route names
+const FRAPPE_TO_ROUTE_MAP: Record<string, string> = {
+  "log-sheet": "logsheet",
+  // Add any other Frappe -> route name mappings here
+};
+
 interface FrappeErrorDisplayProps {
   messages: string | string[];
 }
@@ -57,8 +63,6 @@ interface FrappeErrorDisplayProps {
 export function FrappeErrorDisplay({ messages }: FrappeErrorDisplayProps) {
   const text = Array.isArray(messages) ? messages.join("\n") : messages;
 
-  // Regex to capture: <a href="(URL)">(LABEL)</a>
-  // Example: <a href="http://103.219.1.138/app/stage-no/Wakurde%20...">Wakurde...</a>
   const linkRegex = /<a\s+href="([^"]+)">([^<]+)<\/a>/g;
 
   const parts = [];
@@ -69,63 +73,99 @@ export function FrappeErrorDisplay({ messages }: FrappeErrorDisplayProps) {
     const [fullMatch, url, label] = match;
     const startIndex = match.index;
 
-    // 1. Push text before the link
     if (startIndex > lastIndex) {
       parts.push(text.substring(lastIndex, startIndex));
     }
 
-    // 2. Analyze the URL to find the Doctype and Record Name
     let internalLink = null;
     
     try {
-      // Create a URL object to parse safely
-      const urlObj = new URL(url, "http://dummy.com"); // Base dummy needed for relative paths
+      const urlObj = new URL(url, "http://dummy.com");
       const segments = urlObj.pathname.split("/").filter(Boolean);
-      
-      // Expected Frappe format: .../app/stage-no/record-name
-      // We look for the segment AFTER "app"
       const appIndex = segments.indexOf("app");
       
       if (appIndex !== -1 && segments.length > appIndex + 2) {
-        const doctypeSlug = segments[appIndex + 1]; // e.g., "stage-no"
-        const docName = segments[appIndex + 2];     // e.g., "Wakurde..."
+        const frappeDoctypeSlug = segments[appIndex + 1];
+        const docName = segments[appIndex + 2];
         
-        // Check if we have this doctype in our map
-        const moduleName = DOCTYPE_MODULE_MAP[doctypeSlug.toLowerCase()];
+        // Convert Frappe doctype name to Next.js route name
+        const routeDoctypeSlug = FRAPPE_TO_ROUTE_MAP[frappeDoctypeSlug.toLowerCase()] || frappeDoctypeSlug;
+        
+        const moduleName = DOCTYPE_MODULE_MAP[routeDoctypeSlug.toLowerCase()] || 
+                           DOCTYPE_MODULE_MAP[frappeDoctypeSlug.toLowerCase()];
 
         if (moduleName) {
-           internalLink = `/${moduleName}/doctype/${doctypeSlug}/${docName}`;
+           // Check if this doctype has dynamic [id] route
+           const hasDynamicRoute = ["lift-irrigation-scheme", "stage-no", "lis-phases", 
+                                  "asset", "asset-category", "equipement-capacity", 
+                                  "equipement-model", "equipment-make", "rating",
+                                  "gate", "gate-operation-logbook", "logbook", "logsheet",
+                                  "warehouse", "item", "repair-work-requirement",
+                                  "spare-indent", "temperature", "lis-incident-record",
+                                  "tender", "contractor", "draft-tender-paper",
+                                  "expenditure", "fund-head", "prapan-suchi",
+                                  "work-subtype", "work-type",
+                                  // Add hyphenated versions for Frappe URLs
+                                  "log-sheet", "gate-operation-logbook", "repair-work-requirement",
+                                  "spare-indent", "lis-incident-record",
+                                  "draft-tender-paper", "fund-head", "prapan-suchi",
+                                  "work-subtype", "work-type"].includes(routeDoctypeSlug) ||
+                                  ["lift-irrigation-scheme", "stage-no", "lis-phases", 
+                                  "asset", "asset-category", "equipement-capacity", 
+                                  "equipement-model", "equipment-make", "rating",
+                                  "gate", "gate-operation-logbook", "logbook", "logsheet",
+                                  "warehouse", "item", "repair-work-requirement",
+                                  "spare-indent", "temperature", "lis-incident-record",
+                                  "tender", "contractor", "draft-tender-paper",
+                                  "expenditure", "fund-head", "prapan-suchi",
+                                  "work-subtype", "work-type",
+                                  // Add hyphenated versions for Frappe URLs
+                                  "log-sheet", "gate-operation-logbook", "repair-work-requirement",
+                                  "spare-indent", "lis-incident-record",
+                                  "draft-tender-paper", "fund-head", "prapan-suchi",
+                                  "work-subtype", "work-type"].includes(frappeDoctypeSlug);
+           
+           if (hasDynamicRoute) {
+             internalLink = `/${moduleName}/doctype/${routeDoctypeSlug}/${docName}`;
+           } else {
+             internalLink = `/${moduleName}/doctype/${routeDoctypeSlug}`;
+           }
         }
       }
     } catch (e) {
       console.error("Error parsing link", e);
     }
 
-    // 3. Render Internal Link (Next.js) or External Link (<a>)
     if (internalLink) {
+      // 🟢 OPTION 1: Internal Link (Stays in App)
       parts.push(
         <Link 
           key={startIndex} 
           href={internalLink}
-          className="font-bold text-blue-600 hover:underline hover:text-blue-800 mx-1"
-          onClick={(e) => e.stopPropagation()} // Stop toast from closing on click
+          // UPDATED STYLES: 
+          // - underline: Always underlined
+          // - inline-flex: Aligns text and icon
+          // - ArrowUpRight: The "redirect" symbol you wanted
+          className="font-bold text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-800 hover:decoration-blue-800 mx-1 inline-flex items-baseline gap-0.5 transition-colors"
+          onClick={(e) => e.stopPropagation()}
         >
           {label}
+          <ArrowUpRight className="self-center w-3 h-3" /> 
         </Link>
       );
     } else {
-      // Fallback: Open in new tab if we don't recognize the doctype
+      // 🟢 OPTION 2: External Link (New Tab)
       parts.push(
         <a 
           key={startIndex} 
           href={url} 
           target="_blank" 
           rel="noopener noreferrer"
-          className="font-medium text-blue-500 hover:text-blue-400 underline decoration-dotted underline-offset-4 mx-1 inline-flex items-center gap-0.5"
+          className="font-medium text-blue-500 underline decoration-dotted underline-offset-4 hover:text-blue-600 mx-1 inline-flex items-center gap-0.5"
           onClick={(e) => e.stopPropagation()}
         >
           {label}
-          <ExternalLink className="h-3 w-3 inline" />
+          <ExternalLink className="w-3 h-3" />
         </a>
       );
     }
@@ -133,13 +173,12 @@ export function FrappeErrorDisplay({ messages }: FrappeErrorDisplayProps) {
     lastIndex = startIndex + fullMatch.length;
   }
 
-  // 4. Push remaining text
   if (lastIndex < text.length) {
     parts.push(text.substring(lastIndex));
   }
 
   return (
-    <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-6">
+    <div className="text-l text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-7">
       {parts.length > 0 ? parts : text}
     </div>
   );
