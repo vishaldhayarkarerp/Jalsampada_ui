@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'jalsampada-frontend',
+    name: 'jalsampada',
     script: 'npm',
     args: 'start',
     cwd: '/home/erpadmin/bench-Jalsampada/apps/Jalsampada_ui',
