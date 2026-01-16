@@ -179,6 +179,53 @@ export default function NewExpenditurePage() {
 
   const handleFormInit = React.useCallback((form: any) => {
     setFormInstance(form);
+    
+    let previousBillType: string | undefined;
+    
+    // Store the initial bill type value, but only if it's not "Running" due to RA in prev_bill_no
+    const initialBillType = form.getValues('bill_type');
+    const initialPrevBillNo = form.getValues('prev_bill_no');
+    
+    // If current bill type is "Running" but prev_bill_no contains "ra", 
+    // we should assume original value wasn't "Running"
+    if (initialBillType === 'Running' && initialPrevBillNo && typeof initialPrevBillNo === 'string' && /ra/i.test(initialPrevBillNo)) {
+      // Don't store "Running" as previous - it was auto-set
+      previousBillType = 'Select Type'; // Default fallback
+    } else if (initialBillType && initialBillType !== 'Running') {
+      previousBillType = initialBillType;
+    } else {
+      previousBillType = 'Select Type'; // Default fallback
+    }
+    
+    // Watch the prev_bill_no field and set bill_type accordingly
+    form.watch((value: any, { name }: { name?: string }) => {
+      if (name === 'prev_bill_no' || name === undefined) {
+        const prevBillNo = form.getValues('prev_bill_no');
+        const currentBillType = form.getValues('bill_type');
+        
+        // Check if prev_bill_no contains 'ra' or 'RA' (case-insensitive)
+        if (prevBillNo && typeof prevBillNo === 'string' && /ra/i.test(prevBillNo)) {
+          // Set bill_type to "Running" if it's not already set
+          if (currentBillType !== 'Running') {
+            // Store current value as previous before changing to Running
+            if (currentBillType && currentBillType !== 'Running') {
+              previousBillType = currentBillType;
+            }
+            form.setValue('bill_type', 'Running', { shouldDirty: true });
+          }
+        } else {
+          // If prev_bill_no is empty or doesn't contain 'ra', restore previous bill type
+          if (!prevBillNo || (typeof prevBillNo === 'string' && !/ra/i.test(prevBillNo))) {
+            if (currentBillType === 'Running' && previousBillType) {
+              form.setValue('bill_type', previousBillType, { shouldDirty: true });
+            } else if (!prevBillNo && currentBillType === 'Running' && !previousBillType) {
+              // If no previous value stored, reset to default
+              form.setValue('bill_type', 'Select Type', { shouldDirty: true });
+            }
+          }
+        }
+      }
+    });
   }, []);
 
   /* -------------------------------------------------
