@@ -22,6 +22,7 @@ export default function NewLogbookPage() {
   // 🟢 Removed currentUser from here to rely on Cookie instead
   const { apiKey, apiSecret } = useAuth(); 
   const [isSaving, setIsSaving] = React.useState(false);
+  const [userFullName, setUserFullName] = React.useState<string | null>(null);
 
   // Store form methods
   const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
@@ -91,6 +92,38 @@ export default function NewLogbookPage() {
     }
   };
 
+  // 🟢 HELPER: Fetch user's full name
+  const fetchUserFullName = async (userId: string): Promise<string | null> => {
+    if (!userId || !apiKey || !apiSecret) return null;
+    
+    try {
+      const response = await fetch(
+        `http://103.219.1.138:4412/api/resource/User/${userId}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `token ${apiKey}:${apiSecret}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const fullName = data.data?.full_name || null;
+      console.log("🔍 Debug - Fetched user full name:", fullName);
+      
+      return fullName;
+    } catch (error) {
+      console.error("🔍 Debug - Error fetching user full name:", error);
+      return null;
+    }
+  };
+
   const duplicateData = React.useMemo(() => {
     const duplicateParam = searchParams.get('duplicate');
     if (!duplicateParam) return null;
@@ -101,6 +134,47 @@ export default function NewLogbookPage() {
       return null;
     }
   }, [searchParams]);
+
+  // 🟢 Fetch user full name when user ID is available
+  React.useEffect(() => {
+    const getUserAndFullName = async () => {
+      const cookieUser = getCookie("user_id");
+      const localStorageUser = typeof window !== "undefined" ? localStorage.getItem("currentUser") : null;
+      const userId = cookieUser || localStorageUser;
+      
+      if (userId && !userFullName) {
+        console.log("🔍 Debug - Fetching full name for user:", userId);
+        const fullName = await fetchUserFullName(userId);
+        if (fullName) {
+          setUserFullName(fullName);
+          console.log("🔍 Debug - Set user full name:", fullName);
+        }
+      }
+    };
+    
+    getUserAndFullName();
+  }, [userFullName]); // Only run once when userFullName is null
+
+  // 🟢 Update form fields when userFullName becomes available
+  React.useEffect(() => {
+    if (formMethods && userFullName) {
+      console.log("🔍 Debug - Updating form with userFullName:", userFullName);
+      
+      // Update operator_name if it's empty
+      const currentOperatorName = formMethods.getValues("operator_name");
+      if (!currentOperatorName) {
+        formMethods.setValue("operator_name", userFullName);
+        console.log("🔍 Debug - Set operator_name to:", userFullName);
+      }
+      
+      // Update operator_name_1 if it's empty
+      const currentOperatorName1 = formMethods.getValues("operator_name_1");
+      if (!currentOperatorName1) {
+        formMethods.setValue("operator_name_1", userFullName);
+        console.log("🔍 Debug - Set operator_name_1 to:", userFullName);
+      }
+    }
+  }, [userFullName, formMethods]);
 
   React.useEffect(() => {
     if (duplicateData) {
@@ -245,7 +319,7 @@ export default function NewLogbookPage() {
     // Fallback to localStorage if cookie is not available
     const localStorageUser = typeof window !== "undefined" ? localStorage.getItem("currentUser") : null;
     const userForDefault = cookieUser || localStorageUser;
-    console.log("🔍 Debug - Form definition user sources:", { cookieUser, localStorageUser, userForDefault });
+    console.log("🔍 Debug - Form definition user sources:", { cookieUser, localStorageUser, userForDefault, userFullName });
 
     return [
       {
@@ -331,7 +405,7 @@ export default function NewLogbookPage() {
             name: "operator_name",
             label: "Operator Name",
             type: "Data",
-           
+            defaultValue: getValue("operator_name", userFullName),
             displayDependsOn: "start_pump == 1",
             fetchFrom: {
               sourceField: "operator_id",
@@ -395,7 +469,7 @@ export default function NewLogbookPage() {
             name: "operator_name_1",
             label: "Operator Name",
             type: "Data",
-            readOnlyValue: getValue("operator_name_1"),
+            defaultValue: getValue("operator_name_1", userFullName),
             displayDependsOn: "stop_pump == 1",
             fetchFrom: {
               sourceField: "operator_id_1",
@@ -445,7 +519,7 @@ export default function NewLogbookPage() {
         ],
       },
     ];
-  }, [duplicateData]);
+  }, [duplicateData, userFullName]);
 
   /* -------------------------------------------------
      4. SUBMIT
