@@ -161,7 +161,7 @@ export function DynamicFormForTable({
         });
 
         setFormData(formattedData);
-    }, [editingRowIndex, data, getRowData, fields]);
+    }, [editingRowIndex, fields]);
 
     // Debounced update to context - prevents excessive updates during typing
     const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
