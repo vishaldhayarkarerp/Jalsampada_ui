@@ -198,7 +198,9 @@ export default function RecordDetailPage() {
             type: "Table",
             columns: [
               { name: "pump", label: "Pump", type: "Link", linkTarget: "Asset" },
-              { name: "pump_no", label: "Pump No", type: "Int" },
+              { name: "motor", label: "Motor", type: "Link", linkTarget: "Asset" },
+              { name: "pump_no", label: "Pump No", type: "Data" },
+               { name: "motor_no", label: "Motor No", type: "Data" },
               { name: "check", label: "Check", type: "Check" },
             ],
           },
