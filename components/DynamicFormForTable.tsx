@@ -1,913 +1,1797 @@
 "use client";
-
+import { Controller } from "react-hook-form";
 import * as React from "react";
-import { useFormContext } from "react-hook-form";
-import { FormField, FieldType } from "./DynamicFormComponent";
-import { Button } from "@/components/ui/button";
-import { LinkInput } from "./LinkInput";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import Link from "next/link";
+import {
+  useForm,
+  FormProvider,
+  useFieldArray,
+  FieldErrors,
+  RegisterOptions,
+  UseFormReturn,
+} from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useTableRowContext } from "./TableRowContext";
-import { cn } from "@/lib/utils";
-import { Upload, X, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+// 🟢 1. Removed 'List' icon
+import { Upload, X, MoreVertical, Copy, Trash2, ChevronLeft, ChevronRight, Printer } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter, usePathname } from "next/navigation";
+import { toast } from "sonner";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
-const API_BASE_URL = "http://103.219.1.138:4412/";
 
-// Helper: Build dynamic filters for Link fields
-function buildDynamicFilters(
-    field: FormField,
-    getValue: (name: string) => any
-): Record<string, any> {
-    const filters: Record<string, any> = {};
-    if (field.filterMapping?.length) {
-        field.filterMapping.forEach((mapping) => {
-            const sourceValue = getValue(mapping.sourceField);
-            if (sourceValue) {
-                filters[mapping.targetField] = sourceValue;
-            }
-        });
-    } else if (typeof field.filters === "function") {
-        Object.assign(filters, field.filters(getValue));
-    }
-    return filters;
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+
+
+import { TableField } from "./TableField";
+import { LinkField } from "./LinkField";
+import { TableMultiSelect } from "./TableMultiSelect";
+import { cn, getApiMessages } from "@/lib/utils";
+
+const DEFAULT_API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types (Unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+export type FieldType =
+  | "Data"
+  | "Small Text"
+  | "Text"
+  | "Long Text"
+  | "Code"
+  | "Color"
+  | "Currency"
+  | "Float"
+  | "Int"
+  | "Date"
+  | "DateTime"
+  | "Time"
+  | "Duration"
+  | "Check"
+  | "Select"
+  | "Link"
+  | "Table"
+  | "Read Only"
+  | "Password"
+  | "Signature"
+  | "Markdown Editor"
+  | "Section Break"
+  | "Column Break"
+  | "Barcode"
+  | "Button"
+  | "Table MultiSelect"
+  | "Percent"
+  | "Rating"
+  | "Attach"
+  | "Custom";
+
+export interface FormField {
+  name: string;
+  label: string;
+  type: FieldType;
+  linkTarget?: string;
+  searchField?: string;
+  required?: boolean;
+  description?: string;
+  placeholder?: string;
+  options?: string | { label: string; value: string }[];
+  defaultValue?: any;
+  min?: number;
+  max?: number;
+  step?: number;
+  rows?: number;
+  showDownloadUpload?: boolean;
+  columns?: {
+    filterDeps?: string[];
+    defaultValue?: any;
+    name: string;
+    label: string;
+    type: FieldType;
+    linkTarget?: string;
+    options?: string | { label: string; value: string }[];
+    precision?: number;
+    filterMapping?: { sourceField: string; targetField: string }[];
+    fetchFrom?: {
+      sourceField: string;
+      targetDoctype: string;
+      targetField: string;
+    };
+    displayDependsOn?: string;
+    filters?: (getValue: (name: string) => any) => Record<string, any>;
+  }[];
+  action?: () => void;
+  buttonLabel?: string;
+  readOnlyValue?: string;
+  pattern?: RegExp | string;
+  patternMessage?: string;
+  filters?: (getValue: (name: string) => any) => Record<string, any>;
+  filterMapping?: { sourceField: string; targetField: string }[];
+  displayDependsOn?: string;
+  fetchFrom?: {
+    sourceField: string;
+    targetDoctype: string;
+    targetField: string;
+  };
+  customElement?: React.ReactNode;
+  precision?: number;
 }
-// Helper: Evaluate displayDependsOn condition string
+
+export interface TabbedLayout {
+  name: string;
+  fields: FormField[];
+}
+
+export interface DeleteConfig {
+  doctypeName: string;
+  docName: string;
+  redirectUrl?: string;
+  baseUrl?: string;
+}
+
+export interface DynamicFormProps {
+  tabs: TabbedLayout[];
+  onSubmit: (data: Record<string, any>, isDirty: boolean) => Promise<{ status?: string } | void>;
+  onCancel?: () => void;
+  title?: string;
+  description?: string;
+  submitLabel?: string;
+  cancelLabel?: string;
+  initialStatus?: string;
+  docstatus?: number;
+  isSubmittable?: boolean;
+  onSubmitDocument?: () => Promise<{ status?: string } | void>;
+  onCancelDocument?: () => Promise<{ status?: string } | void>;
+  onFormInit?: (form: UseFormReturn<any>) => void;
+  onDelete?: () => Promise<void> | void;
+  deleteConfig?: DeleteConfig;
+  doctype?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers (Unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchFieldValue(
+  sourceValue: string,
+  targetDoctype: string,
+  targetField: string,
+  apiKey: string,
+  apiSecret: string
+): Promise<any> {
+  try {
+    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+    const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
+
+    const resp = await axios.get(url, {
+      params: {
+        fields: JSON.stringify([targetField]),
+      },
+      headers: {
+        Authorization: `token ${apiKey}:${apiSecret}`,
+        "Content-Type": "application/json",
+      },
+      withCredentials: true,
+    });
+
+    return resp.data.data?.[targetField] || null;
+  } catch (e: any) {
+    console.error(`Failed to fetch ${targetField} from ${targetDoctype}:`, e);
+    return null;
+  }
+}
+
+async function fetchMultipleFieldValues(
+  sourceValue: string,
+  targetDoctype: string,
+  targetFields: string[],
+  apiKey: string,
+  apiSecret: string
+): Promise<Record<string, any>> {
+  try {
+    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+    const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
+
+    const resp = await axios.get(url, {
+      params: {
+        fields: JSON.stringify(targetFields),
+      },
+      headers: {
+        Authorization: `token ${apiKey}:${apiSecret}`,
+        "Content-Type": "application/json",
+      },
+      withCredentials: true,
+    });
+
+    const result: Record<string, any> = {};
+    targetFields.forEach(field => {
+      result[field] = resp.data.data?.[field] || null;
+    });
+
+    return result;
+  } catch (e: any) {
+    console.error(`Failed to fetch multiple fields from ${targetDoctype}:`, e);
+    const result: Record<string, any> = {};
+    targetFields.forEach(field => {
+      result[field] = null;
+    });
+    return result;
+  }
+}
+
 function evaluateDisplayDependsOn(
-    condition: string,
-    getValue: (name: string) => any
+  condition: string,
+  getValue: (name: string) => any
 ): boolean {
-    try {
-        const parts = condition
-            .split(/(\&\&|\|\|)/)
-            .map((c) => c.trim())
-            .filter((c) => c);
+  try {
+    const parts = condition
+      .split(/(\&\&|\|\|)/)
+      .map((c) => c.trim())
+      .filter((c) => c);
+    const conditions = parts.filter((p) => p !== "&&" && p !== "||");
+    const operators = parts.filter((p) => p === "&&" || p === "||");
 
-        const conditions = parts.filter((p) => p !== "&&" && p !== "||");
-        const operators = parts.filter((p) => p === "&&" || p === "||");
+    const results = conditions.map((cond) => {
+      const [field, op, value] = cond.split(/([=!<>]=?)/);
+      if (!field || !op || value === undefined) return true;
 
-        const results = conditions.map((cond) => {
-            const [field, op, valueStr] = cond.split(/([=!<>]=?)/);
-            if (!field || !op || valueStr === undefined) return true;
+      const fieldValue = getValue(field.trim());
+      let compareValue: any = value.trim();
 
-            const fieldName = field.trim();
-            const fieldValue = getValue(fieldName);
+      if (compareValue === "true") compareValue = true;
+      else if (compareValue === "false") compareValue = false;
+      else if (/^\d+$/.test(compareValue))
+        compareValue = parseInt(compareValue, 10);
+      else if (/^\d+\.\d+$/.test(compareValue))
+        compareValue = parseFloat(compareValue);
+      else compareValue = compareValue.replace(/^['"]|['"]$/g, "");
 
-            let compareValue: any = valueStr.trim();
+      switch (op) {
+        case "==": return fieldValue == compareValue;
+        case "!=": return fieldValue != compareValue;
+        case ">": return (fieldValue ?? 0) > (compareValue ?? 0);
+        case "<": return (fieldValue ?? 0) < (compareValue ?? 0);
+        case ">=": return (fieldValue ?? 0) >= (compareValue ?? 0);
+        case "<=": return (fieldValue ?? 0) <= (compareValue ?? 0);
+        default: return true;
+      }
+    });
 
-            // Smart type conversion
-            if (compareValue === "true") compareValue = true;
-            else if (compareValue === "false") compareValue = false;
-            else if (/^\d+$/.test(compareValue)) compareValue = parseInt(compareValue, 10);
-            else if (/^\d+\.\d+$/.test(compareValue)) compareValue = parseFloat(compareValue);
-            else compareValue = compareValue.replace(/^['"]|['"]$/g, "");
+    return results.reduce((acc, result, i) => {
+      const op = operators[i - 1];
+      return op === "&&" ? acc && result : op === "||" ? acc || result : result;
+    });
+  } catch (e) {
+    console.error("Display depends on error:", condition, e);
+    return true;
+  }
+}
 
-            switch (op) {
-                case "==": return fieldValue == compareValue;
-                case "!=": return fieldValue != compareValue;
-                case ">": return (fieldValue ?? 0) > (compareValue ?? 0);
-                case "<": return (fieldValue ?? 0) < (compareValue ?? 0);
-                case ">=": return (fieldValue ?? 0) >= (compareValue ?? 0);
-                case "<=": return (fieldValue ?? 0) <= (compareValue ?? 0);
-                default: return true;
-            }
-        });
+function buildDynamicFilters(
+  field: FormField,
+  getValue: (name: string) => any
+): Record<string, any> {
+  const filters: Record<string, any> = {};
+  if (field.filterMapping?.length) {
+    field.filterMapping.forEach((mapping) => {
+      const sourceValue = getValue(mapping.sourceField);
+      if (sourceValue) {
+        filters[mapping.targetField] = sourceValue;
+      }
+    });
+  } else if (typeof field.filters === "function") {
+    Object.assign(filters, field.filters(getValue));
+  }
+  return filters;
+}
 
-        if (results.length === 0) return true;
-
-        return results.reduce((acc, result, i) => {
-            const op = operators[i - 1];
-            return op === "&&" ? acc && result : op === "||" ? acc || result : result;
-        });
-    } catch (e) {
-        console.error("Error evaluating displayDependsOn:", condition, e);
-        return true; // fail-safe: show field if condition can't be evaluated
+function buildDefaultValues(fields: FormField[]) {
+  const dv: Record<string, any> = {};
+  for (const f of fields) {
+    if (f.defaultValue !== undefined) {
+      dv[f.name] = f.defaultValue;
+    } else {
+      if (f.type === "Check") dv[f.name] = false;
+      if (f.type === "Duration")
+        dv[f.name] = { hours: 0, minutes: 0, seconds: 0 };
+      if (f.type === "Table") dv[f.name] = [];
+      if (f.type === "Table MultiSelect") dv[f.name] = [];
     }
+
+    // Apply precision formatting to Currency fields during initialization
+    if (f.type === "Currency" && f.precision && dv[f.name]) {
+      const value = parseFloat(dv[f.name]);
+      if (!isNaN(value)) {
+        dv[f.name] = value.toFixed(f.precision);
+      }
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    const dupData = sessionStorage.getItem("duplicate_record_data");
+    if (dupData) {
+      try {
+        const parsed = JSON.parse(dupData);
+        sessionStorage.removeItem("duplicate_record_data");
+        return { ...dv, ...parsed };
+      } catch (e) {
+        console.error("Failed to parse duplicate data", e);
+      }
+    }
+  }
+  return dv;
 }
 
-interface DynamicFormForTableProps {
-    fields: FormField['columns'];
-    data: Record<string, any>;
-    onSubmit: (data: Record<string, any>) => void;
-    onCancel: () => void;
-    title?: string;
+function rulesFor(
+  field: FormField
+): RegisterOptions<Record<string, any>, string> {
+  const rules: RegisterOptions<Record<string, any>, string> = {};
+  if (field.required) rules.required = `${field.label} is required`;
+  if (field.min !== undefined)
+    rules.min = {
+      value: field.min,
+      message: `${field.label} must be >= ${field.min}`,
+    };
+  if (field.max !== undefined)
+    rules.max = {
+      value: field.max,
+      message: `${field.label} must be <= ${field.max}`,
+    };
+
+  if (field.type === "Percent") {
+    if (rules.min === undefined)
+      rules.min = { value: 0, message: "Percent must be between 0 and 100" };
+    if (rules.max === undefined)
+      rules.max = { value: 100, message: "Percent must be between 0 and 100" };
+  }
+
+  if (field.pattern) {
+    const pattern =
+      typeof field.pattern === "string"
+        ? new RegExp(field.pattern)
+        : field.pattern;
+    rules.pattern = {
+      value: pattern,
+      message: field.patternMessage || `${field.label} format is invalid`,
+    };
+  }
+
+  return rules;
 }
 
-// Local UI helper components
+function sanitizeForDuplication(data: any): any {
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizeForDuplication(item));
+  } else if (typeof data === "object" && data !== null) {
+    const newData: any = {};
+    for (const key in data) {
+      if (
+        [
+          "name",
+          "creation",
+          "modified",
+          "modified_by",
+          "owner",
+          "docstatus",
+          "idx",
+          "parent",
+          "parentfield",
+          "parenttype",
+        ].includes(key)
+      ) {
+        continue;
+      }
+      newData[key] = sanitizeForDuplication(data[key]);
+    }
+    return newData;
+  }
+  return data;
+}
+
 function FieldHelp({ text }: { text?: string }) {
-    if (!text) return null;
-    return (
-        <div
-            style={{
-                marginTop: 6,
-                fontSize: "0.85rem",
-                color: "var(--color-text-muted, #6b7280)",
-            }}
-        >
-            {text}
-        </div>
-    );
+  if (!text) return null;
+  return (
+    <div
+      style={{
+        marginTop: 6,
+        fontSize: "0.85rem",
+        color: "var(--color-text-muted, #6b7280)",
+      }}
+    >
+      {text}
+    </div>
+  );
 }
 
 function FieldError({ error }: { error?: any }) {
-    if (!error) return null;
-    return (
-        <div className="text-error" style={{ marginTop: 6, fontSize: "0.85rem" }}>
-            {String(error.message || error)}
-        </div>
-    );
+  if (!error) return null;
+  return (
+    <div className="text-red-500 font-medium" style={{ marginTop: 6, fontSize: "0.85rem" }}>
+      {String(error.message || error)}
+    </div>
+  );
 }
 
-export function DynamicFormForTable({
-    fields,
-    data,
-    onSubmit,
-    onCancel,
-    title = ""
-}: DynamicFormForTableProps) {
-    const { editingRowIndex, updateRow, getRowData } = useTableRowContext();
-    const { apiKey, apiSecret } = useAuth();
-    const parentGetValues = useFormContext(); // Access parent form context
+const formatSlug = (slug: string) => {
+  if (!slug) return "";
+  return slug
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 
-    // Local form state for the modal
-    const [formData, setFormData] = React.useState<Record<string, any>>({});
+export function DynamicForm({
+  tabs,
+  onSubmit,
+  onCancel,
+  title = "Form",
+  description,
+  submitLabel = "Submit",
+  cancelLabel = "Cancel",
+  initialStatus = "Draft",
+  docstatus = 0,
+  isSubmittable = false,
+  onSubmitDocument,
+  onCancelDocument,
+  onFormInit,
+  onDelete,
+  deleteConfig,
+  doctype
+}: DynamicFormProps) {
+  const { apiKey, apiSecret } = useAuth();
 
-    // Initialize form data when modal opens or data changes
-    React.useEffect(() => {
-        let initialData: Record<string, any>;
+  // ── HOOKS ────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = React.useState(0);
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const [currentStatus, setCurrentStatus] = React.useState(initialStatus);
 
-        if (editingRowIndex !== null) {
-            const currentRowData = getRowData(editingRowIndex);
-            console.log('DynamicFormForTable: Initializing with data from context:', currentRowData);
-            initialData = currentRowData;
-        } else if (data) {
-            console.log('DynamicFormForTable: Initializing with prop data:', data);
-            initialData = data;
-        } else {
-            initialData = {};
-        }
+  // 🟢 Navigation State
+  const [prevRecord, setPrevRecord] = React.useState<string | null>(null);
+  const [nextRecord, setNextRecord] = React.useState<string | null>(null);
+  const [loadingNeighbors, setLoadingNeighbors] = React.useState(true);
 
-        // Apply precision formatting to Currency fields during initialization
-        const formattedData = { ...initialData };
-        (fields || []).forEach(f => {
-            if (f.type === "Currency" && f.precision && formattedData[f.name]) {
-                const value = parseFloat(formattedData[f.name]);
-                if (!isNaN(value)) {
-                    formattedData[f.name] = value.toFixed(f.precision);
-                }
-            }
+  // ── ALL FIELDS (for defaultValues) ───────────────────────────────────────
+  const allFields = React.useMemo(() => tabs.flatMap((t) => t.fields), [tabs]);
+  const defaultValues = React.useMemo(
+    () => buildDefaultValues(allFields),
+    [allFields]
+  );
+
+  // ── RHF SETUP ─────────────────────────────────────────────────────────────
+  const methods = useForm<Record<string, any>>({
+    defaultValues,
+    mode: "onBlur",
+  });
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty },
+    control,
+    setValue,
+    watch,
+    reset,
+  } = methods;
+
+  React.useEffect(() => {
+    if (onFormInit) {
+      onFormInit(methods);
+    }
+  }, [methods, onFormInit]);
+
+  // Find this useEffect in DynamicFormComponent.tsx (around line 348)
+  React.useEffect(() => {
+    // 🟢 CHANGE: Add { keepValues: true } to prevent clearing form when defaultValues update
+    reset(defaultValues, { keepValues: true });
+  }, [defaultValues, reset]);
+
+  const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>(
+    {}
+  );
+  const activeTabFields = tabs[activeTab]?.fields || [];
+
+  const reg = React.useCallback(
+    (name: string, options?: any) => register(name, options),
+    [register]
+  );
+
+  // 🟢 EFFICIENT NEIGHBOR FETCHING (Using Creation Date Logic)
+  React.useEffect(() => {
+    const fetchNeighbors = async () => {
+      const segments = pathname.split("/").filter(Boolean);
+      const doctypeIndex = segments.indexOf("doctype");
+
+      // Stop if not a standard edit path
+      if (doctypeIndex === -1 || segments.length <= doctypeIndex + 2) {
+        setLoadingNeighbors(false);
+        return;
+      }
+
+      const doctypeSlug = segments[doctypeIndex + 1];
+      let currentDocName = segments[segments.length - 1];
+      currentDocName = decodeURIComponent(currentDocName);
+
+      if (currentDocName === "new") {
+        setLoadingNeighbors(false);
+        return;
+      }
+
+      setLoadingNeighbors(true);
+      const doctype = formatSlug(doctypeSlug);
+
+      try {
+        // 1. Get current document creation time
+        const currentDocRes = await axios.get(`${DEFAULT_API_BASE_URL}/${doctype}/${currentDocName}`, {
+          params: { fields: JSON.stringify(["creation"]) },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+          withCredentials: true,
         });
 
-        setFormData(formattedData);
-    }, [editingRowIndex, fields]);
-
-    // Debounced update to context - prevents excessive updates during typing
-    const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-
-    const debouncedUpdateContext = React.useCallback((newData: Record<string, any>) => {
-        if (editingRowIndex === null) return;
-
-        if (updateTimeoutRef.current) {
-            clearTimeout(updateTimeoutRef.current);
+        const currentCreation = currentDocRes.data.data?.creation;
+        if (!currentCreation) {
+          setLoadingNeighbors(false);
+          return;
         }
 
-        updateTimeoutRef.current = setTimeout(() => {
-            console.log('DynamicFormForTable: Debounced update to context:', newData);
-            updateRow(editingRowIndex, newData);
-        }, 300); // 300ms debounce
-    }, [editingRowIndex, updateRow]);
+        // 2. Fetch Neighbors relative to current Creation Date
+        // Previous (Newer): Creation > Current (limit 1, Order Ascending)
+        // Next (Older): Creation < Current (limit 1, Order Descending)
 
-    // Cleanup timeout on unmount
-    React.useEffect(() => {
-        return () => {
-            if (updateTimeoutRef.current) {
-                clearTimeout(updateTimeoutRef.current);
-            }
-        };
-    }, []);
+        const [prevRes, nextRes] = await Promise.all([
+          axios.get(`${DEFAULT_API_BASE_URL}/${doctype}`, {
+            params: {
+              fields: JSON.stringify(["name"]),
+              filters: JSON.stringify([["creation", ">", currentCreation]]),
+              order_by: "creation asc",
+              limit_page_length: 1
+            },
+            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            withCredentials: true,
+          }),
+          axios.get(`${DEFAULT_API_BASE_URL}/${doctype}`, {
+            params: {
+              fields: JSON.stringify(["name"]),
+              filters: JSON.stringify([["creation", "<", currentCreation]]),
+              order_by: "creation desc",
+              limit_page_length: 1
+            },
+            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            withCredentials: true,
+          })
+        ]);
 
-    const handleInputChange = async (fieldName: string, value: any, _depth: number = 0) => {
-        console.log('handleInputChange:', { fieldName, value, valueType: typeof value, _depth });
+        setPrevRecord(prevRes.data.data?.[0]?.name || null);
+        setNextRecord(nextRes.data.data?.[0]?.name || null);
 
-        // Handle fetchFrom dependencies
-        const dependentFields = (fields || []).filter(f => f.fetchFrom?.sourceField === fieldName);
+      } catch (err) {
+        console.error("Navigation fetch failed:", err);
+      } finally {
+        setLoadingNeighbors(false);
+      }
+    };
 
-        if (dependentFields.length > 0) {
-            console.log('Found dependent fields:', dependentFields.map(f => f.name));
+    if (apiKey && apiSecret) {
+      fetchNeighbors();
+    } else {
+      setLoadingNeighbors(false);
+    }
+  }, [pathname, apiKey, apiSecret]);
 
-            if (!value || value === "") {
-                console.log('Clearing dependent fields for:', fieldName);
-                // Cancel any pending debounced update to prevent overwriting cleared values
-                if (updateTimeoutRef.current) {
-                    clearTimeout(updateTimeoutRef.current);
-                    updateTimeoutRef.current = null;
-                }
+  // Navigation Redirect
+  const navigateToRecord = (recordName: string) => {
+    const segments = pathname.split("/");
+    segments[segments.length - 1] = recordName;
+    router.push(segments.join("/"));
+  };
 
-                // Build cleared data object
-                const clearedData: Record<string, any> = { [fieldName]: "" };
-                dependentFields.forEach((dep) => {
-                    clearedData[dep.name] = "";
-                });
+  const onFormSubmit = async (data: Record<string, any>) => {
+    try {
+      const result = await onSubmit(data, isDirty);
+      if (result && result.status) {
+        setCurrentStatus(result.status);
+      } else {
+        setCurrentStatus(initialStatus);
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+    }
+  };
 
-                console.log('Cleared data:', clearedData);
+  const handleSubmitDocument = async () => {
+    try {
+      const result = await onSubmitDocument?.();
+      if (result && result.status) {
+        setCurrentStatus(result.status);
+      }
+    } catch (error) {
+      console.error('Submit error:', error);
+    }
+  };
 
-                // Update local state with cleared values
-                setFormData(current => {
-                    const updatedData = { ...current, ...clearedData };
+  const handleCancelDocument = async () => {
+    try {
+      const result = await onCancelDocument?.();
+      if (result && result.status) {
+        setCurrentStatus(result.status);
+      }
+    } catch (error) {
+      console.error('Cancel error:', error);
+    }
+  };
 
-                    // Defer context update to avoid setState during render
-                    if (editingRowIndex !== null) {
-                        requestAnimationFrame(() => {
-                            updateRow(editingRowIndex, updatedData);
-                        });
-                    }
+  const getErrorClass = (fieldName: string) => {
+    return errors[fieldName]
+      ? "!border-red-500 !focus:border-red-500 !focus:ring-red-500 !ring-1 !ring-red-500"
+      : "";
+  };
 
-                    return updatedData;
-                });
+  const handleDuplicate = React.useCallback(() => {
+    const currentData = methods.getValues();
+    const cleanData = sanitizeForDuplication(currentData);
+    sessionStorage.setItem("duplicate_record_data", JSON.stringify(cleanData));
+    toast.info("Duplicating record...");
 
-                return;
-            }
-        }
+    const parts = pathname.split("/");
+    const lastPart = parts[parts.length - 1];
 
-        // Update local state immediately for responsive UI
-        setFormData(current => {
-            const newFormData = { ...current, [fieldName]: value };
+    if (lastPart === "new") {
+      toast.warning("Already on a new record.");
+      return;
+    }
 
-            // Debounced update to context (only for non-dependent fields)
-            if (_depth === 0) {
-                debouncedUpdateContext(newFormData);
-            }
+    parts.pop();
+    if (parts[parts.length - 1] === "edit") {
+      parts.pop();
+    }
+    const newPath = `${parts.join("/")}/new`;
+    router.push(newPath);
+  }, [methods, pathname, router]);
 
-            return newFormData;
-        });
+  const handleDeleteAction = async () => {
+    if (onDelete) {
+      if (window.confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
+        await onDelete();
+      }
+      return;
+    }
 
-        if (dependentFields.length === 0) return;
+    if (deleteConfig) {
+      if (!apiKey || !apiSecret) {
+        toast.error("Authentication required to delete.");
+        return;
+      }
 
-        // Prepare API request data
-        const targetDoctype = dependentFields[0].fetchFrom!.targetDoctype;
-        const targetFields = [...new Set(dependentFields.map(f => f.fetchFrom!.targetField))];
+      const { doctypeName, docName, redirectUrl, baseUrl } = deleteConfig;
 
+      if (window.confirm(`Are you sure you want to delete this ${doctypeName}? This action cannot be undone.`)) {
         try {
-            const response = await axios.get(`${API_BASE_URL}api/method/frappe.client.validate_link`, {
-                params: {
-                    doctype: targetDoctype,
-                    docname: value,
-                    fields: JSON.stringify(targetFields),
-                },
-                headers: {
-                    Authorization: `token ${apiKey}:${apiSecret}`,
-                },
-            });
+          const url = `${baseUrl || DEFAULT_API_BASE_URL}/${doctypeName}/${docName}`;
 
-            const responseData = response.data?.message || {};
-            console.log("validate_link response:", responseData);
+          const response = await axios.delete(url, {
+            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            withCredentials: true,
+          });
 
-            // Batch update all dependent fields
-            const fieldUpdates: Record<string, any> = {};
+          const messages = getApiMessages(response, null, `${doctypeName} deleted successfully`, "Failed to delete record");
 
-            dependentFields.forEach((dep) => {
-                const targetField = dep.fetchFrom!.targetField;
-                const newValue = responseData[targetField] ?? "";
-                fieldUpdates[dep.name] = newValue;
+          if (messages.success) {
+            toast.success(messages.message, { description: messages.description });
+          }
 
-                if (process.env.NODE_ENV === 'development') {
-                    console.log(`Setting ${dep.name} ← ${targetField} = ${newValue}`);
-                }
-            });
+          if (redirectUrl) {
+            router.push(redirectUrl);
+          } else {
+            router.back();
+          }
+        } catch (err: any) {
+          console.error("Delete error:", err);
+          const messages = getApiMessages(null, err, `${doctypeName} deleted successfully`, "Failed to delete record");
+          toast.error(messages.message, { description: messages.description });
+        }
+      }
+    }
+  };
 
-            // Update local state with all dependent fields at once
-            setFormData(current => {
-                const updatedData = { ...current, ...fieldUpdates };
+  const showDeleteOption = !!onDelete || !!deleteConfig;
 
-                // Cancel any pending debounced update to prevent overwriting fetched values
-                if (updateTimeoutRef.current) {
-                    clearTimeout(updateTimeoutRef.current);
-                    updateTimeoutRef.current = null;
-                }
+  React.useEffect(() => {
+    if (isDirty) {
+      setCurrentStatus("Not Saved");
+      console.log("Not Saved");
+    } else {
+      // Reset to initial status when form is no longer dirty
+      setCurrentStatus(initialStatus);
+    }
+  }, [isDirty, initialStatus]);
 
-                // Defer context update to avoid setState during render
-                if (editingRowIndex !== null) {
-                    requestAnimationFrame(() => {
-                        updateRow(editingRowIndex, updatedData);
-                    });
-                }
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Prevent save / duplicate when typing in inputs, textareas, etc.
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement?.tagName === "INPUT" ||
+        activeElement?.tagName === "TEXTAREA" ||
+        activeElement?.tagName === "SELECT" ||
+        (activeElement as HTMLElement)?.isContentEditable;
 
-                return updatedData;
-            });
+      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+        event.preventDefault();
+        const submitButton = formRef.current?.querySelector(
+          'button[type="submit"]'
+        ) as HTMLButtonElement | null;
+        if (submitButton) {
+          submitButton.click();
+        }
+      }
 
-        } catch (error) {
-            console.error("fetchFrom dependency update failed:", {
-                fieldName,
-                value,
+      // Shift + D → Duplicate (only when NOT focused in any input field)
+      if (
+        event.shiftKey &&
+        (event.key === "D" || event.key === "d") && !isInputFocused
+      ) {
+        event.preventDefault();
+        handleDuplicate();
+      }
+
+      // Keyboard Navigation
+      if ((event.ctrlKey || event.metaKey) && event.key === "ArrowLeft" && prevRecord) {
+        event.preventDefault();
+        navigateToRecord(prevRecord);
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === "ArrowRight" && nextRecord) {
+        event.preventDefault();
+        navigateToRecord(nextRecord);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleDuplicate, prevRecord, nextRecord]);
+
+  // ── FETCH FROM FUNCTIONALITY ─────────────────────────────────────────────
+  React.useEffect(() => {
+    if (!apiKey || !apiSecret) return;
+
+    const fieldsWithFetchFrom = tabs
+      .flatMap((tab) => tab.fields)
+      .filter((field) => field.fetchFrom);
+
+    const sourceFieldMap = new Map<string, FormField[]>();
+    fieldsWithFetchFrom.forEach((field) => {
+      if (field.fetchFrom) {
+        const sourceField = field.fetchFrom.sourceField;
+        if (!sourceFieldMap.has(sourceField)) {
+          sourceFieldMap.set(sourceField, []);
+        }
+        sourceFieldMap.get(sourceField)?.push(field);
+      }
+    });
+
+    const previousValues = new Map<string, any>();
+
+    const handleFetchForSource = async (sourceFieldName: string) => {
+      const sourceValue = watch(sourceFieldName);
+      const previousValue = previousValues.get(sourceFieldName);
+
+      if (sourceValue !== previousValue) {
+        previousValues.set(sourceFieldName, sourceValue);
+
+        const dependentFields = sourceFieldMap.get(sourceFieldName) || [];
+
+        if (sourceValue) {
+          // Group fields by target doctype to optimize API calls
+          const fieldsByDoctype = new Map<string, FormField[]>();
+
+          dependentFields.forEach((field) => {
+            if (!field.fetchFrom) return;
+
+            const targetDoctype = field.fetchFrom.targetDoctype;
+            if (!fieldsByDoctype.has(targetDoctype)) {
+              fieldsByDoctype.set(targetDoctype, []);
+            }
+            fieldsByDoctype.get(targetDoctype)?.push(field);
+          });
+
+          // Fetch data for each doctype in a single API call
+          for (const [targetDoctype, fields] of fieldsByDoctype) {
+            try {
+              const targetFields = fields.map(f => f.fetchFrom!.targetField);
+              const fetchedValues = await fetchMultipleFieldValues(
+                sourceValue,
                 targetDoctype,
-                error: error instanceof Error ? error.message : error
-            });
-        }
-    };
+                targetFields,
+                apiKey,
+                apiSecret
+              );
 
-    const handleSubmit = () => {
-        console.log('DynamicFormForTable: Submitting form data:', formData);
+              // Set values for each field
+              fields.forEach((field) => {
+                if (!field.fetchFrom) return;
 
-        // Clear any pending debounced updates
-        if (updateTimeoutRef.current) {
-            clearTimeout(updateTimeoutRef.current);
-        }
-
-        // Final update to context
-        if (editingRowIndex !== null) {
-            updateRow(editingRowIndex, formData);
-        }
-
-        onSubmit(formData);
-    };
-
-    const renderLink = (field: FormField) => {
-        const value = formData[field.name] ?? "";
-
-        // Build dynamic filters for Link fields with parent context support
-        const getValue = (name: string) => {
-            // Handle explicit parent access
-            if (name.startsWith("parent.")) {
-                return parentGetValues.getValues(name.replace("parent.", ""));
-            }
-            // Fallback to local form data
-            return formData[name];
-        };
-        const filtersToPass = buildDynamicFilters(field, getValue);
-        const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
-
-        return (
-            <div className="form-group">
-                <label className="form-label">
-                    {field.label}
-                    {field.required ? " *" : ""}
-                </label>
-                <LinkInput
-                    key={filterKey}
-                    value={value}
-                    onChange={(val) => handleInputChange(field.name, val)}
-                    placeholder={field.placeholder || `Select ${field.label}...`}
-                    linkTarget={field.linkTarget}
-                    className="w-full"
-                    filters={filtersToPass}
-                />
-                <FieldError error={null} />
-                <FieldHelp text={field.description} />
-            </div>
-        );
-    };
-
-    const renderInput = (field: FormField, type: string = "text") => {
-        const value = formData[field.name] ?? "";
-        
-        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-            if (field.type === "Currency" && field.precision) {
-                const val = parseFloat(e.target.value);
-                if (!isNaN(val)) {
-                    handleInputChange(field.name, val.toFixed(field.precision));
+                let fetchedValue = fetchedValues[field.fetchFrom.targetField];
+                if (Array.isArray(fetchedValue)) {
+                  fetchedValue = sanitizeForDuplication(fetchedValue);
                 }
+                if (fetchedValue !== null && fetchedValue !== undefined) {
+                  setValue(field.name, fetchedValue, { shouldDirty: false });
+                }
+              });
+            } catch (e) {
+              console.error(`Failed to fetch fields from ${targetDoctype}:`, e);
+              // Set empty values for all fields in this doctype on error
+              fields.forEach((field) => {
+                if (field.fetchFrom) {
+                  setValue(field.name, "", { shouldDirty: false });
+                }
+              });
             }
-        };
-        
-        return (
-            <div className="form-group">
-                <label htmlFor={field.name} className="form-label">
-                    {field.label}
-                    {field.required ? " *" : ""}
-                </label>
-                <input
-                    id={field.name}
-                    type={type}
-                    className="form-control"
-                    placeholder={field.placeholder}
-                    value={value}
-                    onChange={(e) => handleInputChange(field.name, e.target.value)}
-                    onBlur={handleBlur}
-                    {...(field.step ? { step: field.step } : {})}
-                    {...(field.min !== undefined ? { min: field.min } : {})}
-                    {...(field.max !== undefined ? { max: field.max } : {})}
-                />
-                <FieldError error={null} />
-                <FieldHelp text={field.description} />
-            </div>
-        );
-    };
-
-    const renderTextarea = (field: FormField, rows = 4) => {
-        const value = formData[field.name] ?? "";
-
-        return (
-            <div className="form-group">
-                <label htmlFor={field.name} className="form-label">
-                    {field.label}
-                    {field.required ? " *" : ""}
-                </label>
-                <textarea
-                    id={field.name}
-                    rows={field.rows ?? rows}
-                    className="form-control"
-                    placeholder={field.placeholder}
-                    value={value}
-                    onChange={(e) => handleInputChange(field.name, e.target.value)}
-                />
-                <FieldError error={null} />
-                <FieldHelp text={field.description} />
-            </div>
-        );
-    };
-
-    const renderSelect = (field: FormField) => {
-        const value = formData[field.name] ?? "";
-        const options =
-            typeof field.options === "string"
-                ? field.options.split("\n").map((o) => ({
-                    label: o,
-                    value: o,
-                }))
-                : field.options;
-
-        return (
-            <div className="form-group">
-                <label htmlFor={field.name} className="form-label">
-                    {field.label}
-                    {field.required ? " *" : ""}
-                </label>
-
-                <select
-                    id={field.name}
-                    className="form-control"
-                    value={value}
-                    onChange={(e) => handleInputChange(field.name, e.target.value)}
-                >
-                    <option value="">Select...</option>
-                    {options?.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                        </option>
-                    ))}
-                </select>
-
-                <FieldError error={null} />
-                <FieldHelp text={field.description} />
-            </div>
-        );
-    };
-
-    const renderCheckbox = (field: FormField) => {
-        const checked = !!formData[field.name];
-
-        return (
-            <div className="flex items-center gap-2">
-                <Checkbox
-                    id={field.name}
-                    checked={checked}
-                    onCheckedChange={(val) => handleInputChange(field.name, val)}
-                    className="rounded border border-gray-300 data-[state=checked]:bg-primary"
-                />
-                <label
-                    htmlFor={field.name}
-                    className="text-sm font-medium leading-none cursor-pointer"
-                >
-                    {field.label}
-                </label>
-                {field.description && (
-                    <div className="ml-2">
-                        <FieldHelp text={field.description} />
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const renderDateLike = (
-        field: FormField,
-        type: "date" | "datetime-local" | "time"
-    ) => {
-        const value = formData[field.name] ?? "";
-
-        if (type === "date") {
-            return (
-                <div className="form-group">
-                    <label htmlFor={field.name} className="form-label">
-                        {field.label}
-                        {field.required ? " *" : ""}
-                    </label>
-                    <DatePicker
-                        selected={value ? new Date(value) : null}
-                        onChange={(date: Date | null) => {
-                            handleInputChange(field.name, date ? date.toISOString().split('T')[0] : '');
-                        }}
-                        dateFormat="dd/MM/yyyy"
-                        className="form-control"
-                        placeholderText="DD/MM/YYYY"
-                        showYearDropdown
-                        scrollableYearDropdown
-                        yearDropdownItemNumber={100}
-                    />
-                    <FieldError error={null} />
-                    <FieldHelp text={field.description} />
-                </div>
-            );
+          }
+        } else {
+          // Clear all dependent fields when source value is empty
+          dependentFields.forEach((field) => {
+            setValue(field.name, "", { shouldDirty: false });
+          });
         }
-
-        return (
-            <div className="form-group">
-                <label htmlFor={field.name} className="form-label">
-                    {field.label}
-                    {field.required ? " *" : ""}
-                </label>
-                <input
-                    id={field.name}
-                    type={type}
-                    className="form-control"
-                    value={value}
-                    onChange={(e) => handleInputChange(field.name, e.target.value)}
-                />
-                <FieldError error={null} />
-                <FieldHelp text={field.description} />
-            </div>
-        );
+      }
     };
 
-    const renderColor = (field: FormField) => {
-        const value = formData[field.name] ?? "#000000";
+    const sourceFields = Array.from(sourceFieldMap.keys());
+    sourceFields.forEach((sourceField) => {
+      previousValues.set(sourceField, watch(sourceField));
+    });
 
-        return (
-            <div className="form-group">
-                <label htmlFor={field.name} className="form-label">
-                    {field.label}
-                    {field.required ? " *" : ""}
-                </label>
-                <input
-                    id={field.name}
-                    type="color"
-                    className={cn("form-control h-10 p-1")}
-                    value={value}
-                    onChange={(e) => handleInputChange(field.name, e.target.value)}
-                />
-                <FieldError error={null} />
-                <FieldHelp text={field.description} />
-            </div>
-        );
+    sourceFields.forEach(handleFetchForSource);
+
+    const subscription = watch((value, { name, type }) => {
+      if (name && sourceFieldMap.has(name)) {
+        setTimeout(() => handleFetchForSource(name), 100);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [tabs, watch, setValue, apiKey, apiSecret]);
+
+  const renderHeaderContent = () => {
+    const segments = pathname.split("/").filter(Boolean);
+    const doctypeIndex = segments.indexOf("doctype");
+
+    if (doctypeIndex === -1 || doctypeIndex === 0) {
+      return <h2 style={{ margin: 0 }}>{title}</h2>;
+    }
+
+    const moduleSlug = segments[doctypeIndex - 1];
+    const doctypeSlug = segments[doctypeIndex + 1];
+
+    const moduleName = formatSlug(moduleSlug);
+    const doctypeName = formatSlug(doctypeSlug);
+
+    const moduleUrl = `/${segments.slice(0, doctypeIndex).join("/")}`;
+    const listUrl = `/${segments.slice(0, doctypeIndex + 2).join("/")}`;
+
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xl font-bold">
+        <Link
+          href={moduleUrl}
+          className="text-muted-foreground hover:text-primary hover:underline transition-colors"
+        >
+          {moduleName}
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <Link
+          href={listUrl}
+          className="text-muted-foreground hover:text-primary hover:underline transition-colors"
+        >
+          {doctypeName}
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-foreground font-semibold text-primary">
+          {title}
+        </span>
+      </div>
+    );
+  };
+
+  const renderInput = (field: FormField, type: string = "text") => {
+    const rules = rulesFor(field);
+    const commonProps: any = {
+      id: field.name,
+      className: cn("form-control", getErrorClass(field.name)),
+      placeholder: field.placeholder,
+      ...(field.step ? { step: field.step } : {}),
+      ...(field.min !== undefined ? { min: field.min } : {}),
+      ...(field.max !== undefined ? { max: field.max } : {}),
     };
 
-    const renderDuration = (field: FormField) => {
-        const value = formData[field.name] ?? {};
-
-        return (
-            <div className="form-group">
-                <label className="form-label">
-                    {field.label}
-                    {field.required ? " *" : ""}
-                </label>
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, 1fr)",
-                        gap: 8,
-                    }}
-                >
-                    <input
-                        type="number"
-                        min={0}
-                        className="form-control"
-                        placeholder="Hours"
-                        value={value.hours || ""}
-                        onChange={(e) => handleInputChange(field.name, { ...value, hours: e.target.value })}
-                    />
-                    <input
-                        type="number"
-                        min={0}
-                        className="form-control"
-                        placeholder="Minutes"
-                        value={value.minutes || ""}
-                        onChange={(e) => handleInputChange(field.name, { ...value, minutes: e.target.value })}
-                    />
-                    <input
-                        type="number"
-                        min={0}
-                        className="form-control"
-                        placeholder="Seconds"
-                        value={value.seconds || ""}
-                        onChange={(e) => handleInputChange(field.name, { ...value, seconds: e.target.value })}
-                    />
-                </div>
-                <FieldHelp text={field.description} />
-            </div>
-        );
-    };
-
-    const renderRating = (field: FormField) => {
-        const value = formData[field.name] ?? 0;
-
-        return (
-            <div className="form-group">
-                <label className="form-label">
-                    {field.label}
-                    {field.required ? " *" : ""}
-                </label>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                            key={star}
-                            type="button"
-                            className="btn btn--ghost btn--sm"
-                            onClick={() => handleInputChange(field.name, star)}
-                            style={{
-                                color: star <= value ? '#fbbf24' : '#d1d5db',
-                                padding: '4px 8px',
-                                fontSize: '16px'
-                            }}
-                        >
-                            ★
-                        </button>
-                    ))}
-                </div>
-                <FieldHelp text={field.description} />
-            </div>
-        );
-    };
-
-    const renderReadOnly = (field: FormField) => {
-        const value = formData[field.name];
-        return (
-            <div className="form-group">
-                <label className="form-label">{field.label}</label>
-                <div
-                    style={{
-                        border: "1px solid var(--color-border)",
-                        borderRadius: "var(--radius-base)",
-                        padding: 12,
-                        background: "var(--color-surface-muted, transparent)",
-                    }}
-                >
-                    {field.readOnlyValue ?? value ?? "—"}
-                </div>
-                <FieldHelp text={field.description} />
-            </div>
-        );
-    };
-
-    const renderButton = (field: FormField) => (
-        <div className="form-group">
-            <button
-                type="button"
-                className="btn btn--outline btn--full-width"
-                onClick={() => field.action?.()}
-            >
-                {field.buttonLabel || field.label}
-            </button>
-            <FieldHelp text={field.description} />
-        </div>
+    const valueAsNumber = ["Int", "Float", "Currency", "Percent"].includes(
+      field.type
     );
 
-    const renderAttachment = (field: FormField) => {
-        const value = formData[field.name];
-        const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+    if (field.type === "Currency" && field.precision) {
+      commonProps.step = "0.01";
 
-        const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+      return (
+        <Controller
+          name={field.name}
+          control={control}
+          rules={rules}
+          render={({ field: controllerField }) => (
+            <div className="form-group">
+              <label htmlFor={field.name} className="form-label">
+                {field.label}{field.required ? " *" : ""}
+              </label>
 
-        React.useEffect(() => {
-            let objectUrl: string | null = null;
+              <input
+                type={type}
+                value={controllerField.value ?? ""}
+                onChange={(e) => {
+                  controllerField.onChange(e.target.value);
+                }}
+                onBlur={(e) => {
+                  const val = parseFloat(e.target.value);
+                  if (!isNaN(val)) {
+                    controllerField.onChange(val.toFixed(field.precision));
+                  }
+                }}
+                {...commonProps}
+              />
 
-            if (value instanceof File) {
-                objectUrl = URL.createObjectURL(value);
-                setPreviewUrl(objectUrl);
-            } else if (typeof value === 'string' && (value.startsWith("/files/") || value.startsWith("/private/files/"))) {
-                setPreviewUrl(API_BASE_URL + value);
-            } else {
-                setPreviewUrl(null);
+              <FieldError
+                error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+              />
+              <FieldHelp text={field.description} />
+            </div>
+          )}
+        />
+      );
+    }
+
+
+    return (
+      <div className="form-group">
+        <label htmlFor={field.name} className="form-label">
+          {field.label}
+          {field.required ? " *" : ""}
+        </label>
+        <input
+          type={type}
+          {...reg(field.name, {
+            ...rules,
+            ...(valueAsNumber ? { valueAsNumber: true } : {}),
+          })}
+          {...commonProps}
+        />
+        <FieldError
+          error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+        />
+        <FieldHelp text={field.description} />
+      </div>
+    );
+  };
+
+  const renderTextarea = (field: FormField, rows = 4) => {
+    const rules = rulesFor(field);
+    return (
+      <div className="form-group">
+        <label htmlFor={field.name} className="form-label">
+          {field.label}
+          {field.required ? " *" : ""}
+        </label>
+        <textarea
+          id={field.name}
+          rows={field.rows ?? rows}
+          className={cn("form-control", getErrorClass(field.name))}
+          placeholder={field.placeholder}
+          {...reg(field.name, rules)}
+        />
+        <FieldError
+          error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+        />
+        <FieldHelp text={field.description} />
+      </div>
+    );
+  };
+
+  const renderSelect = (field: FormField) => {
+    const rules = rulesFor(field);
+
+    const options =
+      typeof field.options === "string"
+        ? field.options.split("\n").map((o) => ({
+          label: o,
+          value: o,
+        }))
+        : field.options;
+
+    return (
+      <div className="form-group">
+        <label htmlFor={field.name} className="form-label">
+          {field.label}
+          {field.required ? " *" : ""}
+        </label>
+
+        <select
+          id={field.name}
+          className={cn("form-control", getErrorClass(field.name))}
+          {...reg(field.name, rules)}
+        >
+          <option value="">Select...</option>
+          {options?.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+
+        <FieldError
+          error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+        />
+        <FieldHelp text={field.description} />
+      </div>
+    );
+  };
+
+  const renderCheckbox = (field: FormField) => {
+    return (
+      <Controller
+        name={field.name}
+        control={control}
+        render={({ field: rhfField }) => (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={field.name}
+              checked={!!rhfField.value}
+              onCheckedChange={(val) => rhfField.onChange(val)}
+              className={cn(
+                "rounded border border-gray-300 data-[state=checked]:bg-primary",
+                getErrorClass(field.name)
+              )}
+            />
+            <label
+              htmlFor={field.name}
+              className="text-sm font-medium leading-none cursor-pointer"
+            >
+              {field.label}
+            </label>
+            <FieldError error={(errors as any)[field.name]} />
+            {field.description && (
+              <div className="ml-2">
+                <FieldHelp text={field.description} />
+              </div>
+            )}
+          </div>
+        )}
+      />
+    );
+  };
+
+  const renderColor = (field: FormField) => {
+    const rules = rulesFor(field);
+    return (
+      <div className="form-group">
+        <label htmlFor={field.name} className="form-label">
+          {field.label}
+          {field.required ? " *" : ""}
+        </label>
+        <input
+          id={field.name}
+          type="color"
+          className={cn("form-control h-10 p-1", getErrorClass(field.name))}
+          {...reg(field.name, rules)}
+        />
+        <FieldError
+          error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+        />
+        <FieldHelp text={field.description} />
+      </div>
+    );
+  };
+
+  const renderDateLike = (
+    field: FormField,
+    type: "date" | "datetime-local" | "time"
+  ) => {
+    const rules = field.type === "DateTime" ? {} : rulesFor(field);
+
+    if (type === "date") {
+      return (
+        <Controller
+          name={field.name}
+          control={control}
+          rules={rules}
+          render={({ field: controllerField, fieldState: { error } }) => (
+            <div className="form-group">
+              <label htmlFor={field.name} className="form-label">
+                {field.label}
+                {field.required ? " *" : ""}
+              </label>
+              <div className={error ? "input-error-wrapper" : ""}>
+                <DatePicker
+                  selected={controllerField.value ? new Date(controllerField.value) : null}
+                  onChange={(date: Date | null) => {
+                    controllerField.onChange(date ? date.toISOString().split('T')[0] : '');
+                  }}
+                  dateFormat="dd/MM/yyyy"
+                  className={cn(
+                    "form-control w-full",
+                    error ? "!border-red-500 !focus:border-red-500 !focus:ring-red-500 !ring-1 !ring-red-500" : ""
+                  )}
+                  placeholderText="DD/MM/YYYY"
+                  showYearDropdown
+                  scrollableYearDropdown
+                  yearDropdownItemNumber={100}
+                />
+              </div>
+              {error && (
+                <span className="text-red-500 font-medium text-sm mt-1">{error.message}</span>
+              )}
+              <FieldHelp text={field.description} />
+            </div>
+          )}
+        />
+      );
+    }
+
+    return (
+      <div className="form-group">
+        <label htmlFor={field.name} className="form-label">
+          {field.label}
+          {field.required ? " *" : ""}
+        </label>
+        <input
+          id={field.name}
+          type={type}
+          step="1"
+          className={cn("form-control", getErrorClass(field.name))}
+          {...reg(field.name, rules)}
+        />
+        <FieldError
+          error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+        />
+        <FieldHelp text={field.description} />
+      </div>
+    );
+  };
+
+  const renderDuration = (field: FormField) => {
+    const base = field.name;
+    return (
+      <div className="form-group">
+        <label className="form-label">
+          {field.label}
+          {field.required ? " *" : ""}
+        </label>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 8,
+          }}
+        >
+          <input
+            type="number"
+            min={0}
+            className={cn("form-control", (errors as any)[`${base}.hours`] ? "!border-red-500" : "")}
+            placeholder="Hours"
+            {...reg(
+              `${base}.hours`,
+              rulesFor({ ...field, name: `${base}.hours`, label: "Hours" })
+            )}
+          />
+          <input
+            type="number"
+            min={0}
+            className={cn("form-control", (errors as any)[`${base}.minutes`] ? "!border-red-500" : "")}
+            placeholder="Minutes"
+            {...reg(
+              `${base}.minutes`,
+              rulesFor({ ...field, name: `${base}.minutes`, label: "Minutes" })
+            )}
+          />
+          <input
+            type="number"
+            min={0}
+            className={cn("form-control", (errors as any)[`${base}.seconds`] ? "!border-red-500" : "")}
+            placeholder="Seconds"
+            {...reg(
+              `${base}.seconds`,
+              rulesFor({ ...field, name: `${base}.seconds`, label: "Seconds" })
+            )}
+          />
+        </div>
+        <FieldHelp text={field.description} />
+      </div>
+    );
+  };
+
+  const renderRating = (field: FormField) => {
+    const name = field.name;
+    const current = watch(name) ?? 0;
+    const set = (val: number) =>
+      setValue(name, val, { shouldValidate: true, shouldDirty: true });
+
+    return (
+      <div className="form-group">
+        <label className="form-label">
+          {field.label}
+          {field.required ? " *" : ""}
+        </label>
+        <div style={{ display: "flex", gap: 6 }}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => set(n)}
+              className={cn(
+                "btn btn--outline btn--sm",
+                (errors as any)[field.name] ? "!border-red-500 !text-red-500" : ""
+              )}
+              style={{
+                borderColor: current >= n ? "var(--color-warning)" : undefined,
+                color: current >= n ? "var(--color-warning)" : undefined,
+              }}
+            >
+              Star
+            </button>
+          ))}
+        </div>
+        <FieldError
+          error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+        />
+        <FieldHelp text={field.description} />
+      </div>
+    );
+  };
+
+  const renderReadOnly = (field: FormField) => {
+    const val = watch(field.name);
+    return (
+      <div className="form-group">
+        <label className="form-label">{field.label}</label>
+        <input
+          type="text"
+          className={cn("form-control", getErrorClass(field.name))}
+          value={field.readOnlyValue ?? val ?? ""}
+          readOnly
+          style={{
+            background: "var(--color-surface-muted, transparent)",
+            cursor: "default"
+          }}
+        />
+        <FieldHelp text={field.description} />
+      </div>
+    );
+  };
+
+  const renderButton = (field: FormField) => (
+    <div className="form-group">
+      <button
+        type="button"
+        className="btn btn--outline btn--full-width"
+        onClick={field.action}
+      >
+        {field.buttonLabel || field.label}
+      </button>
+      <FieldHelp text={field.description} />
+    </div>
+  );
+
+  const renderAttachment = (field: FormField) => {
+    const rules = rulesFor(field);
+    const value = watch(field.name);
+
+    if (!fileInputRefs.current[field.name]) {
+      fileInputRefs.current[field.name] = null;
+    }
+
+    const registration = reg(field.name, rules) as any;
+    const { ref: registerRef, ...registerRest } = registration || {};
+
+    return (
+      <div className="form-group flex flex-col gap-2">
+        <label className="form-label font-medium">{field.label}</label>
+
+        <input
+          type="file"
+          className="hidden"
+          {...registerRest}
+          ref={(el: HTMLInputElement | null) => {
+            fileInputRefs.current[field.name] = el;
+            if (typeof registerRef === "function") {
+              registerRef(el);
+            } else if (registerRef) {
+              (
+                registerRef as React.MutableRefObject<HTMLInputElement | null>
+              ).current = el;
             }
-
-            return () => {
-                if (objectUrl) {
-                    URL.revokeObjectURL(objectUrl);
-                }
-            };
-        }, [value]);
-
-        const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+          }}
+          onChange={(e) => {
+            if (registration && registration.onChange) registration.onChange(e);
             const file = e.target.files?.[0];
             if (file) {
-                handleInputChange(field.name, file);
+              setValue(field.name, file);
             }
-        };
+          }}
+        />
 
-        const handleClear = () => {
-            handleInputChange(field.name, null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
-        };
+        {!value && (
+          <Button
+            variant="outline"
+            className={cn("w-fit flex items-center gap-2", getErrorClass(field.name))}
+            onClick={() => fileInputRefs.current[field.name]?.click()}
+          >
+            <Upload size={16} />
+            Upload File
+          </Button>
+        )}
 
-        return (
-            <div className="form-group flex flex-col gap-2">
-                <label className="form-label font-medium">{field.label}</label>
+        {value && (
+          <div className={cn("flex items-center gap-3 bg-muted/40 p-3 rounded-md border", getErrorClass(field.name))}>
+            <span className="text-sm flex-1">{value?.name}</span>
 
-                <div className="flex items-center gap-2">
-                    <input
-                        type="file"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                    />
+            <Button
+              variant="outline"
+              className="h-8 px-2"
+              onClick={() => fileInputRefs.current[field.name]?.click()}
+            >
+              Replace
+            </Button>
 
-                    {!value ? (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="btn--sm"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <Upload size={14} className="mr-2" />
-                            Attach
-                        </Button>
-                    ) : (
-                        <>
-                            <span className="text-sm truncate flex-1" title={typeof value === 'string' ? value : value.name}>
-                                {typeof value === 'string' ? value.split('/').pop() : value.name}
-                            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-red-500"
+              onClick={() => setValue(field.name, null)}
+            >
+              <X size={16} />
+            </Button>
+          </div>
+        )}
 
-                            {previewUrl && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    asChild
-                                >
-                                    <a href={previewUrl} target="_blank" rel="noopener noreferrer" title="Preview">
-                                        <Eye size={16} />
-                                    </a>
-                                </Button>
-                            )}
+        <FieldError error={errors[field.name]} />
+      </div>
+    );
+  };
 
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-500"
-                                onClick={handleClear}
-                                title="Clear"
-                            >
-                                <X size={16} />
-                            </Button>
-                        </>
-                    )}
-                </div>
+  // ── MAIN FIELD SWITCH ─────────────────────────────────────────────────────
+  const renderField = (field: FormField, idx: number) => {
+    const isHidden =
+      field.displayDependsOn &&
+      !evaluateDisplayDependsOn(field.displayDependsOn, watch);
 
-                <FieldHelp text={field.description} />
+    const fieldContent = () => {
+      switch (field.type) {
+        case "Data":
+        case "Small Text":
+        case "Text":
+          return renderInput(field, "text");
+        case "Long Text":
+        case "Markdown Editor":
+          return renderTextarea(field, field.rows ?? 4);
+        case "Code":
+          return renderTextarea(field, field.rows ?? 6);
+        case "Password":
+          return renderInput(field, "password");
+        case "Int":
+          return renderInput(field, "number");
+        case "Float":
+        case "Currency":
+        case "Percent":
+          return renderInput(field, "number");
+        case "Color":
+          return renderColor(field);
+        case "Date":
+          return renderDateLike(field, "date");
+        case "DateTime":
+          return renderDateLike(field, "datetime-local");
+        case "Time":
+          return renderDateLike(field, "time");
+        case "Duration":
+          return renderDuration(field);
+        case "Check":
+          return renderCheckbox(field);
+        case "Select":
+          return renderSelect(field);
+        case "Link": {
+          const getValue = (name: string) => watch(name);
+          const filtersToPass = buildDynamicFilters(field, getValue);
+          const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
+          return (
+            <LinkField
+              key={filterKey}
+              field={field}
+              control={control}
+              error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+              filters={filtersToPass}
+              className={getErrorClass(field.name) ? "!border-red-500 !focus:ring-red-500" : ""}
+            />
+          );
+        }
+        case "Barcode":
+          return renderInput(field, "text");
+        case "Read Only":
+          return renderReadOnly(field);
+        case "Rating":
+          return renderRating(field);
+        case "Table":
+          return (
+            <TableField
+              key={field.name}
+              field={field}
+              control={control}
+              register={reg}
+              errors={errors}
+            />
+          );
+        case "Table MultiSelect": {
+          const getValue = (name: string) => watch(name);
+          const filtersToPass = buildDynamicFilters(field, getValue);
+          const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
+          return (
+            <TableMultiSelect
+              key={filterKey}
+              field={field}
+              control={control}
+              error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+              filters={filtersToPass}
+              className={getErrorClass(field.name) ? "!border-red-500 !focus:ring-red-500" : ""}
+            />
+          );
+        }
+        case "Button":
+          return renderButton(field);
+        case "Attach":
+          return renderAttachment(field);
+
+        case "Custom":
+          return (
+            <div className="form-group">
+              {field.label && <label className="form-label">{field.label}</label>}
+              {field.customElement}
             </div>
-        );
+          );
+
+        case "Section Break":
+          return (
+            <div
+              className="form-group"
+              style={{ gridColumn: "1 / -1", marginTop: 8 }}
+            >
+              <hr style={{ borderColor: "var(--color-border)" }} />
+              <h3 style={{ marginTop: 12 }}>{field.label}</h3>
+              <FieldHelp text={field.description} />
+            </div>
+          );
+        case "Column Break":
+          return <div aria-hidden />;
+        default:
+          return null;
+      }
     };
 
-    const renderField = (field: FormField) => {
-        // ── Layout fields ───────────────────────────────────────
-        if (field.type === "Section Break") {
-            return (
-                <div className="col-span-full mt-6 mb-2">
-                    {field.label && (
-                        <h3 className="text-lg font-medium text-foreground border-b pb-2 mb-4">
-                            {field.label}
-                        </h3>
-                    )}
-                    {field.description && (
-                        <p className="text-sm text-muted-foreground mb-4">
-                            {field.description}
-                        </p>
-                    )}
-                    <hr className="border-border" />
+    const content = fieldContent();
+    if (isHidden && content) {
+      return (
+        <div key={`${field.name}-${idx}`} className="hidden md:col-span-1">
+          {content}
+        </div>
+      );
+    }
+
+    return content;
+  };
+
+  // ── RENDER ───────────────────────────────────────────────────────────────
+  return (
+    <FormProvider {...methods}>
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit(onFormSubmit)}
+        style={{ overflow: "visible" }}
+      >
+        <div className="card" style={{ padding: 16, overflow: "visible" }}>
+          {/* Header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 12,
+            }}
+          >
+            {/* Title Section */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+
+                {/* 🟢 Render Breadcrumbs */}
+                {renderHeaderContent()}
+
+                <span
+                  className={`status-badge text-xs whitespace-nowrap ${currentStatus === "Not Saved" ? "status-badge-danger" : "status-badge-draft"
+                    }`}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    fontSize: "0.75rem",
+                    fontWeight: "500",
+                    backgroundColor: currentStatus === "Not Saved" ? "#fee2e2" : "#dbeafe",
+                    color: currentStatus === "Not Saved" ? "#dc2626" : "#2563eb",
+                    border: `1px solid ${currentStatus === "Not Saved" ? "#fca5a5" : "#93c5fd"}`
+                  }}
+                >
+                  {currentStatus}
+                </span>
+              </div>
+              {description ? (
+                <p
+                  style={{
+                    margin: "4px 0 0 0",
+                    color: "var(--color-text-muted, #6b7280)",
+                  }}
+                >
+                  {description}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Actions Section */}
+            <div className="flex items-center gap-2">
+              {/* Show different buttons based on docstatus and isSubmittable */}
+              {isSubmittable && docstatus === 0 && (
+                <>
+                  {/* Draft: Show Submit button */}
+                  <button
+                    type="button"
+                    className="btn btn--primary"
+                    onClick={handleSubmitDocument}
+                  >
+                    Submit
+                  </button>
+                </>
+              )}
+              {isSubmittable && docstatus === 1 && (
+                <>
+                  {/* Submitted: Show Cancel button */}
+                  <button
+                    type="button"
+                    className="btn btn--danger"
+                    onClick={handleCancelDocument}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+              {isSubmittable && docstatus === 2 && (
+                <>
+                  {/* Cancelled: No actions allowed */}
+                  <span className="text-sm text-gray-500">Document Cancelled</span>
+                </>
+              )}
+
+              {/* Show Save button for draft documents when there are changes */}
+              {docstatus === 0 && isDirty && (
+                <button
+                  type="submit"
+                  className="btn btn--primary"
+                >
+                  Save
+                </button>
+              )}
+
+              {/* 🟢 PREVIOUS / NEXT NAVIGATION GROUP - Always rendered, disabled while loading */}
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-r-none border-r-0 transition-all duration-200 hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5"
+                  onClick={() => prevRecord && navigateToRecord(prevRecord)}
+                  disabled={loadingNeighbors || !prevRecord}
+                  title={loadingNeighbors ? "Loading..." : "Previous Record"}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-l-none transition-all duration-200 hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5"
+                  onClick={() => nextRecord && navigateToRecord(nextRecord)}
+                  disabled={loadingNeighbors || !nextRecord}
+                  title={loadingNeighbors ? "Loading..." : "Next Record"}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Print Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 transition-all duration-200 hover:bg-grey-50 hover:border-grey-600 hover:text-purple-900 hover:shadow-md hover:-translate-y-0.5"
+                title="Print"
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white border border-gray-200 rounded-md shadow-lg">
+                  <DropdownMenuItem
+                    onClick={handleDuplicate}
+                    className="transition-all duration-200 hover:bg-gray-50 hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    <span>Duplicate</span>
+                    <span className="ml-auto text-xs tracking-widest opacity-60">
+                      ⇧D
+                    </span>
+                  </DropdownMenuItem>
+
+                  {/* Delete Action in Dropdown */}
+                  {showDeleteOption && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={handleDeleteAction}
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/10 cursor-pointer transition-all duration-200 hover:bg-red-50 hover:shadow-md hover:-translate-y-0.5"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Delete</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          {/* Tab navigation */}
+          <div
+            className="form-tabs"
+            style={{
+              display: "flex",
+              gap: "4px",
+              borderBottom: "1px solid var(--color-border)",
+              marginBottom: "16px",
+            }}
+          >
+            {tabs.map((tab, i) => (
+              <button
+                key={tab.name}
+                type="button"
+                className={`btn btn--tab ${i === activeTab ? "btn--tab-active" : ""
+                  }`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveTab(i);
+                }}
+              >
+                {tab.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Dynamic grid */}
+          {/* Dynamic grid */}
+          <div
+            className={`grid grid-cols-1 gap-x-6 gap-y-0 ${doctype === "Project" ? "md:grid-cols-4" : "md:grid-cols-3"
+              }`}
+            style={{ overflow: "visible" }}
+          >
+            {activeTabFields.map((field, idx) => {
+              const isWideField =
+                field.type === "Table" ||
+                field.type === "Table MultiSelect" ||
+                field.type === "Section Break" ||
+                field.type === "Custom";
+
+              // Decide column span based on doctype + field type
+              const colSpanClass = isWideField
+                ? doctype === "Project" || doctype === "Expenditure"
+                  ? "md:col-span-4"
+                  : "md:col-span-3"
+                : "md:col-span-1";
+
+              return (
+                <div
+                  key={`${field.name}-${idx}`}
+                  className={colSpanClass}
+                  style={{ overflow: "visible" }}
+                >
+                  {renderField(field, idx)}
                 </div>
-            );
-        }
+              );
+            })}
+          </div>
 
-        if (field.type === "Column Break") {
-            return <div className="col-span-full h-0" aria-hidden="true" />; // just visual break
-        }
-
-        // ── Normal fields ───────────────────────────────────────
-        switch (field.type) {
-            case "Data":
-            case "Small Text":
-            case "Text":
-                return renderInput(field, "text");
-
-            case "Long Text":
-            case "Markdown Editor":
-                return renderTextarea(field, field.rows ?? 4);
-
-            case "Code":
-                return renderTextarea(field, field.rows ?? 6);
-
-            case "Password":
-                return renderInput(field, "password");
-
-            case "Int":
-                return renderInput(field, "number");
-
-            case "Float":
-            case "Currency":
-            case "Percent":
-                return renderInput(field, "number");
-
-            case "Color":
-                return renderColor(field);
-
-            case "Date":
-                return renderDateLike(field, "date");
-
-            case "DateTime":
-                return renderDateLike(field, "datetime-local");
-
-            case "Time":
-                return renderDateLike(field, "time");
-
-            case "Duration":
-                return renderDuration(field);
-
-            case "Check":
-                return renderCheckbox(field);
-
-            case "Select":
-                return renderSelect(field);
-
-            case "Link":
-                return renderLink(field);
-
-            case "Barcode":
-                return renderInput(field, "text");
-
-            case "Read Only":
-                return renderReadOnly(field);
-
-            case "Rating":
-                return renderRating(field);
-
-            case "Button":
-                return renderButton(field);
-
-            case "Attach":
-                return renderAttachment(field);
-
-            // You can also support Custom type if you plan to use it
-            case "Custom":
-                return (
-                    <div className="form-group">
-                        {field.label && <label className="form-label">{field.label}</label>}
-                        {field.customElement}
-                    </div>
-                );
-
-            default:
-                return null; // ← better than fallback to text input
-        }
-    };
-    return (
-        <div className="space-y-4">
-            {/* Optional title */}
-            {title && (
-                <h2 className="text-xl font-semibold">{title}</h2>
+          {/* Footer */}
+          <hr
+            style={{ borderColor: "var(--color-border)", margin: "16px 0" }}
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            {/* Show different buttons based on docstatus and isSubmittable */}
+            {isSubmittable && docstatus === 0 && (
+              <>
+                {/* Draft: Show Save and Submit buttons */}
+                {isDirty && (
+                  <button
+                    type="submit"
+                    className="btn btn--primary"
+                  >
+                    Save
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn--success"
+                  onClick={handleSubmitDocument}
+                >
+                  Submit
+                </button>
+              </>
+            )}
+            {isSubmittable && docstatus === 1 && (
+              <>
+                {/* Submitted: Show Cancel button */}
+                <button
+                  type="button"
+                  className="btn btn--danger"
+                  onClick={handleCancelDocument}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+            {isSubmittable && docstatus === 2 && (
+              <>
+                {/* Cancelled: No actions allowed */}
+                <span className="text-sm text-gray-500 italic">Document is cancelled and cannot be modified</span>
+              </>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
-                {fields?.map((field) => {
-                    // Evaluate visibility
-                    const isVisible = field.displayDependsOn
-                        ? evaluateDisplayDependsOn(field.displayDependsOn, (name) => formData[name])
-                        : true;
+            {/* For non-submittable documents, just show Save button */}
+            {!isSubmittable && docstatus === 0 && isDirty && (
+              <button
+                type="submit"
+                className="btn btn--primary"
+              >
+                Save
+              </button>
+            )}
 
-                    if (!isVisible) return null;
-
-                    return (
-                        <div
-                            key={field.name}
-                            className={
-                                field.type === "Section Break" || field.type === "Column Break"
-                                    ? "col-span-full"
-                                    : ""
-                            }
-                        >
-                            {renderField(field)}
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* Buttons */}
-            <div className="flex justify-end gap-3 mt-8 pt-5 border-t">
-                <Button type="button" variant="outline" onClick={onCancel}>
-                    Cancel
-                </Button>
-                <Button
-                    type="button"
-                    className="bg-primary hover:bg-primary/90"
-                    onClick={handleSubmit}
-                >
-                    Save
-                </Button>
-            </div>
+            {/* Show regular cancel button for navigation */}
+            {onCancel && (!isSubmittable || docstatus !== 2) && (
+              <button
+                type="button"
+                className="btn btn--outline"
+                onClick={onCancel}
+              >
+                Back
+              </button>
+            )}
+          </div>
         </div>
-    );
+      </form>
+    </FormProvider>
+  );
 }
+
+export default DynamicForm;

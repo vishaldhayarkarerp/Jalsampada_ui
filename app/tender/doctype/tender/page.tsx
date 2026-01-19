@@ -3,365 +3,491 @@
 import * as React from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { RecordCard, RecordCardField } from "@/components/RecordCard";
+import {
+  DynamicForm,
+  TabbedLayout,
+  FormField,
+} from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
-
-// 🟢 New Imports for Bulk Delete
-import { useSelection } from "@/hooks/useSelection";
-import { BulkActionBar } from "@/components/BulkActionBar";
-import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { getApiMessages} from "@/lib/utils";
-import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay"; // Assuming you have sonner installed (or use your preferred toast)
-import { Plus } from "lucide-react"; // Optional: if you want to use Lucide icons for consistency
+import { getApiMessages } from "@/lib/utils";
 
-const API_BASE_URL = "http://103.219.1.138:4412"; // 🟢 Changed: Removed /api/resource so RPC helper can append /api/method
+const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
-// ── Debounce Hook ────────────────────────────────────────────────
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = React.useState(value);
+/* -------------------------------------------------
+   1. Project/Tender data
+------------------------------------------------- */
 
-  React.useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
+interface TenderProjectData {
+  name?: string;
+  modified?: string;
+  docstatus?: 0 | 1 | 2;
 
-  return debouncedValue;
+  // Tender Details
+  custom_fiscal_year?: string;
+  custom_lis_name?: string;
+  custom_prapan_suchi?: string;
+  custom_tender_id?: string;
+  custom_work_order?: string;
+  custom_prapan_suchi_amount?: number | string;
+  expected_start_date?: string;
+  custom_tender_amount?: number | string;
+  custom_posting_date?: string;
+  custom_tender_status?: string;
+  custom_expected_date?: string;
+  custom_is_extension?: 0 | 1;
+
+  // Document tables
+  custom_work_order_document?: Array<{
+    name_of_document?: string;
+    attachment?: string | File;
+  }>;
+
+  custom_related_documents?: Array<{
+    name_of_document?: string;
+    attachment?: string | File;
+  }>;
 }
 
-interface Tender {
-  name: string;              // id
-  status?: string;           // from custom_tender_status
-  tender_name?: string;      // from custom_prapan_suchi
+/* -------------------------------------------------
+   2. Helper: upload a file to Frappe
+------------------------------------------------- */
+
+async function uploadFile(
+  file: File,
+  apiKey: string,
+  apiSecret: string,
+  baseUrl: string
+): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file, file.name);
+  formData.append("is_private", "0");
+
+  const resp = await axios.post(`${baseUrl}/api/method/upload_file`, formData, {
+    headers: {
+      Authorization: `token ${apiKey}:${apiSecret}`,
+    },
+    withCredentials: true,
+  });
+
+  if (resp.data && resp.data.message && resp.data.message.file_url) {
+    return resp.data.message.file_url;
+  }
+  throw new Error("Invalid response from file upload");
 }
 
-type ViewMode = "grid" | "list";
+/* -------------------------------------------------
+   3. Page component
+------------------------------------------------- */
 
-export default function DoctypePage() {
+export default function NewTenderPage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-  const doctypeName = "Project"; // 🟢 This is the DocType used for API calls
 
-  const [tenders, setTenders] = React.useState<Tender[]>([]);
-  const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = React.useState("");
+  const doctypeName = "Project";
+  const [isSaving, setIsSaving] = React.useState(false);
 
-  // Filter tenders client-side
-  const filteredTenders = React.useMemo(() => {
-    if (!searchTerm) return tenders;
-    return tenders.filter(tender =>
-      tender.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (tender.tender_name && tender.tender_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (tender.status && tender.status.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [tenders, searchTerm]);
+  /* -------------------------------------------------
+  4. Form tabs configuration
+  ------------------------------------------------- */
+  const formTabs: TabbedLayout[] = React.useMemo(() => {
+    // Details tab (from Fields-1.csv) [file:6]
+    const detailsFields: FormField[] = [
+       {
+        name: "custom_fiscal_year",
+        label: "Fiscal Year",
+        type: "Link",
+        linkTarget: "Fiscal Year",
+      },
+      {
+        name: "custom_lis_name",
+        label: "LIS Name",
+        type: "Link",
+        linkTarget: "Lift Irrigation Scheme",
+      },
+      {
+        name: "custom_prapan_suchi",
+        label: "Name of Work",
+        type: "Link",
+        linkTarget: "Prapan Suchi",
+        searchField: "work_name",
+        filterMapping: [
+          { sourceField: "custom_lis_name", targetField: "lis_name" },
+          { sourceField: "custom_fiscal_year", targetField: "fiscal_year" },
+        ]
+      },
+      {
+        name: "custom_prapan_suchi_amount",
+        label: "Prapan Suchi Amount",
+        type: "Currency",
+        fetchFrom: {
+          sourceField: "custom_prapan_suchi",
+          targetDoctype: "Prapan Suchi",
+          targetField: "amount"
+        }
+      },
+      {
+        name: "custom_stage",
+        label: "Stage/ Sub Scheme",
+        type: "Table MultiSelect",
+        linkTarget: "Stage No",
+        filterMapping: [
+          { sourceField: "lift_irrigation_scheme", targetField: "lis_name" }
+        ],
+        fetchFrom: {
+          sourceField: "custom_prapan_suchi",
+          targetDoctype: "Prapan Suchi",
+          targetField: "stage"
+        }
+      },
+      {
+        name: "custom_tender_id",
+        label: "Tender ID",
+        type: "Data",
+        required: true,
+      },
+      {
+        name: "custom_tender_amount",
+        label: "Tender Amount",
+        type: "Currency",
+        required: true,
+      },
+      
+      {
+        name: "custom_work_order",
+        label: "Work Order",
+        type: "Data",
+      },
+      {
+        name: "expected_start_date",
+        label: "Work Order Date",
+        type: "Date",
+      },
+      {
+        name: "custom_expected_date",
+        label: "Scheduled Completion Date",
+        type: "Date",
+        required: true,
+      },
+      {
+        name: "custom_posting_date",
+        label: "Posting Date",
+        type: "Date",
+      },
+      {
+        name: "custom_tender_status",
+        label: "Status",
+        type: "Select",
+        options: "Ongoing\nCompleted\nCancelled",
+        defaultValue: "Ongoing",
+      },
+      {
+        name: "custom_is_extension",
+        label: "Is Extension",
+        type: "Check",
+      },
+      {
+        name: "custom_tender_extension_history",
+        label: "Tender Extension Details",
+        type: "Table",
+        options: "Extension Period Details",
+        columns: [
+          { name: "extension_count", label: "Extension Count", type: "Data" },
+          { name: "extension_upto", label: "Extension Upto", type: "Date", },
+          { name: "sanction_letter", label: "Sanction Letter", type: "Data" },
+          { name: "attach", label: "Attach", type: "Attach" },
+        ],
+        displayDependsOn: "custom_is_extension==1"
+      },
+      {
+        name: "section_break0",
+        label: "Tender Description",
+        type: "Section Break",
+      },
+      {
+        name: "notes",
+        label: "Description",
+        type: "Long Text",
+      },
+      {
+        name: "custom_tender_extension_history",
+        label: "Contractor Details",
+        type: "Section Break",
+      },
+      {
+        name: "custom_contractor_name",
+        label: "Contractor Name",
+        type: "Link",
+        linkTarget: "Supplier",
+      },
+      {
+        name: "custom_mobile_no",
+        label: "Mobile No",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "phone"
+        }
+      },
+      {
+        name: "custom_supplier_address",
+        label: "Contractor Address",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "address"
+        }
+      },
+      {
+        name: "custom_email_id",
+        label: "Email ID",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "email_address"
+        },
+      },
 
-  // 🟢 1. Initialize Selection Hook
-  const { 
-    selectedIds, 
-    handleSelectOne, 
-    handleSelectAll, 
-    clearSelection, 
-    isAllSelected 
-  } = useSelection(filteredTenders, "name");
 
-  const [isDeleting, setIsDeleting] = React.useState(false);
+    ];
 
-  // ── Fetch Data ────────────────────────────────────────────────
-  const fetchTenders = React.useCallback(async () => {
-    if (!isInitialized) return;
-    if (!isAuthenticated || !apiKey || !apiSecret) {
-      setLoading(false);
+    // Documents Attachment tab (from Fields-1.csv – Tab Break) [file:6]
+    const documentsFields: FormField[] = [
+      {
+        name: "custom_work_order_document",
+        label: "Work Order Documents",
+        type: "Table",
+        columns: [
+          {
+            name: "name_of_document",
+            label: "Name of Document",
+            type: "Text",
+          },
+          {
+            name: "attachment",
+            label: "Attachment",
+            type: "Attach",
+          },
+        ],
+      },
+      {
+        name: "custom_related_documents",
+        label: "Related Documents",
+        type: "Table",
+        columns: [
+          {
+            name: "name_of_document",
+            label: "Name of Document",
+            type: "Text",
+          },
+          {
+            name: "attachment",
+            label: "Attachment",
+            type: "Attach",
+          },
+        ],
+      },
+    ];
+
+    return [
+      {
+        name: "Details",
+        fields: detailsFields,
+      },
+      {
+        name: "Documents Attachment",
+        fields: documentsFields,
+      },
+    ];
+  }, []);
+
+  /* -------------------------------------------------
+  5. SUBMIT – with file upload for child tables
+  ------------------------------------------------- */
+  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+    if (!isDirty) {
+      toast.info("No changes to save.");
       return;
     }
 
+    if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
+      toast.error("Authentication required. Please log in.");
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      setLoading(true);
-      setError(null);
+      // Deep copy form data to payload
+      const payload: any = JSON.parse(JSON.stringify(data));
+      const baseUrl = API_BASE_URL.replace("/api/resource", "");
 
-      const params = {
-        fields: JSON.stringify([
-          "name",
-          "custom_tender_status",
-          "custom_prapan_suchi",
-        ]),
-        limit_page_length: 20,
-        order_by: "creation desc",
-      };
+      // Upload files for custom_work_order_document
+      if (payload.custom_work_order_document) {
+        toast.info("Uploading work order documents...");
+        await Promise.all(
+          payload.custom_work_order_document.map(
+            async (row: any, index: number) => {
+              const original =
+                data.custom_work_order_document?.[index]?.attachment;
+              if (original instanceof File) {
+                const fileUrl = await uploadFile(
+                  original,
+                  apiKey,
+                  apiSecret,
+                  baseUrl
+                );
+                row.attachment = fileUrl;
+              }
+            }
+          )
+        );
+      }
 
-      // 🟢 Note: Added /api/resource here since we changed API_BASE_URL to root
-      const resp = await axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
-        params,
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-        },
-        withCredentials: true,
+      // Upload files for custom_related_documents
+      if (payload.custom_related_documents) {
+        toast.info("Uploading related documents...");
+        await Promise.all(
+          payload.custom_related_documents.map(
+            async (row: any, index: number) => {
+              const original =
+                data.custom_related_documents?.[index]?.attachment;
+              if (original instanceof File) {
+                const fileUrl = await uploadFile(
+                  original,
+                  apiKey,
+                  apiSecret,
+                  baseUrl
+                );
+                row.attachment = fileUrl;
+              }
+            }
+          )
+        );
+      }
+
+      // Clean non-data fields (Section Break, Column Break, etc.)
+      const nonDataFields = new Set<string>();
+      formTabs.forEach((tab) => {
+        tab.fields.forEach((field) => {
+          if (
+            field.type === "Section Break" ||
+            field.type === "Column Break" ||
+            field.type === "Button" ||
+            field.type === "Read Only"
+          ) {
+            nonDataFields.add(field.name);
+          }
+        });
       });
 
-      const raw = resp.data?.data ?? [];
-      const mapped: Tender[] = raw.map((r: any) => ({
-        name: r.name,
-        status: r.custom_tender_status ?? "",
-        tender_name: r.custom_prapan_suchi ?? "",
-      }));
-
-      setTenders(mapped);
-    } catch (err: any) {
-      console.error("API error", err);
-      setError(
-        err.response?.status === 403
-          ? "Unauthorized - check API key/secret"
-          : `Failed to fetch ${doctypeName}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [isInitialized, isAuthenticated, apiKey, apiSecret, doctypeName]);
-
-  React.useEffect(() => {
-    fetchTenders();
-  }, [fetchTenders]);
-
-  // 🟢 2. Handle Bulk Delete Action
-  const handleBulkDelete = async () => {
-    const count = selectedIds.size;
-    if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      // Execute the RPC call
-      const response = await bulkDeleteRPC(
-        doctypeName,
-        Array.from(selectedIds),
-        API_BASE_URL,
-        apiKey!,
-        apiSecret!
-      );
-
-      // Debug: Log the actual response to understand its structure
-      console.log("Bulk Delete Response:", response);
-
-      // Check if the response contains server messages indicating errors
-      // For bulk delete, error messages are directly in response._server_messages
-      if (response._server_messages) {
-        // Parse the server messages to check for errors
-        const serverMessages = JSON.parse(response._server_messages);
-        const errorMessages = serverMessages.map((msgStr: string) => {
-          const parsed = JSON.parse(msgStr);
-          return parsed.message;
-        });
-
-        if (errorMessages.length > 0) {
-          // Show error messages from server
-          toast.error("Failed to delete records", { 
-            description: <FrappeErrorDisplay messages={errorMessages} />,
-            duration: Infinity
-          });
-          return; // Don't proceed with success handling
+      const finalPayload: any = {};
+      for (const key in payload) {
+        if (!nonDataFields.has(key)) {
+          finalPayload[key] = payload[key];
         }
       }
 
-      // If no error messages, proceed with success
-      toast.success(`Successfully deleted ${count} records.`);
-      
-      // Clear selection and refresh list
-      clearSelection();
-      fetchTenders();
+      // Convert checkboxes to 0/1
+      const boolFields = ["custom_is_extension"];
+      boolFields.forEach((f) => {
+        if (f in finalPayload) {
+          finalPayload[f] = finalPayload[f] ? 1 : 0;
+        }
+      });
+
+      // Ensure posting date is a valid date or null (avoid "Today") [web:1][file:6]
+      if (finalPayload.custom_posting_date === "Today") {
+        finalPayload.custom_posting_date = new Date()
+          .toISOString()
+          .slice(0, 10);
+      }
+
+      // Numeric conversions
+      const numericFields = [
+        "custom_prapan_suchi_amount",
+        "custom_tender_amount"
+      ];
+      numericFields.forEach((f) => {
+        if (f in finalPayload) {
+          finalPayload[f] = Number(finalPayload[f]) || 0;
+        }
+      });
+
+      console.log("Sending this PAYLOAD to Frappe:", finalPayload);
+
+      // Send to Frappe
+      const response = await axios.post(`${API_BASE_URL}/${doctypeName}`, finalPayload, {
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      });
+
+      const messages = getApiMessages(response, null, "Tender created successfully!", "Failed to create Tender");
+      if (messages.success) {
+        toast.success(messages.message, { description: messages.description });
+      } else {
+        toast.error(messages.message, { description: messages.description });
+      }
+
+      // Navigate to the newly created record using name
+      const docName = response.data.data.name;
+      if (docName) {
+        router.push(`/tender/doctype/tender/${encodeURIComponent(docName)}`);
+      } else {
+        router.push(`/tender/doctype/tender`);
+      }
 
     } catch (err: any) {
-      console.error("Bulk Delete Error:", err);
-      
+      console.error("Create error:", err);
+
+      const serverData = err.response?.data;
+      const serverMessage = serverData?.exception || serverData?.message || err.message || "Unknown error";
+
       const messages = getApiMessages(
         null,
         err,
-        "Records deleted successfully",
-        "Failed to delete records"
+        "Tender created successfully!",
+        "Failed to create Tender",
+        (error) => {
+          // Custom handler for create errors
+          if (error.response?.status === 404) return "Record not found";
+          if (error.response?.status === 403) return "Unauthorized";
+          if (error.response?.status === 417) return "Expectation Failed";
+          return "Failed to create Tender";
+        }
       );
-      
-      toast.error(messages.message, { description: messages.description, duration: Infinity });
+
+      if (!messages.success) {
+        toast.error(messages.message, { description: messages.description });
+      }
     } finally {
-      setIsDeleting(false);
+      setIsSaving(false);
     }
   };
 
-  const title = "Tender";
+  const handleCancel = () => router.back();
 
-  const handleCardClick = (id: string) => {
-    router.push(`/tender/doctype/tender/${encodeURIComponent(id)}`);
-  };
-
-  const getFieldsForTender = (t: Tender): RecordCardField[] => {
-    const fields: RecordCardField[] = [];
-    fields.push({ label: "ID", value: t.name });
-    if (t.status) fields.push({ label: "Status", value: t.status });
-    if (t.tender_name) fields.push({ label: "Prapan Suchi", value: t.tender_name });
-    return fields;
-  };
-
-  // 🟢 3. Modified Grid View (Standard - No Selection for now)
-  const renderGridView = () => (
-    <div className="equipment-grid">
-      {filteredTenders.length ? (
-        filteredTenders.map((t) => (
-          <RecordCard
-            key={t.name}
-            title={t.tender_name || t.name}
-            subtitle={t.status}
-            fields={getFieldsForTender(t)}
-            onClick={() => handleCardClick(t.name)}
-          />
-        ))
-      ) : (
-        <p style={{ color: "var(--color-text-secondary)" }}>No records found.</p>
-      )}
-    </div>
-  );
-
-  // 🟢 4. Modified List View (Added Checkboxes)
-  const renderListView = () => (
-    <div className="stock-table-container">
-      <table className="stock-table">
-        <thead>
-          <tr>
-            {/* Header Checkbox */}
-            <th style={{ width: "40px", textAlign: "center" }}>
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={handleSelectAll}
-                style={{ cursor: "pointer", width: "16px", height: "16px" }}
-              />
-            </th>
-            <th>ID</th>
-            <th>Prapan Suchi</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredTenders.length ? (
-            filteredTenders.map((t) => {
-              const isSelected = selectedIds.has(t.name);
-              return (
-                <tr
-                  key={t.name}
-                  onClick={() => handleCardClick(t.name)}
-                  style={{ 
-                    cursor: "pointer",
-                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined 
-                  }}
-                >
-                  {/* Row Checkbox */}
-                  <td 
-                    style={{ textAlign: "center" }} 
-                    onClick={(e) => e.stopPropagation()} // 🔴 Prevent navigation
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleSelectOne(t.name)}
-                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
-                    />
-                  </td>
-                  <td>{t.name}</td>
-                  <td>{t.tender_name}</td>
-                  <td>{t.status}</td>
-                </tr>
-              );
-            })
-          ) : (
-            <tr>
-              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
-                No records found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  if (loading && !tenders.length) {
-    return (
-      <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
-        <p>Loading {title}...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
-        <p>{error}</p>
-      </div>
-    );
-  }
-
+  /* -------------------------------------------------
+  6. RENDER FORM
+  ------------------------------------------------- */
   return (
-    <div className="module active">
-      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2>{title}</h2>
-          <p>Manage tender records</p>
-        </div>
-        
-        {/* 🟢 5. Switch between "Add New" and "Bulk Actions" */}
-        {selectedIds.size > 0 ? (
-          <BulkActionBar
-            selectedCount={selectedIds.size}
-            onClear={clearSelection}
-            onDelete={handleBulkDelete}
-            isDeleting={isDeleting}
-          />
-        ) : (
-          <button 
-            className="btn btn--primary"
-            onClick={() => router.push('/tender/doctype/tender/new')}
-          >
-            <i className="fas fa-plus"></i> Add {title}
-          </button>
-        )}
-      </div>
+    <DynamicForm
+      tabs={formTabs}
+      onSubmit={handleSubmit}
+      onCancel={handleCancel}
+      title={`New ${doctypeName}`}
+      description="Create a new tender/project"
+      submitLabel={isSaving ? "Saving..." : "New Tender"}
+      cancelLabel="Cancel"
+      doctype={doctypeName}
 
-      <div
-        className="search-filter-section"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: "1rem",
-        }}
-      >
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            placeholder={`Search ${title}...`}
-            className="form-control"
-            style={{ width: 240 }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="view-switcher">
-          <button
-            className="btn btn--outline btn--sm"
-            onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
-            aria-label="Toggle view"
-            title={view === "grid" ? "List view" : "Grid view"}
-          >
-            {view === "grid" ? <i className="fas fa-list" /> : <i className="fas fa-th-large" />}
-          </button>
-        </div>
-      </div>
-
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
-        {view === "grid" ? renderGridView() : renderListView()}
-      </div>
-    </div>
+    />
   );
 }
