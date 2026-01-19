@@ -363,6 +363,24 @@ export default function NewLogbookPage() {
             defaultValue: getValue("specify"),
             displayDependsOn: "pump_stop_reason == 'Other'" 
           },
+
+          {
+            name: "lis_name",
+            label: "LIS Name",
+            type: "Link",
+            linkTarget: "Lift Irrigation Scheme",
+            defaultValue: getValue("lis_name"),
+          },
+          {
+            name: "stage",
+            label: "Stage",
+            type: "Link",
+            linkTarget: "Stage No",
+            defaultValue: getValue("stage"),
+            filterMapping: [
+              { sourceField: "lis_name", targetField: "lis_name" }
+            ],
+          },
           {
             name: "operator_id_1",
             label: "Operator ID",
@@ -416,6 +434,13 @@ export default function NewLogbookPage() {
               { name: "pump", label: "Pump", type: "Link", linkTarget: "Asset" },
               { name: "pump_no", label: "Pump No", type: "Int" },
             ],
+          },
+          {
+            name: "pump_stop_reason",
+            label: "Pump Stop Reason",
+            type: "Link",
+            linkTarget: "Pump Stop Reasons",
+            defaultValue: getValue("pump_stop_reason"),
           },
         ],
       },
