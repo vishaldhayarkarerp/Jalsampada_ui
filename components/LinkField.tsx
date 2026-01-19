@@ -17,7 +17,8 @@ interface LinkFieldOption {
 
 interface LinkFieldProps {
   control: any;
-  field: FormField & { defaultValue?: string; linkTarget?: string };
+  // Support custom searchField
+  field: FormField & { defaultValue?: string; linkTarget?: string; searchField?: string };
   error?: any;
   className?: string;
   filters?: Record<string, any>;
@@ -36,8 +37,14 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
+  // 🟢 NEW: Store the full selected option object (ID + Label)
+  // This allows us to display the Label even though the Form stores the ID.
+  const selectedOptionRef = React.useRef<LinkFieldOption | null>(null);
 
-  // --- API Search Logic (Same as New Code) ---
+  const searchKey = field.searchField || "name";
+
+  // --- API Search Logic ---
   const performSearch = React.useCallback(async (term: string) => {
     if (!isAuthenticated || !apiKey || !field.linkTarget) return;
 
@@ -45,7 +52,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
     try {
       const searchFilters: any[] = [];
       if (term?.trim()) {
-        searchFilters.push([field.linkTarget, "name", "like", `%${term.trim()}%`]);
+        searchFilters.push([field.linkTarget, searchKey, "like", `%${term.trim()}%`]);
       }
 
       Object.entries(filters).forEach(([key, value]) => {
@@ -56,33 +63,39 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
 
       const query = getQuery ? getQuery(filters) : JSON.stringify(searchFilters);
 
+      const fieldsToFetch = ["name"];
+      if (searchKey !== "name") fieldsToFetch.push(searchKey);
+
       const resp = await axios.get(`${API_BASE_URL}/${field.linkTarget}`, {
         params: {
-          fields: JSON.stringify(["name"]),
+          fields: JSON.stringify(fieldsToFetch),
           limit_page_length: "20",
-          order_by: "name asc",
+          order_by: `${searchKey} asc`,
           filters: query
         },
         headers: { Authorization: `token ${apiKey}:${apiSecret}` },
         withCredentials: true,
       });
 
-      const raw = (resp.data.data || []) as { name: string }[];
-      setOptions(raw.map((r) => ({ value: r.name, label: r.name })));
+      const raw = (resp.data.data || []) as any[];
+      setOptions(raw.map((r) => ({ 
+        value: r.name, 
+        label: r[searchKey] || r.name 
+      })));
+
     } catch (e) {
       console.error("LinkField search error:", e);
       setOptions([]);
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, apiKey, apiSecret, field.linkTarget, filters, getQuery]);
+  }, [isAuthenticated, apiKey, apiSecret, field.linkTarget, filters, getQuery, searchKey]);
 
   const debouncedSearch = React.useCallback((term: string) => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => performSearch(term), 300);
   }, [performSearch]);
 
-  // Update dropdown position when opened
   const updateDropdownPosition = React.useCallback(() => {
     if (inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
@@ -94,7 +107,6 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
     }
   }, []);
 
-  // Close dropdown on click outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
@@ -106,17 +118,11 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Update position on scroll/resize when dropdown is open
   React.useEffect(() => {
     if (!isOpen) return;
-
-    const handlePositionUpdate = () => {
-      updateDropdownPosition();
-    };
-
+    const handlePositionUpdate = () => updateDropdownPosition();
     window.addEventListener('scroll', handlePositionUpdate, true);
     window.addEventListener('resize', handlePositionUpdate);
-
     return () => {
       window.removeEventListener('scroll', handlePositionUpdate, true);
       window.removeEventListener('resize', handlePositionUpdate);
@@ -124,10 +130,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
   }, [isOpen, updateDropdownPosition]);
 
   return (
-    // STYLING: Restored "form-group" instead of Tailwind flex col
     <div className={`form-group ${className || ""}`} style={{ overflow: 'visible' }}>
-
-      {/* STYLING: Restored "form-label" */}
       <label htmlFor={field.name} className="form-label">
         {field.label} {field.required && <span className="text-red-500">*</span>}
       </label>
@@ -139,10 +142,25 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
         rules={{ required: field.required ? `${field.label} is required` : false }}
         render={({ field: { onChange, onBlur, value } }) => {
 
-          // LOGIC: New Code Smart Sync (Prevents typing glitches)
+          // 🟢 FIXED SYNC LOGIC:
+          // Instead of blindly setting searchTerm = value (which is ID),
+          // check if we have a selected option that matches this ID.
           React.useEffect(() => {
-            if (value !== searchTerm && !isOpen) {
-              setSearchTerm(value || "");
+            if (!isOpen) {
+               // Case 1: Value matches our cached selection -> Show Label
+               if (selectedOptionRef.current && selectedOptionRef.current.value === value) {
+                  if (searchTerm !== selectedOptionRef.current.label) {
+                     setSearchTerm(selectedOptionRef.current.label);
+                  }
+               } 
+               // Case 2: Value exists but no cache (e.g. initial load) -> Show ID (or fetch label if needed)
+               else if (value && value !== searchTerm) {
+                  setSearchTerm(value);
+               }
+               // Case 3: Value cleared -> Clear search
+               else if (!value && searchTerm) {
+                  setSearchTerm("");
+               }
             }
           }, [value, isOpen]);
 
@@ -152,15 +170,21 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
             setIsOpen(true);
             updateDropdownPosition();
             debouncedSearch(newValue);
-
-            // Logic: Clear value if typing (Frappe style)
-            const exactMatch = options.find(opt => opt.label === newValue);
-            onChange(exactMatch ? exactMatch.value : "");
+            
+            // If user clears input, clear the selection cache
+            if (!newValue) selectedOptionRef.current = null;
           };
 
           const handleOptionSelect = (option: LinkFieldOption) => {
+            // 1. Update Visuals (Display Label)
             setSearchTerm(option.label);
+            
+            // 2. Cache the selection
+            selectedOptionRef.current = option;
+            
+            // 3. Update Data (Store ID)
             onChange(option.value);
+            
             setIsOpen(false);
           };
 
@@ -173,7 +197,6 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
           return (
             <div className="relative" ref={dropdownRef} style={{ overflow: 'visible' }}>
               <div className="relative">
-                {/* STYLING: Restored "form-control" and added "pr-10" for icon space */}
                 <input
                   ref={inputRef}
                   type="text"
@@ -187,10 +210,11 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                   onFocus={handleInputFocus}
                   onBlur={() => {
                     onBlur();
-                    // LOGIC: New Code Validation (Revert if invalid)
                     setTimeout(() => {
-                      if (!options.find(o => o.label === searchTerm) && searchTerm !== value) {
-                        setSearchTerm(value || "");
+                      // Validation: If typed text doesn't match an option, revert to previous value
+                      if (!options.find(o => o.label === searchTerm) && searchTerm !== (selectedOptionRef.current?.label || value)) {
+                        // Revert to valid label or value
+                        setSearchTerm(selectedOptionRef.current?.label || value || "");
                       }
                       setIsOpen(false);
                     }, 200);
@@ -198,7 +222,6 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                   disabled={!isAuthenticated || !isInitialized}
                 />
 
-                {/* ICONS: Kept from New Code for functionality, but positioned to fit form-control */}
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -208,6 +231,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                       onClick={() => {
                         setSearchTerm("");
                         onChange("");
+                        selectedOptionRef.current = null;
                         setOptions([]);
                       }}
                     />
@@ -217,7 +241,6 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                 </div>
               </div>
 
-              {/* DROPDOWN: Portal-based dropdown that appears outside container */}
               {isOpen && createPortal(
                 <div
                   ref={dropdownRef}
@@ -232,8 +255,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                     options.map((option) => (
                       <div
                         key={option.value}
-                        // STYLING: Simplified hover states consistent with standard dropdowns
-                        className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50  transition-colors"
+                        className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors"
                         onMouseDown={(e) => {
                           e.preventDefault();
                           handleOptionSelect(option);
@@ -254,8 +276,6 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
           );
         }}
       />
-
-      {/* STYLING: Restored simple error text style */}
       {error && <div className="text-red-500 text-xs mt-1">{error.message}</div>}
     </div>
   );
