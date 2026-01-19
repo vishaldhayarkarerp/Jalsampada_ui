@@ -38,8 +38,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
   const inputRef = React.useRef<HTMLInputElement>(null);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   
-  // 🟢 NEW: Store the full selected option object (ID + Label)
-  // This allows us to display the Label even though the Form stores the ID.
+  // Store the full selected option object (ID + Label)
   const selectedOptionRef = React.useRef<LinkFieldOption | null>(null);
 
   const searchKey = field.searchField || "name";
@@ -142,22 +141,57 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
         rules={{ required: field.required ? `${field.label} is required` : false }}
         render={({ field: { onChange, onBlur, value } }) => {
 
-          // 🟢 FIXED SYNC LOGIC:
-          // Instead of blindly setting searchTerm = value (which is ID),
-          // check if we have a selected option that matches this ID.
+
+          React.useEffect(() => {
+             if (value && !selectedOptionRef.current && (!searchTerm || searchTerm === value)) {
+                 // Temporarily show ID to prevent empty field
+                 if (!searchTerm) setSearchTerm(value);
+
+                 const fetchLabel = async () => {
+                    if (!isAuthenticated || !apiKey) return;
+                    try {
+                        const fieldsToFetch = ["name"];
+                        if (searchKey !== "name") fieldsToFetch.push(searchKey);
+
+                        const resp = await axios.get(`${API_BASE_URL}/${field.linkTarget}`, {
+                            params: {
+                                filters: JSON.stringify([["name", "=", value]]),
+                                fields: JSON.stringify(fieldsToFetch)
+                            },
+                            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+                        });
+
+                        if (resp.data?.data?.[0]) {
+                            const row = resp.data.data[0];
+                            const label = row[searchKey] || row.name;
+                            
+                            // Update cache so it sticks
+                            selectedOptionRef.current = { value: row.name, label: label };
+                            // Update display
+                            setSearchTerm(label);
+                        }
+                    } catch (e) {
+                        console.error("Autofetch label failed", e);
+                    }
+                 };
+                 fetchLabel();
+             }
+          }, []); // Run once on mount (per key change)
+
+          // 🟢 2. SYNC LOGIC (Keeps Label displayed)
           React.useEffect(() => {
             if (!isOpen) {
-               // Case 1: Value matches our cached selection -> Show Label
+               // Case A: We have a cached label for this value -> Show Label
                if (selectedOptionRef.current && selectedOptionRef.current.value === value) {
                   if (searchTerm !== selectedOptionRef.current.label) {
                      setSearchTerm(selectedOptionRef.current.label);
                   }
                } 
-               // Case 2: Value exists but no cache (e.g. initial load) -> Show ID (or fetch label if needed)
-               else if (value && value !== searchTerm) {
+               // Case B: No cache yet (Fetch hasn't finished) -> Show ID
+               else if (value && value !== searchTerm && !selectedOptionRef.current) {
                   setSearchTerm(value);
                }
-               // Case 3: Value cleared -> Clear search
+               // Case C: Value cleared -> Clear search
                else if (!value && searchTerm) {
                   setSearchTerm("");
                }
@@ -211,10 +245,8 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                   onBlur={() => {
                     onBlur();
                     setTimeout(() => {
-                      // Validation: If typed text doesn't match an option, revert to previous value
                       if (!options.find(o => o.label === searchTerm) && searchTerm !== (selectedOptionRef.current?.label || value)) {
-                        // Revert to valid label or value
-                        setSearchTerm(selectedOptionRef.current?.label || value || "");
+                         setSearchTerm(selectedOptionRef.current?.label || value || "");
                       }
                       setIsOpen(false);
                     }, 200);
