@@ -135,17 +135,42 @@ export default function NewLogbookPage() {
             type: "Check",
             defaultValue: getValue("stop_pump", 0),
           },
+
+          {
+            name: "entry_date",
+            label: "Entry Date",
+            type: "Date",
+            defaultValue: getValue("entry_date"),
+          },
           {
             name: "stop_datetime",
             label: "Stop Datetime",
             type: "DateTime",
             defaultValue: getValue("stop_datetime"),
           },
+
+          {
+            name: "lis_name",
+            label: "LIS Name",
+            type: "Link",
+            linkTarget: "Lift Irrigation Scheme",
+            defaultValue: getValue("lis_name"),
+          },
+          {
+            name: "stage",
+            label: "Stage",
+            type: "Link",
+            linkTarget: "Stage No",
+            defaultValue: getValue("stage"),
+            filterMapping: [
+              { sourceField: "lis_name", targetField: "lis_name" }
+            ],
+          },
           {
             name: "operator_id_1",
             label: "Operator ID",
             type: "Link",
-            linkTarget: "Employee",
+            linkTarget: "User",
             defaultValue: getValue("operator_id_1"),
           },
           {
@@ -154,12 +179,16 @@ export default function NewLogbookPage() {
             type: "Data",
             defaultValue: getValue("operator_name_1"),
           },
+
           {
-            name: "pump_stop_reason",
-            label: "Pump Stop Reason",
-            type: "Link",
-            linkTarget: "Pump Stop Reasons",
-            defaultValue: getValue("pump_stop_reason"),
+            name: "status",
+            label: "Status",
+            type: "Select",
+            options: [
+              { label: "Running", value: "Running" },
+              { label: "Stopped", value: "Stopped" },
+            ],
+            defaultValue: getValue("status")
           },
           {
             name: "primary_list",
@@ -182,6 +211,13 @@ export default function NewLogbookPage() {
               { name: "pump", label: "Pump", type: "Link", linkTarget: "Asset" },
               { name: "pump_no", label: "Pump No", type: "Int" },
             ],
+          },
+          {
+            name: "pump_stop_reason",
+            label: "Pump Stop Reason",
+            type: "Link",
+            linkTarget: "Pump Stop Reasons",
+            defaultValue: getValue("pump_stop_reason"),
           },
         ],
       },
