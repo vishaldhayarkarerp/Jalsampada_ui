@@ -12,7 +12,6 @@ import {
 } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-// 🟢 1. Removed 'List' icon
 import { Upload, X, MoreVertical, Copy, Trash2, ChevronLeft, ChevronRight, Printer } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
@@ -1406,10 +1405,12 @@ export function DynamicForm({
         case "Link": {
           const getValue = (name: string) => watch(name);
           const filtersToPass = buildDynamicFilters(field, getValue);
-          const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
+          // 🟢 FIXED: Use stable key (field.name) instead of including filters in key.
+          // This prevents the component from unmounting when filters change, 
+          // keeping the selectedOptionRef valid.
           return (
             <LinkField
-              key={filterKey}
+              key={field.name}
               field={field}
               control={control}
               error={(errors as FieldErrors<Record<string, any>>)[field.name]}
@@ -1437,10 +1438,10 @@ export function DynamicForm({
         case "Table MultiSelect": {
           const getValue = (name: string) => watch(name);
           const filtersToPass = buildDynamicFilters(field, getValue);
-          const filterKey = `${field.name}-${JSON.stringify(filtersToPass)}`;
+          // 🟢 FIXED: Use stable key here as well for consistency
           return (
             <TableMultiSelect
-              key={filterKey}
+              key={field.name}
               field={field}
               control={control}
               error={(errors as FieldErrors<Record<string, any>>)[field.name]}
