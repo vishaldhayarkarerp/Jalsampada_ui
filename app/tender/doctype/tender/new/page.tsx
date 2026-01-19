@@ -110,6 +110,7 @@ export default function NewTenderPage() {
         label: "Name of Work",
         type: "Link",
         linkTarget: "Prapan Suchi",
+        searchField: "work_name",
         filterMapping: [
           { sourceField: "custom_lis_name", targetField: "lis_name" },
           { sourceField: "custom_fiscal_year", targetField: "fiscal_year" },

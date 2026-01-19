@@ -78,6 +78,7 @@ export interface FormField {
   label: string;
   type: FieldType;
   linkTarget?: string;
+  searchField?: string;
   required?: boolean;
   description?: string;
   placeholder?: string;
