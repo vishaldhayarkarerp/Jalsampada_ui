@@ -1,188 +1,152 @@
-# JALSAMPADA - Next.js
+# Jalsampada - Water Resource Department ERP Frontend
 
-A professional JALSAMPADA built with Next.js 15, TypeScript, and matching the exact design from the original HTML/CSS/JS website.
-
-## ✨ Features
-
-- **Dashboard**: Real-time overview with metric cards showing active pumps, flow rate, low stock alerts, and maintenance info
-- **Assets**: Equipment specifications for pumps and motors with detailed technical information
-- **Operations**: Live monitoring of pump status and current operational readings
-- **Stock & Maintenance**: Comprehensive inventory management and maintenance history tracking
-- **Reports**: Analytics and data export capabilities
-- **Responsive Design**: Optimized layout with fixed header and sidebar navigation
-
-## 🎨 Design System
-
-- Custom design system with extensive CSS variables for theming
-- Teal/blue color scheme matching original design
-- Font Awesome icons for consistent iconography
-- Beautiful gradient headers and smooth transitions
-- Professional card-based layouts
+A specialized Next.js 15 application designed for the Water Resource Department (Jalsampada) to manage assets, tenders, operations, and maintenance. This project serves as a modern frontend interface for a **Frappe/ERPNext** custom backend.
 
 ## 🚀 Getting Started
 
-### Prerequisites
+Follow these instructions to get the project up and running on your local machine.
 
-- Node.js 18+ 
-- npm or yarn
+### Prerequisites
+* **Node.js**: Version 18 or higher.
+* **npm** or **yarn**: Package manager.
 
 ### Installation
 
-1. Install dependencies:
-```bash
-npm install --legacy-peer-deps
-```
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd jalsampada-ui
+    ```
 
-2. Run the development server:
-```bash
-npm run dev
-```
+2.  **Install dependencies:**
+    ```bash
+    npm install --legacy-peer-deps
+    ```
+    *Note: The `--legacy-peer-deps` flag is recommended due to potential dependency conflicts with some React 19/Next.js 15 packages.*
 
-3. Open [http://localhost:3000](http://localhost:3000) to see the application
+3.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
+
+4.  **Open the application:**
+    Visit `http://localhost:3000` in your browser.
 
 ### Build for Production
-
 ```bash
 npm run build
 npm start
 ```
 
-## 📁 Project Structure
+� React ↔ Frappe Integration Guide
+Since this is a custom ERP, the React components are designed to "mimic" native Frappe behaviors (like DocTypes, Link Fields, and Child Tables). Here is how the key components communicate with the backend:
 
+1. DynamicFormComponent.tsx (The "DocType" Handler)
+This component is the React equivalent of a DocType Form in Frappe.
+
+Connection: It handles the main form logic.
+
+Fetch From Logic: It mimics Frappe's "Fetch From" behavior. For example, if you select a User, it watches that field change and immediately calls the API to auto-populate related fields (like Email) without user intervention.
+
+Submission: It gathers all data and sends it in the exact JSON structure Frappe expects.
+
+2. LinkField.tsx (The "Foreign Key" Searcher)
+In Frappe, a "Link" field lets you select a record from another table (e.g., a "Customer").
+
+The Problem: You cannot load thousands of records into a dropdown at once.
+
+The Solution: This is a "Smart Dropdown". As the user types, it waits 300ms (debouncing) and then fires a specific search request to the backend filters (e.g., ["name", "like", "%John%"]).
+
+Result: It allows users to search through massive databases efficiently.
+
+3. TableField.tsx (The "Child Table" Manager)
+Frappe uses "Child Tables" for lists of items (like "Items" in an Invoice).
+
+How it works: React doesn't natively know what a "Child Table" is. This component manages these lists as an Array of Objects in the local state.
+
+Data Flow: When you click "Add Row", it updates the local React state only. The data is only sent to the backend when the Main Form is saved, matching Frappe's transactional behavior.
+
+4. FrappeErrorDisplay.tsx (The Translator)
+Frappe often returns error messages containing raw HTML (e.g., Value missing for <a href="...">Field</a>).
+
+The Fix: This component parses that raw HTML string and converts the anchor tags into safe, clickable Next.js links. This ensures error messages are readable and the links actually work within your custom app.
+
+5. Workspace.tsx (The Desk/Module View)
+This mimics the "Desk" view in Frappe.
+
+Function: It serves as the standard layout for every module (like Assets, Tender, HR).
+
+Organization: It groups DocTypes into "Masters" (Configuration Data) and "Transactions" (Daily Operations), using color-coding (Green/Blue) to help users navigate quickly.
+
+🏗️ Project Structure
+This project is built using the Next.js App Router.
+
+app/: Contains the routes/pages of the application.
+
+components/: Reusable UI elements (Workspace, ui/ folder for shadcn/ui components).
+
+lib/: Utility functions and sample data (sample-data.ts).
+
+types/: TypeScript interfaces for strict typing.
+
+Key Page Components
+Dashboard (app/page.tsx): The main entry point displaying high-level metrics (Active Pumps, Flow Rate, etc.) calculated from live data.
+
+Module Pages: Specific landing pages for modules like app/lis-management/ and app/tender/, configured via the Workspace component.
+
+🛠️ Technologies Used
+Framework: Next.js 15 (App Router)
+
+Language: TypeScript
+
+Styling: Tailwind CSS
+
+UI Library: Radix UI
+
+Icons: Lucide React & FontAwesome
+
+Forms: React Hook Form + Zod Validation
+
+## 🚀 Production Deployment
+
+The application is currently hosted live at **http://103.219.1.138:4000** using PM2 as the process manager for continuous operation.
+
+### PM2 Configuration (ecosystem.config.js)
+The application runs under PM2 with the following configuration:
+- **App Name**: `jalsampada`
+- **Script**: `npm start`
+- **Working Directory**: `/home/erpadmin/bench-Jalsampada/apps/Jalsampada_ui`
+- **Instances**: 1 (fork mode)
+- **Memory Limit**: 2GB (auto-restart on limit)
+- **Environment**: Production mode
+- **Port**: 4000
+- **Host**: 103.219.1.138
+- **Logging**: Separate error, output, and combined logs in `/logs/` directory
+
+### Nginx Configuration (nginx.conf)
+Nginx acts as a reverse proxy with the following setup:
+- **Server**: 103.219.1.138:80
+- **Proxy Target**: localhost:4000
+- **WebSocket Support**: Enabled for real-time features
+- **Headers**: Proper forwarding of IP and protocol information
+- **Cache Bypass**: Configured for dynamic content
+
+### Deployment Commands
+```bash
+# Start/restart the application with PM2
+pm2 start ecosystem.config.js
+pm2 restart jalsampada
+
+# Monitor the application
+pm2 monit
+
+# View logs
+pm2 logs jalsampada
+
+# Reload Nginx configuration
+sudo nginx -t
+sudo systemctl reload nginx
 ```
-├── app/
-│   ├── layout.tsx          # Root layout
-│   └── page.tsx            # Main application page with all modules
-├── components/
-│   └── ui/                 # Reusable UI components (buttons, cards, tables)
-├── lib/
-│   ├── utils.ts           # Utility functions
-│   └── sample-data.ts     # Sample data matching original app.js
-├── styles/
-│   └── globals.css        # Complete design system from original style.css
-├── types/
-│   └── app-data.ts        # TypeScript interfaces
-└── website/                # Original HTML/CSS/JS reference files
-    ├── index.html
-    ├── style.css
-    └── app.js
-```
 
-## 🎯 Key Components
-
-### Header
-- Blue gradient header with water icon and branding
-- User info display in top right
-- Fixed positioning at 60px height
-
-### Sidebar
-- Fixed 250px width sidebar
-- 5 navigation items with Font Awesome icons:
-  - Dashboard
-  - Assets  
-  - Operations
-  - Stock & Maintenance
-  - Reports
-- Active state with teal background
-
-### Dashboard Module
-- 4 metric cards showing key system stats
-- System overview image
-- Real-time calculations from operation data
-
-### Assets Module
-- Grid of equipment cards (3 columns on desktop)
-- Blue gradient headers
-- Search and filter functionality
-- Detailed specifications for each pump/motor
-
-### Operations Module
-- 2-column layout: pump status list + current readings
-- Real-time status indicators (Running/Stopped)
-- Color-coded status items
-
-### Stock & Maintenance Module
-- 3 tabs: Inventory, Maintenance History, Stock Alerts
-- Full-width data table for spare parts
-- Maintenance records with detailed breakdowns
-- Low stock alerts with warning icons
-
-### Reports Module
-- Filter controls for date range and equipment
-- Performance metrics display
-- Export buttons (PDF, Excel, CSV)
-
-## 📊 Data Structure
-
-The application uses TypeScript interfaces matching the original app.js:
-
-- **TechnicalData**: Equipment specifications
-- **OperationData**: Real-time operational readings
-- **SparePart**: Inventory items
-- **MaintenanceRecord**: Maintenance history
-
-All data is stored in `lib/sample-data.ts` and can be easily replaced with API calls.
-
-## 🎨 Styling
-
-The CSS is copied directly from the original `website/style.css` and includes:
-
-- Complete design system with CSS variables
-- Light/dark mode support (via prefers-color-scheme)
-- Perplexity-inspired color palette
-- Responsive breakpoints
-- Custom form controls with styled select dropdowns
-- Status indicators with semantic colors
-- Card and button components
-- Animation utilities
-
-## 🔧 Customization
-
-### Colors
-Edit CSS variables in `styles/globals.css`:
-- `--color-primary`: Main teal color
-- `--color-background`: Page background
-- `--color-surface`: Card backgrounds
-- `--color-text`: Main text color
-
-### Data
-Replace sample data in `lib/sample-data.ts` with your backend API calls or database queries.
-
-### Modules
-Add new modules by:
-1. Adding a nav item in the sidebar
-2. Creating a new conditional render block in `app/page.tsx`
-3. Following the existing module structure
-
-## 📱 Responsive Behavior
-
-- Desktop: Full sidebar + main content layout
-- Mobile (< 768px): Collapsible sidebar, stacked layouts
-
-## 🔐 Production Considerations
-
-For production deployment:
-
-1. **API Integration**: Replace sample data with real API calls
-2. **Authentication**: Add user login/session management
-3. **Database**: Connect to your database for persistent storage
-4. **Validation**: Add form validation for user inputs
-5. **Error Handling**: Implement comprehensive error boundaries
-6. **Loading States**: Add loading indicators for async operations
-7. **Testing**: Add unit and integration tests
-
-## 🛠️ Technologies
-
-- **Next.js 15**: React framework with App Router
-- **TypeScript**: Type-safe development
-- **Font Awesome**: Icon library
-- **CSS Variables**: Dynamic theming
-- **React Hooks**: State management
-
-## 📄 License
-
-ISC
-
-## 🙏 Credits
-
-Design and original implementation based on reference website files.
+### Live URL
+**🌐 http://103.219.1.138:4000**
