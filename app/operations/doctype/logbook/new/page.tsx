@@ -424,7 +424,8 @@ export default function NewLogbookPage() {
             defaultValue: getValue("stop_datetime"),
             displayDependsOn: "stop_pump == 1" 
           },
-          {
+          { 
+            
             name: "pump_stop_reason",
             label: "Pump Stop Reason",
             type: "Link",
