@@ -405,8 +405,9 @@ export default function NewLogbookPage() {
           {
             name: "operator_name",
             label: "Operator Name",
-            type: "Data",
+            type: "Read Only",
             defaultValue: getValue("operator_name", userFullName),
+            readOnly: true,
             displayDependsOn: "start_pump == 1",
             fetchFrom: {
               sourceField: "operator_id",
@@ -441,24 +442,24 @@ export default function NewLogbookPage() {
           {
             name: "operator_id_1",
             label: "Operator ID",
-            type: "Link",
-            linkTarget: "User", 
+            type: "Read Only",
+            linkTarget: "User",
             // 🟢 Default set from Cookie or localStorage
             defaultValue: getValue("operator_id_1", userForDefault),
-            readOnly: true,
             displayDependsOn: "stop_pump == 1"
           },
           {
             name: "operator_name_1",
             label: "Operator Name",
-            type: "Data",
+            type: "Read Only",
             defaultValue: getValue("operator_name_1", userFullName),
+
             displayDependsOn: "stop_pump == 1",
-            fetchFrom: {
-              sourceField: "operator_id_1",
-              targetDoctype: "User",
-              targetField: "full_name"
-            }
+            // fetchFrom: {
+            //   sourceField: "operator_id_1",
+            //   targetDoctype: "User",
+            //   targetField: "full_name"
+            // }
           },
 
           // ── SECTION 4: TABLES ──────────────────────────────────────────────
