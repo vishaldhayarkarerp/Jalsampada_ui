@@ -1,3 +1,7 @@
+Live demo : http://103.219.1.138:4000
+User : test_user@gmail.com
+Password : Test@123
+For testig purpose
 # Jalsampada - Water Resource Department ERP Frontend
 
 A specialized Next.js 15 application designed for the Water Resource Department (Jalsampada) to manage assets, tenders, operations, and maintenance. This project serves as a modern frontend interface for a **Frappe/ERPNext** custom backend.
