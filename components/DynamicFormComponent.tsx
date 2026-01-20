@@ -1130,9 +1130,11 @@ export function DynamicForm({
     field: FormField,
     type: "date" | "datetime-local" | "time"
   ) => {
-    const rules = field.type === "DateTime" ? {} : rulesFor(field);
+    // We only use the custom picker for Date and DateTime to enforce formatting.
+    // Time fields typically don't need strictly enforced date formats.
+    if (type === "date" || type === "datetime-local") {
+      const rules = field.type === "DateTime" ? {} : rulesFor(field);
 
-    if (type === "date") {
       return (
         <Controller
           name={field.name}
@@ -1146,23 +1148,60 @@ export function DynamicForm({
               </label>
               <div className={error ? "input-error-wrapper" : ""}>
                 <DatePicker
-                  selected={controllerField.value ? new Date(controllerField.value) : null}
+                  selected={
+                    controllerField.value
+                      ? new Date(controllerField.value) // Ensure value is Date object
+                      : null
+                  }
                   onChange={(date: Date | null) => {
-                    controllerField.onChange(date ? date.toISOString().split('T')[0] : '');
+                    // 🟢 Handle Clear
+                    if (!date) {
+                      controllerField.onChange("");
+                      return;
+                    }
+
+                    // 🟢 Manual Formatting to prevent Timezone Shifts
+                    // We construct the string based on LOCAL time components
+                    const pad = (n: number) => (n < 10 ? "0" + n : n);
+                    const yyyy = date.getFullYear();
+                    const MM = pad(date.getMonth() + 1);
+                    const dd = pad(date.getDate());
+
+                    if (type === "datetime-local") {
+                      const hh = pad(date.getHours());
+                      const mm = pad(date.getMinutes());
+                      const ss = pad(date.getSeconds());
+                      // Send backend: YYYY-MM-DD HH:mm:ss
+                      controllerField.onChange(`${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`);
+                    } else {
+                      // Send backend: YYYY-MM-DD
+                      controllerField.onChange(`${yyyy}-${MM}-${dd}`);
+                    }
                   }}
-                  dateFormat="dd/MM/yyyy"
+                  // 🟢 ENFORCE INDIAN FORMAT HERE
+                  dateFormat={type === "datetime-local" ? "dd/MM/yyyy h:mm aa" : "dd/MM/yyyy"}
+                  showTimeSelect={type === "datetime-local"}
+                  timeIntervals={15}
+                  timeCaption="Time"
+                  placeholderText={type === "datetime-local" ? "DD/MM/YYYY HH:MM AM/PM" : "DD/MM/YYYY"}
                   className={cn(
                     "form-control w-full",
-                    error ? "!border-red-500 !focus:border-red-500 !focus:ring-red-500 !ring-1 !ring-red-500" : ""
+                    getErrorClass(field.name)
                   )}
-                  placeholderText="DD/MM/YYYY"
+                  // Enable year dropdown for easier navigation
                   showYearDropdown
                   scrollableYearDropdown
                   yearDropdownItemNumber={100}
+                  autoComplete="off"
+                  // 🟢 PORTAL: This prevents the calendar from being hidden by table headers
+                  withPortal
+                  portalId="root-portal"
                 />
               </div>
               {error && (
-                <span className="text-red-500 font-medium text-sm mt-1">{error.message}</span>
+                <span className="text-red-500 font-medium text-sm mt-1">
+                  {error.message}
+                </span>
               )}
               <FieldHelp text={field.description} />
             </div>
@@ -1182,7 +1221,7 @@ export function DynamicForm({
           type={type}
           step="1"
           className={cn("form-control", getErrorClass(field.name))}
-          {...reg(field.name, rules)}
+          {...reg(field.name, rulesFor(field))}
         />
         <FieldError
           error={(errors as FieldErrors<Record<string, any>>)[field.name]}
