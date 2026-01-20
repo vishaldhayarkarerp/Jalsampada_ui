@@ -10,7 +10,6 @@ import {
   RegisterOptions,
   UseFormReturn,
 } from "react-hook-form";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Upload, X, MoreVertical, Copy, Trash2, ChevronLeft, ChevronRight, Printer } from "lucide-react";
 import axios from "axios";
@@ -33,6 +32,8 @@ import {
 import { TableField } from "./TableField";
 import { LinkField } from "./LinkField";
 import { TableMultiSelect } from "./TableMultiSelect";
+import { ToggleButton } from "./ToggleButton";
+import { PumpStatusToggle } from "./PumpStatusToggle";
 import { cn, getApiMessages } from "@/lib/utils";
 
 const DEFAULT_API_BASE_URL = "http://103.219.1.138:4412/api/resource";
@@ -55,6 +56,7 @@ export type FieldType =
   | "Time"
   | "Duration"
   | "Check"
+  | "Pump Status"
   | "Select"
   | "Link"
   | "Table"
@@ -1047,15 +1049,11 @@ export function DynamicForm({
         name={field.name}
         control={control}
         render={({ field: rhfField }) => (
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={field.name}
+          <div className="flex items-center gap-3">
+            <ToggleButton
               checked={!!rhfField.value}
-              onCheckedChange={(val) => rhfField.onChange(val)}
-              className={cn(
-                "rounded border border-gray-300 data-[state=checked]:bg-primary",
-                getErrorClass(field.name)
-              )}
+              onChange={(val) => rhfField.onChange(val ? 1 : 0)}
+              size="md"
             />
             <label
               htmlFor={field.name}
@@ -1069,6 +1067,37 @@ export function DynamicForm({
                 <FieldHelp text={field.description} />
               </div>
             )}
+          </div>
+        )}
+      />
+    );
+  };
+
+  const renderPumpStatus = (field: FormField) => {
+    return (
+      <Controller
+        name={field.name}
+        control={control}
+        render={({ field: rhfField }) => (
+          <div className="flex items-center gap-3">
+            <PumpStatusToggle
+              checked={!!rhfField.value}
+              onChange={(val) => rhfField.onChange(val ? 1 : 0)}
+            />
+            <div className="flex flex-col">
+              <label
+                htmlFor={field.name}
+                className="text-sm font-medium leading-none cursor-pointer"
+              >
+                {field.label}
+              </label>
+              <FieldError error={(errors as any)[field.name]} />
+              {field.description && (
+                <div className="mt-1">
+                  <FieldHelp text={field.description} />
+                </div>
+              )}
+            </div>
           </div>
         )}
       />
@@ -1400,6 +1429,8 @@ export function DynamicForm({
           return renderDuration(field);
         case "Check":
           return renderCheckbox(field);
+        case "Pump Status":
+          return renderPumpStatus(field);
         case "Select":
           return renderSelect(field);
         case "Link": {
