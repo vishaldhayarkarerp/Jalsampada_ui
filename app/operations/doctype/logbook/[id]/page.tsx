@@ -179,11 +179,11 @@ export default function RecordDetailPage() {
           { name: "pump_status", label: "Pump Status", type: "Pump Status" },
 
           { name: "start_datetime", label: "Start Datetime", type: "DateTime", displayDependsOn: "pump_status == 1" },
-          { name: "operator_id", label: "Operator ID", type: "Link", linkTarget: "Employee", displayDependsOn: "pump_status == 1" },
+          { name: "operator_id", label: "Operator ID", type: "Link", linkTarget: "User", displayDependsOn: "pump_status == 1" },
           { name: "operator_name", label: "Operator Name", type: "Data", displayDependsOn: "pump_status == 1" },
 
           { name: "stop_datetime", label: "Stop Datetime", type: "DateTime", displayDependsOn: "pump_status == 0" },
-          { name: "operator_id_1", label: "Operator ID", type: "Link", linkTarget: "Employee", displayDependsOn: "pump_status == 0" },
+          { name: "operator_id_1", label: "Operator ID", type: "Link", linkTarget: "User", displayDependsOn: "pump_status == 0" },
           { name: "operator_name_1", label: "Operator Name", type: "Data", displayDependsOn: "pump_status == 0" },
 
           {
