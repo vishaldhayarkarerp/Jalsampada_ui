@@ -426,11 +426,11 @@ export default function NewLogbookPage() {
           },
           {
             name: "pump_stop_reason",
-            label: "Reason",
+            label: "Pump Stop Reason",
             type: "Link",
             linkTarget: "Pump Stop Reasons",
             defaultValue: getValue("pump_stop_reason"),
-            displayDependsOn: "stop_pump == 1" 
+            displayDependsOn: "stop_pump == 1"
           },
           {
             name: "specify",
@@ -440,23 +440,23 @@ export default function NewLogbookPage() {
             displayDependsOn: "pump_stop_reason == 'Other'" 
           },
 
-          {
-            name: "lis_name",
-            label: "LIS Name",
-            type: "Link",
-            linkTarget: "Lift Irrigation Scheme",
-            defaultValue: getValue("lis_name"),
-          },
-          {
-            name: "stage",
-            label: "Stage",
-            type: "Link",
-            linkTarget: "Stage No",
-            defaultValue: getValue("stage"),
-            filterMapping: [
-              { sourceField: "lis_name", targetField: "lis_name" }
-            ],
-          },
+          // {
+          //   name: "lis_name",
+          //   label: "LIS Name",
+          //   type: "Link",
+          //   linkTarget: "Lift Irrigation Scheme",
+          //   defaultValue: getValue("lis_name"),
+          // },
+          // {
+          //   name: "stage",
+          //   label: "Stage",
+          //   type: "Link",
+          //   linkTarget: "Stage No",
+          //   defaultValue: getValue("stage"),
+          //   filterMapping: [
+          //     { sourceField: "lis_name", targetField: "lis_name" }
+          //   ],
+          // },
           {
             name: "operator_id_1",
             label: "Operator ID",
@@ -512,13 +512,7 @@ export default function NewLogbookPage() {
               { name: "pump_no", label: "Pump No", type: "Data" },
             ],
           },
-          {
-            name: "pump_stop_reason",
-            label: "Pump Stop Reason",
-            type: "Link",
-            linkTarget: "Pump Stop Reasons",
-            defaultValue: getValue("pump_stop_reason"),
-          },
+          
         ],
       },
     ];
