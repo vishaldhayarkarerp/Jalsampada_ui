@@ -76,11 +76,11 @@ export function handleApiResponse(
 export function getApiMessages(
   response: any,
   error: any,
-  defaultSuccessMessage: string,
+  defaultSuccessMessage: string | null,
   defaultErrorMessage: string,
   customErrorHandler?: (error: any) => string
 ): { success: boolean; message: string; description?: string } {
-  const result = handleApiResponse(response, error, defaultSuccessMessage, defaultErrorMessage);
+  const result = handleApiResponse(response, error, defaultSuccessMessage || defaultErrorMessage, defaultErrorMessage);
 
   if (result.success) {
     if (result.messages.length > 0) {
