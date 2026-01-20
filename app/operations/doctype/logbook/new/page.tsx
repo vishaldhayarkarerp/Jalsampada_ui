@@ -228,22 +228,21 @@ export default function NewLogbookPage() {
     const subscription = formMethods.watch(async (value, { name, type }) => {
       const form = formMethods; 
 
-      // ➤ LOGIC A: Mutual Exclusivity
-      if (name === "start_pump" && value.start_pump) {
-        form.setValue("stop_pump", 0); 
-        fetchPumps("Stopped");
-      }
-      if (name === "stop_pump" && value.stop_pump) {
-        form.setValue("start_pump", 0); 
-        fetchPumps("Running");
+      // ➤ LOGIC A: Handle Pump Status Changes
+      if (name === "pump_status") {
+        const isStart = value.pump_status;
+        if (isStart) {
+          fetchPumps("Stopped");
+        } else {
+          fetchPumps("Running");
+        }
       }
 
       // ➤ LOGIC B: Fetch Pumps
       if (name === "lis_name" || name === "stage") {
-        const isStart = form.getValues("start_pump");
-        const isStop = form.getValues("stop_pump");
+        const isStart = form.getValues("pump_status");
         if (isStart) fetchPumps("Stopped");
-        else if (isStop) fetchPumps("Running");
+        else fetchPumps("Running");
       }
 
       // ➤ LOGIC C: Sync Lists
@@ -332,16 +331,10 @@ export default function NewLogbookPage() {
             type: "Section Break" 
           },
           {
-            name: "start_pump",
-            label: "Start Pump",
-            type: "Check",
-            defaultValue: getValue("start_pump", 0),
-          },
-          {
-            name: "stop_pump",
-            label: "Stop Pump",
-            type: "Check",
-            defaultValue: getValue("stop_pump", 0),
+            name: "pump_status",
+            label: "Pump Status",
+            type: "Pump Status",
+            defaultValue: getValue("pump_status", 0),
           },
           { name: "cb_mode", label: "", type: "Column Break" },  
 
@@ -380,7 +373,7 @@ export default function NewLogbookPage() {
             name: "sec_details", 
             label: "Operation Details", 
             type: "Section Break",
-            displayDependsOn: "start_pump == 1 || stop_pump == 1"
+            displayDependsOn: "pump_status == 1 || pump_status == 0"
           },
 
           // ➤ START MODE DETAILS
@@ -389,7 +382,7 @@ export default function NewLogbookPage() {
             label: "Start Datetime",
             type: "DateTime",
             defaultValue: getValue("start_datetime"),
-            displayDependsOn: "start_pump == 1"
+            displayDependsOn: "pump_status == 1"
           },
           {
             name: "operator_id",
@@ -399,14 +392,14 @@ export default function NewLogbookPage() {
             // 🟢 Default set from Cookie or localStorage
             defaultValue: getValue("operator_id", userForDefault),
             readOnly: true,
-            displayDependsOn: "start_pump == 1"
+            displayDependsOn: "pump_status == 1"
           },
           {
             name: "operator_name",
             label: "Operator Name",
             type: "Data",
             defaultValue: getValue("operator_name", userFullName),
-            displayDependsOn: "start_pump == 1",
+            displayDependsOn: "pump_status == 1",
             fetchFrom: {
               sourceField: "operator_id",
               targetDoctype: "User",
@@ -420,7 +413,7 @@ export default function NewLogbookPage() {
             label: "Stop Datetime",
             type: "DateTime",
             defaultValue: getValue("stop_datetime"),
-            displayDependsOn: "stop_pump == 1" 
+            displayDependsOn: "pump_status == 0" 
           },
           {
             name: "pump_stop_reason",
@@ -428,7 +421,7 @@ export default function NewLogbookPage() {
             type: "Link",
             linkTarget: "Pump Stop Reasons",
             defaultValue: getValue("pump_stop_reason"),
-            displayDependsOn: "stop_pump == 1" 
+            displayDependsOn: "pump_status == 0" 
           },
           {
             name: "specify",
@@ -445,14 +438,14 @@ export default function NewLogbookPage() {
             // 🟢 Default set from Cookie or localStorage
             defaultValue: getValue("operator_id_1", userForDefault),
             readOnly: true,
-            displayDependsOn: "stop_pump == 1"
+            displayDependsOn: "pump_status == 0"
           },
           {
             name: "operator_name_1",
             label: "Operator Name",
             type: "Data",
             defaultValue: getValue("operator_name_1", userFullName),
-            displayDependsOn: "stop_pump == 1",
+            displayDependsOn: "pump_status == 0",
             fetchFrom: {
               sourceField: "operator_id_1",
               targetDoctype: "User",
@@ -465,18 +458,19 @@ export default function NewLogbookPage() {
             name: "sec_assets", 
             label: "Asset Selection", 
             type: "Section Break",
-            displayDependsOn: "start_pump == 1 || stop_pump == 1"
+            displayDependsOn: "pump_status == 1 || pump_status == 0"
           },
           {
             name: "primary_list",
             label: "Available Pumps (Select to Act)",
             type: "Table",
-            displayDependsOn: "start_pump == 1 || stop_pump == 1",
+            displayDependsOn: "pump_status == 1 || pump_status == 0",
             defaultValue: getValue("primary_list", []),
             columns: [
               { name: "pump", label: "Pump", type: "Link", linkTarget: "Asset" },
               { name: "motor", label: "Motor", type: "Link", linkTarget: "Asset" },
-              { name: "pump_no", label: "Pump No", type: "Int" },
+              { name: "pump_no", label: "Pump No", type: "Data" },
+              { name: "motor_no", label: "Motor No", type: "Data" },
               { name: "check", label: "Select", type: "Check" }, 
             ],
           },
@@ -484,11 +478,11 @@ export default function NewLogbookPage() {
             name: "secondary_list",
             label: "Selected for Update (System Auto-Fill)",
             type: "Table",
-            displayDependsOn: "start_pump == 1 || stop_pump == 1",
+            displayDependsOn: "pump_status == 1 || pump_status == 0",
             defaultValue: getValue("secondary_list", []),
             columns: [
               { name: "pump", label: "Pump", type: "Link", linkTarget: "Asset" },
-              { name: "pump_no", label: "Pump No", type: "Int" },
+              { name: "pump_no", label: "Pump No", type: "Data" },
             ],
           },
         ],
@@ -500,12 +494,22 @@ export default function NewLogbookPage() {
      4. SUBMIT
   ------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-    if (!data.start_pump && !data.stop_pump) {
-      toast.error("Please select either Start Pump or Stop Pump");
+    if (!data.pump_status && data.pump_status !== 0) {
+      toast.error("Please select pump status");
       return;
     }
     if (!data.secondary_list || data.secondary_list.length === 0) {
       toast.error("Please select at least one pump from the list");
+      return;
+    }
+
+    // Validate required datetime based on pump status
+    if (data.pump_status === 1 && !data.start_datetime) {
+      toast.error("Start Datetime is required");
+      return;
+    }
+    if (data.pump_status === 0 && !data.stop_datetime) {
+      toast.error("Stop Datetime is required");
       return;
     }
 
@@ -515,8 +519,30 @@ export default function NewLogbookPage() {
       const payload: Record<string, any> = { ...data };
       payload.doctype = doctypeName;
       
-      payload.start_pump = payload.start_pump ? 1 : 0;
-      payload.stop_pump = payload.stop_pump ? 1 : 0;
+      // Convert pump_status to start_pump/stop_pump for backend compatibility
+      payload.start_pump = data.pump_status ? 1 : 0;
+      payload.stop_pump = data.pump_status ? 0 : 1;
+      
+      // Only include relevant datetime fields based on pump status
+      if (data.pump_status === 1) {
+        // Start mode - include start_datetime, exclude stop_datetime
+        if (!payload.start_datetime) {
+          throw new Error("Start datetime is required");
+        }
+        delete payload.stop_datetime;
+        delete payload.pump_stop_reason;
+        delete payload.specify;
+        delete payload.operator_id_1;
+        delete payload.operator_name_1;
+      } else {
+        // Stop mode - include stop_datetime, exclude start_datetime
+        if (!payload.stop_datetime) {
+          throw new Error("Stop datetime is required");
+        }
+        delete payload.start_datetime;
+        delete payload.operator_id;
+        delete payload.operator_name;
+      }
       
       if (Array.isArray(payload.primary_list)) {
         payload.primary_list = payload.primary_list.map((row: any) => ({
@@ -525,15 +551,18 @@ export default function NewLogbookPage() {
         }));
       }
 
-      await axios.post(`${API_BASE_URL}/${doctypeName}`, payload, {
+      const response = await axios.post(`${API_BASE_URL}/${doctypeName}`, payload, {
         headers: { Authorization: `token ${apiKey}:${apiSecret}` }
       });
 
       toast.success("Logbook created successfully!");
-      router.push(`/operations/doctype/logbook`);
+      
+      // Use the created record's ID to redirect to detail page
+      const logbookId = response.data.data.name;
+      router.push(`/operations/doctype/logbook/${encodeURIComponent(logbookId)}`);
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.exception || "Failed to save");
+      toast.error(err.response?.data?.exception || err.message || "Failed to save");
     } finally {
       setIsSaving(false);
     }

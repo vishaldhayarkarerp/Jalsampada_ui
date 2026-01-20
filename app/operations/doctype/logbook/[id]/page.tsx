@@ -22,8 +22,10 @@ interface LogbookData {
   date?: string;
   location?: string;
 
-  start_pump?: 0 | 1;
-  stop_pump?: 0 | 1;
+  pump_status?: 0 | 1;
+  start_datetime?: string;
+  operator_id?: string;
+  operator_name?: string;
   stop_datetime?: string;
   operator_id_1?: string;
   operator_name_1?: string;
@@ -174,23 +176,22 @@ export default function RecordDetailPage() {
         fields: fields([
           // { name: "location", label: "Location", type: "Link", linkTarget: "Location" },
 
-          { name: "start_pump", label: "Start Pump", type: "Check" },
-          {
-            name: "stop_pump",
-            label: "Stop Pump",
-            type: "Check",
+          { name: "pump_status", label: "Pump Status", type: "Pump Status" },
 
-          },
-          { name: "stop_datetime", label: "Stop Datetime", type: "DateTime" },
+          { name: "start_datetime", label: "Start Datetime", type: "DateTime", displayDependsOn: "pump_status == 1" },
+          { name: "operator_id", label: "Operator ID", type: "Link", linkTarget: "Employee", displayDependsOn: "pump_status == 1" },
+          { name: "operator_name", label: "Operator Name", type: "Data", displayDependsOn: "pump_status == 1" },
 
-          { name: "operator_id_1", label: "Operator ID", type: "Link", linkTarget: "Employee" },
-          { name: "operator_name_1", label: "Operator Name", type: "Data" },
+          { name: "stop_datetime", label: "Stop Datetime", type: "DateTime", displayDependsOn: "pump_status == 0" },
+          { name: "operator_id_1", label: "Operator ID", type: "Link", linkTarget: "Employee", displayDependsOn: "pump_status == 0" },
+          { name: "operator_name_1", label: "Operator Name", type: "Data", displayDependsOn: "pump_status == 0" },
 
           {
             name: "pump_stop_reason",
             label: "Pump Stop Reason",
             type: "Link",
             linkTarget: "Pump Stop Reasons",
+            displayDependsOn: "pump_status == 0"
           },
           {
             name: "primary_list",
@@ -231,6 +232,24 @@ export default function RecordDetailPage() {
       const payload = { ...data };
       payload.modified = logbook?.modified;
       payload.docstatus = logbook?.docstatus;
+      
+      // Convert pump_status to start_pump/stop_pump for backend compatibility
+      payload.start_pump = data.pump_status ? 1 : 0;
+      payload.stop_pump = data.pump_status ? 0 : 1;
+      
+      // Only include relevant datetime fields based on pump status
+      if (data.pump_status === 1) {
+        // Start mode - include start_datetime, exclude stop_datetime
+        delete payload.stop_datetime;
+        delete payload.pump_stop_reason;
+        delete payload.operator_id_1;
+        delete payload.operator_name_1;
+      } else {
+        // Stop mode - include stop_datetime, exclude start_datetime
+        delete payload.start_datetime;
+        delete payload.operator_id;
+        delete payload.operator_name;
+      }
 
       if (payload.primary_list) {
         payload.primary_list.forEach((r: any) => {
@@ -249,7 +268,7 @@ export default function RecordDetailPage() {
       );
 
       toast.success("Logbook updated");
-      router.back();
+      router.push(`/operations/doctype/logbook/${encodeURIComponent(docname)}`);
     } catch {
       toast.error("Save failed", { duration: Infinity });
     } finally {

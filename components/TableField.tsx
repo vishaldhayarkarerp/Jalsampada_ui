@@ -3,6 +3,7 @@ import { useFieldArray, useFormContext, useWatch } from "react-hook-form"; // Im
 import { FormField } from "./DynamicFormComponent";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ToggleButton } from "./ToggleButton";
 import { Upload, X, Eye, Edit, Download, Upload as UploadIcon } from "lucide-react";
 import { TableLinkCell } from "./TableLinkCell";
 import { Modal } from "./Modal";
@@ -63,9 +64,10 @@ const renderTableNumber = (c: any, idx: number, rows: any[], handleTableInputCha
 );
 
 const renderTableCheckbox = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
-  <Checkbox
+  <ToggleButton
     checked={!!(rows[idx] as any)?.[c.name]}
-    onCheckedChange={(checked) => handleTableInputChange(idx, c.name, checked)}
+    onChange={(checked) => handleTableInputChange(idx, c.name, checked ? 1 : 0)}
+    size="sm"
   />
 );
 
