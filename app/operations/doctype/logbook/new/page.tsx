@@ -366,7 +366,8 @@ export default function NewLogbookPage() {
             defaultValue: getValue("stage"),
             required: true,
             filterMapping: [{ sourceField: "lis_name", targetField: "lis_name" }],
-          },
+          }, 
+          
 
           // ── SECTION 3: OPERATION DETAILS ──────────────────────────────────
           { 
