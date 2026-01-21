@@ -1151,10 +1151,10 @@ export function DynamicForm({
                   selected={
                     controllerField.value
                       ? new Date(controllerField.value) // Ensure value is Date object
-                      : null
+                      : new Date() // Default to current date/time
                   }
                   onChange={(date: Date | null) => {
-                    // 🟢 Handle Clear
+                    // Handle Clear
                     if (!date) {
                       controllerField.onChange("");
                       return;
