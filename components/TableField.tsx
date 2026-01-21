@@ -63,11 +63,12 @@ const renderTableNumber = (c: any, idx: number, rows: any[], handleTableInputCha
   />
 );
 
-const renderTableCheckbox = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+const renderTableCheckbox = (c: any, idx: number, rows: any[], handleTableInputChange: Function, invertColors: boolean = false) => (
   <ToggleButton
     checked={!!(rows[idx] as any)?.[c.name]}
     onChange={(checked) => handleTableInputChange(idx, c.name, checked ? 1 : 0)}
     size="sm"
+    invertColors={invertColors}
   />
 );
 
@@ -592,7 +593,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                           ) : c.type === "Duration" ? (
                             renderTableDuration(c, idx, rows, handleTableInputChange)
                           ) : c.type === "Check" ? (
-                            renderTableCheckbox(c, idx, rows, handleTableInputChange)
+                            renderTableCheckbox(c, idx, rows, handleTableInputChange, formMethods.getValues("pump_operation") === "stop")
                           ) : c.type === "Select" ? (
                             renderTableSelect(c, idx, rows, handleTableInputChange)
                           ) : c.type === "Barcode" ? (

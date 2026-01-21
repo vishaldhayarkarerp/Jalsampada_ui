@@ -60,8 +60,10 @@ export default function RecordDetailPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [userFullName, setUserFullName] = React.useState<string | null>(null);
   const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
+
+  // State for dynamic table label
+  const [primaryListLabel, setPrimaryListLabel] = React.useState("Available Pumps");
 
   // 🟢 Badge Status Logic
   const getCurrentStatus = () => {
@@ -87,48 +89,6 @@ export default function RecordDetailPage() {
     return "";
   };
 
-  // 🟢 HELPERS
-  const getCookie = (name: string) => {
-    if (typeof document === "undefined") return null;
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) {
-      const val = parts.pop()?.split(';').shift();
-      return val ? decodeURIComponent(val) : null;
-    }
-    return null;
-  };
-
-  const fetchUserFullName = async (userId: string): Promise<string | null> => {
-    if (!userId || !apiKey || !apiSecret) return null;
-    try {
-      const response = await fetch(`${API_BASE_URL}/User/${userId}`, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `token ${apiKey}:${apiSecret}`,
-        },
-      });
-      const data = await response.json();
-      return data.data?.full_name || null;
-    } catch (error) {
-      return null;
-    }
-  };
-
-  React.useEffect(() => {
-    const getUserAndFullName = async () => {
-      const cookieUser = getCookie("user_id");
-      const localStorageUser = typeof window !== "undefined" ? localStorage.getItem("currentUser") : null;
-      const userId = cookieUser || localStorageUser;
-      if (userId && !userFullName) {
-        const fullName = await fetchUserFullName(userId);
-        if (fullName) setUserFullName(fullName);
-      }
-    };
-    getUserAndFullName();
-  }, [userFullName]);
 
   // 🟢 1. FETCH RECORD
   const fetchRecord = async () => {
@@ -212,30 +172,23 @@ export default function RecordDetailPage() {
 
     const subscription = formMethods.watch(async (value, { name }) => {
       const form = formMethods;
-      const startPump = form.getValues("start_pump");
-      const stopPump = form.getValues("stop_pump");
 
-      if (startPump && stopPump) {
-        if (name === "start_pump") {
-          form.setValue("stop_pump", 0);
+      // ➤ LOGIC A: Handle Radio Button Selection
+      if (name === "pump_operation") {
+        if (value.pump_operation === "start") {
+          setPrimaryListLabel("Stopped Pumps (Select to Start)");
           fetchPumps("Stopped");
-        } else if (name === "stop_pump") {
-          form.setValue("start_pump", 0);
+        } else if (value.pump_operation === "stop") {
+          setPrimaryListLabel("Running Pumps (Select to Stop)");
           fetchPumps("Running");
         }
-      } else if (name === "start_pump" && value.start_pump) {
-        form.setValue("stop_pump", 0);
-        fetchPumps("Stopped");
-      } else if (name === "stop_pump" && value.stop_pump) {
-        form.setValue("start_pump", 0);
-        fetchPumps("Running");
       }
 
+      // ➤ LOGIC B: Fetch Pumps on Context Change
       if (name === "lis_name" || name === "stage") {
-        const isStart = form.getValues("start_pump");
-        const isStop = form.getValues("stop_pump");
-        if (isStart) fetchPumps("Stopped");
-        else if (isStop) fetchPumps("Running");
+        const operation = form.getValues("pump_operation");
+        if (operation === "start") fetchPumps("Stopped");
+        else if (operation === "stop") fetchPumps("Running");
       }
 
       if (name && name.startsWith("primary_list")) {
@@ -274,31 +227,47 @@ export default function RecordDetailPage() {
   // 🟢 FORM DEFINITION
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!logbook) return [];
-    const getVal = (key: keyof LogbookData, def?: any) => logbook[key] ?? def;
+    const getVal = (key: string, def?: any) => {
+      if (key === 'pump_operation') {
+        // Convert start_pump/stop_pump back to pump_operation for UI
+        if (logbook.start_pump === 1) return 'start';
+        if (logbook.stop_pump === 1) return 'stop';
+        return '';
+      }
+      return logbook[key as keyof LogbookData] ?? def;
+    };
     return [
       {
         name: "Details",
         fields: [
           { name: "sec_mode", label: "Operation Mode", type: "Section Break" },
-          { name: "start_pump", label: "Start Pump", type: "Check", defaultValue: getVal("start_pump", 0) },
-          { name: "stop_pump", label: "Stop Pump", type: "Check", defaultValue: getVal("stop_pump", 0) },
+          {
+            name: "pump_operation",
+            label: "Operation",
+            type: "Radio",
+            options: [
+              { label: "Start Pump", value: "start", className: "text-green-600" },
+              { label: "Stop Pump", value: "stop", className: "text-red-600" }
+            ],
+            defaultValue: getVal("pump_operation", ""),
+          },
           { name: "cb_mode", label: "", type: "Column Break" },
           { name: "sec_location", label: "Location & Date", type: "Section Break" },
           { name: "entry_date", label: "Entry Date", type: "Date", defaultValue: getVal("entry_date") },
           { name: "lis_name", label: "LIS Name", type: "Link", linkTarget: "Lift Irrigation Scheme", defaultValue: getVal("lis_name"), required: true },
           { name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No", defaultValue: getVal("stage"), required: true, filterMapping: [{ sourceField: "lis_name", targetField: "lis_name" }] },
           { name: "sec_details", label: "Operation Details", type: "Section Break" },
-          { name: "start_datetime", label: "Start Datetime", type: "DateTime", defaultValue: getVal("start_datetime"), required: true, displayDependsOn: "start_pump == 1" },
-          { name: "operator_id", label: "Operator ID", type: "Read Only", linkTarget: "User", defaultValue: getVal("operator_id"), readOnly: true, displayDependsOn: "start_pump == 1" },
-          { name: "operator_name", label: "Operator Name", type: "Read Only", defaultValue: getVal("operator_name") || userFullName, readOnly: true, displayDependsOn: "start_pump == 1" },
-          { name: "stop_datetime", label: "Stop Datetime", type: "DateTime", defaultValue: getVal("stop_datetime"), required: true, displayDependsOn: "stop_pump == 1" },
-          { name: "pump_stop_reason", label: "Reason", type: "Link", linkTarget: "Pump Stop Reasons", defaultValue: getVal("pump_stop_reason"), displayDependsOn: "stop_pump == 1" },
+          { name: "start_datetime", label: "Start Datetime", type: "DateTime", defaultValue: getVal("start_datetime"), required: true, displayDependsOn: "pump_operation == 'start'" },
+          { name: "operator_id", label: "Operator ID", type: "Read Only", linkTarget: "User", defaultValue: getVal("operator_id"), readOnly: true, displayDependsOn: "pump_operation == 'start'" },
+          { name: "operator_name", label: "Operator Name", type: "Read Only", defaultValue: getVal("operator_name"), readOnly: true, displayDependsOn: "pump_operation == 'start'" },
+          { name: "stop_datetime", label: "Stop Datetime", type: "DateTime", defaultValue: getVal("stop_datetime"), required: true, displayDependsOn: "pump_operation == 'stop'" },
+          { name: "pump_stop_reason", label: "Reason", type: "Link", linkTarget: "Pump Stop Reasons", defaultValue: getVal("pump_stop_reason"), displayDependsOn: "pump_operation == 'stop'" },
           { name: "specify", label: "Specify (if Other)", type: "Small Text", defaultValue: getVal("specify"), displayDependsOn: "pump_stop_reason == 'Other'" },
-          { name: "operator_id_1", label: "Operator ID", type: "Read Only", linkTarget: "User", defaultValue: getVal("operator_id_1"), readOnly: true, displayDependsOn: "stop_pump == 1" },
-          { name: "operator_name_1", label: "Operator Name", type: "Read Only", defaultValue: getVal("operator_name_1") || userFullName, readOnly: true, displayDependsOn: "stop_pump == 1" },
+          { name: "operator_id_1", label: "Operator ID", type: "Read Only", linkTarget: "User", defaultValue: getVal("operator_id_1"), readOnly: true, displayDependsOn: "pump_operation == 'stop'" },
+          { name: "operator_name_1", label: "Operator Name", type: "Read Only", defaultValue: getVal("operator_name_1"), readOnly: true, displayDependsOn: "pump_operation == 'stop'" },
           { name: "sec_assets", label: "Asset Selection", type: "Section Break" },
           {
-            name: "primary_list", label: "Available Pumps", type: "Table", defaultValue: getVal("primary_list", []),
+            name: "primary_list", label: primaryListLabel, type: "Table", defaultValue: getVal("primary_list", []),
             columns: [
               { name: "pump", label: "Pump", type: "Link", linkTarget: "Asset" },
               { name: "motor", label: "Motor", type: "Link", linkTarget: "Asset" },
@@ -317,14 +286,41 @@ export default function RecordDetailPage() {
         ],
       }
     ];
-  }, [logbook, userFullName]);
+  }, [logbook, primaryListLabel]);
 
   // 🟢 UPDATE DRAFT HANDLER
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) { toast.info("No changes to save."); return; }
+
+    if (!data.pump_operation) {
+      toast.error("Please select either Start Pump or Stop Pump");
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const payload = { ...data, modified: logbook?.modified, docstatus: logbook?.docstatus };
+      const payload: Record<string, any> = { ...data, modified: logbook?.modified, docstatus: logbook?.docstatus };
+
+      // Transform radio value back to checkbox format for API
+      if (data.pump_operation === "start") {
+        payload.start_pump = 1;
+        payload.stop_pump = 0;
+        delete payload.stop_datetime;
+        delete payload.pump_stop_reason;
+        delete payload.specify;
+        delete payload.operator_id_1;
+        delete payload.operator_name_1;
+      } else {
+        payload.start_pump = 0;
+        payload.stop_pump = 1;
+        delete payload.start_datetime;
+        delete payload.operator_id;
+        delete payload.operator_name;
+      }
+
+      // Remove the radio field as API doesn't expect it
+      delete payload.pump_operation;
+
       await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, payload, {
         headers: { Authorization: `token ${apiKey}:${apiSecret}` },
       });

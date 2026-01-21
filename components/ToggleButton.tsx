@@ -8,6 +8,7 @@ interface ToggleButtonProps {
   disabled?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;
+  invertColors?: boolean;
 }
 
 export const ToggleButton: React.FC<ToggleButtonProps> = ({
@@ -16,6 +17,7 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
   disabled = false,
   size = "md",
   className = "",
+  invertColors = false,
 }) => {
   const [isChecked, setIsChecked] = React.useState(checked);
 
@@ -25,7 +27,7 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
 
   const handleToggle = () => {
     if (disabled) return;
-    
+
     const newChecked = !isChecked;
     setIsChecked(newChecked);
     onChange?.(newChecked);
@@ -33,7 +35,7 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
 
   const sizeClasses = {
     sm: "w-8 h-4",
-    md: "w-12 h-6", 
+    md: "w-12 h-6",
     lg: "w-16 h-8"
   };
 
@@ -59,9 +61,13 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
         border-2 border-transparent transition-colors duration-200 ease-in-out
         focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
         ${sizeClasses[size]}
-        ${isChecked 
-          ? "bg-green-500 hover:bg-green-600" 
-          : "bg-red-500 hover:bg-red-600"
+        ${invertColors
+          ? isChecked
+            ? "bg-red-500 hover:bg-red-600"
+            : "bg-green-500 hover:bg-green-600"
+          : isChecked
+            ? "bg-green-500 hover:bg-green-600"
+            : "bg-red-500 hover:bg-red-600"
         }
         ${disabled ? "opacity-50 cursor-not-allowed" : ""}
         ${className}

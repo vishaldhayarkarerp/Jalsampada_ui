@@ -34,6 +34,7 @@ import { LinkField } from "./LinkField";
 import { TableMultiSelect } from "./TableMultiSelect";
 import { ToggleButton } from "./ToggleButton";
 import { PumpStatusToggle } from "./PumpStatusToggle";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn, getApiMessages } from "@/lib/utils";
 
 const DEFAULT_API_BASE_URL = "http://192.168.1.30:4412/api/resource";
@@ -56,6 +57,7 @@ export type FieldType =
   | "Time"
   | "Duration"
   | "Check"
+  | "Radio"
   | "Pump Status"
   | "Select"
   | "Link"
@@ -83,7 +85,7 @@ export interface FormField {
   required?: boolean;
   description?: string;
   placeholder?: string;
-  options?: string | { label: string; value: string }[];
+  options?: string | { label: string; value: string; className?: string }[];
   defaultValue?: any;
   min?: number;
   max?: number;
@@ -1073,6 +1075,45 @@ export function DynamicForm({
     );
   };
 
+  const renderRadio = (field: FormField) => {
+    const options = field.options as { label: string; value: string; className?: string }[] || [];
+    return (
+      <Controller
+        name={field.name}
+        control={control}
+        render={({ field: rhfField }) => (
+          <div className="space-y-3">
+            <RadioGroup
+              value={rhfField.value}
+              onValueChange={rhfField.onChange}
+              className="flex flex-row gap-6"
+            >
+              {options.map((option) => (
+                <div key={option.value} className="flex items-center gap-2">
+                  <RadioGroupItem
+                    value={option.value}
+                    id={`${field.name}-${option.value}`}
+                    className={option.className || ''}
+                  />
+                  <label
+                    htmlFor={`${field.name}-${option.value}`}
+                    className={`text-sm font-medium leading-none cursor-pointer ${option.className || ''}`}
+                  >
+                    {option.label}
+                  </label>
+                </div>
+              ))}
+            </RadioGroup>
+            <FieldError error={(errors as any)[field.name]} />
+            {field.description && (
+              <FieldHelp text={field.description} />
+            )}
+          </div>
+        )}
+      />
+    );
+  };
+
   const renderPumpStatus = (field: FormField) => {
     return (
       <Controller
@@ -1489,6 +1530,8 @@ export function DynamicForm({
           return renderDuration(field);
         case "Check":
           return renderCheckbox(field);
+        case "Radio":
+          return renderRadio(field);
         case "Pump Status":
           return renderPumpStatus(field);
         case "Select":
