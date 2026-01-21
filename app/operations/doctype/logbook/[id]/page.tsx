@@ -240,7 +240,6 @@ export default function RecordDetailPage() {
       {
         name: "Details",
         fields: [
-          { name: "sec_mode", label: "Operation Mode", type: "Section Break" },
           {
             name: "pump_operation",
             label: "Operation",
