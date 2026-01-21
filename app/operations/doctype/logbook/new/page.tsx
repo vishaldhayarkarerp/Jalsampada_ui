@@ -20,7 +20,7 @@ export default function NewLogbookPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   // 🟢 Removed currentUser from here to rely on Cookie instead
-  const { apiKey, apiSecret } = useAuth(); 
+  const { apiKey, apiSecret } = useAuth();
   const [isSaving, setIsSaving] = React.useState(false);
   const [userFullName, setUserFullName] = React.useState<string | null>(null);
 
@@ -36,8 +36,8 @@ export default function NewLogbookPage() {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) {
-        const val = parts.pop()?.split(';').shift();
-        return val ? decodeURIComponent(val) : null;
+      const val = parts.pop()?.split(';').shift();
+      return val ? decodeURIComponent(val) : null;
     }
     return null;
   };
@@ -57,10 +57,10 @@ export default function NewLogbookPage() {
   // 🟢 HELPER: Fetch current user if not available
   const fetchCurrentUser = async (): Promise<string | null> => {
     if (!apiKey || !apiSecret) return null;
-    
+
     try {
       const response = await fetch(
-        "http://103.219.1.138:4412/api/method/frappe.auth.get_logged_user",
+        "http://192.168.1.30:4412/api/method/frappe.auth.get_logged_user",
         {
           method: "GET",
           headers: {
@@ -79,12 +79,12 @@ export default function NewLogbookPage() {
       const data = await response.json();
       const user = data.message || null;
       console.log("🔍 Debug - Fetched current user:", user);
-      
+
       // Store in localStorage for future use
       if (user && typeof window !== "undefined") {
         localStorage.setItem("currentUser", user);
       }
-      
+
       return user;
     } catch (error) {
       console.error("🔍 Debug - Error fetching current user:", error);
@@ -95,10 +95,10 @@ export default function NewLogbookPage() {
   // 🟢 HELPER: Fetch user's full name
   const fetchUserFullName = async (userId: string): Promise<string | null> => {
     if (!userId || !apiKey || !apiSecret) return null;
-    
+
     try {
       const response = await fetch(
-        `http://103.219.1.138:4412/api/resource/User/${userId}`,
+        `http://192.168.1.30:4412/api/resource/User/${userId}`,
         {
           method: "GET",
           headers: {
@@ -116,7 +116,7 @@ export default function NewLogbookPage() {
       const data = await response.json();
       const fullName = data.data?.full_name || null;
       console.log("🔍 Debug - Fetched user full name:", fullName);
-      
+
       return fullName;
     } catch (error) {
       console.error("🔍 Debug - Error fetching user full name:", error);
@@ -141,7 +141,7 @@ export default function NewLogbookPage() {
       const cookieUser = getCookie("user_id");
       const localStorageUser = typeof window !== "undefined" ? localStorage.getItem("currentUser") : null;
       const userId = cookieUser || localStorageUser;
-      
+
       if (userId && !userFullName) {
         console.log("🔍 Debug - Fetching full name for user:", userId);
         const fullName = await fetchUserFullName(userId);
@@ -151,7 +151,7 @@ export default function NewLogbookPage() {
         }
       }
     };
-    
+
     getUserAndFullName();
   }, [userFullName]); // Only run once when userFullName is null
 
@@ -159,14 +159,14 @@ export default function NewLogbookPage() {
   React.useEffect(() => {
     if (formMethods && userFullName) {
       console.log("🔍 Debug - Updating form with userFullName:", userFullName);
-      
+
       // Update operator_name if it's empty
       const currentOperatorName = formMethods.getValues("operator_name");
       if (!currentOperatorName) {
         formMethods.setValue("operator_name", userFullName);
         console.log("🔍 Debug - Set operator_name to:", userFullName);
       }
-      
+
       // Update operator_name_1 if it's empty
       const currentOperatorName1 = formMethods.getValues("operator_name_1");
       if (!currentOperatorName1) {
@@ -192,49 +192,49 @@ export default function NewLogbookPage() {
     // This ensures that if the default value missed it, we set it now.
     const cookieUser = getCookie("user_id");
     console.log("🔍 Debug - cookieUser value:", cookieUser);
-    
+
     if (cookieUser) {
-        console.log("🔍 Debug - Setting cookieUser:", cookieUser);
-        // Set for Start Mode
-        if (!formMethods.getValues("operator_id")) {
-             formMethods.setValue("operator_id", cookieUser);
-             console.log("🔍 Debug - Set operator_id to:", cookieUser);
-        }
-        // Set for Stop Mode
-        if (!formMethods.getValues("operator_id_1")) {
-             formMethods.setValue("operator_id_1", cookieUser);
-             console.log("🔍 Debug - Set operator_id_1 to:", cookieUser);
-        }
+      console.log("🔍 Debug - Setting cookieUser:", cookieUser);
+      // Set for Start Mode
+      if (!formMethods.getValues("operator_id")) {
+        formMethods.setValue("operator_id", cookieUser);
+        console.log("🔍 Debug - Set operator_id to:", cookieUser);
+      }
+      // Set for Stop Mode
+      if (!formMethods.getValues("operator_id_1")) {
+        formMethods.setValue("operator_id_1", cookieUser);
+        console.log("🔍 Debug - Set operator_id_1 to:", cookieUser);
+      }
     } else {
-        console.log("🔍 Debug - No cookieUser available, fetching from API");
-        // Fetch user from API if no cookie available
-        fetchCurrentUser().then(fetchedUser => {
-            if (fetchedUser) {
-                console.log("🔍 Debug - Setting fetchedUser:", fetchedUser);
-                // Set for Start Mode
-                if (!formMethods.getValues("operator_id")) {
-                     formMethods.setValue("operator_id", fetchedUser);
-                     console.log("🔍 Debug - Set operator_id to fetchedUser:", fetchedUser);
-                }
-                // Set for Stop Mode
-                if (!formMethods.getValues("operator_id_1")) {
-                     formMethods.setValue("operator_id_1", fetchedUser);
-                     console.log("🔍 Debug - Set operator_id_1 to fetchedUser:", fetchedUser);
-                }
-            }
-        });
+      console.log("🔍 Debug - No cookieUser available, fetching from API");
+      // Fetch user from API if no cookie available
+      fetchCurrentUser().then(fetchedUser => {
+        if (fetchedUser) {
+          console.log("🔍 Debug - Setting fetchedUser:", fetchedUser);
+          // Set for Start Mode
+          if (!formMethods.getValues("operator_id")) {
+            formMethods.setValue("operator_id", fetchedUser);
+            console.log("🔍 Debug - Set operator_id to fetchedUser:", fetchedUser);
+          }
+          // Set for Stop Mode
+          if (!formMethods.getValues("operator_id_1")) {
+            formMethods.setValue("operator_id_1", fetchedUser);
+            console.log("🔍 Debug - Set operator_id_1 to fetchedUser:", fetchedUser);
+          }
+        }
+      });
     }
 
     const subscription = formMethods.watch(async (value, { name, type }) => {
-      const form = formMethods; 
+      const form = formMethods;
 
       // ➤ LOGIC A: Mutual Exclusivity
       if (name === "start_pump" && value.start_pump) {
-        form.setValue("stop_pump", 0); 
+        form.setValue("stop_pump", 0);
         fetchPumps("Stopped");
       }
       if (name === "stop_pump" && value.stop_pump) {
-        form.setValue("start_pump", 0); 
+        form.setValue("start_pump", 0);
         fetchPumps("Running");
       }
 
@@ -269,18 +269,18 @@ export default function NewLogbookPage() {
         });
 
         const pumps = resp.data.message || [];
-        
+
         const tableData = pumps.map((p: any) => ({
           pump: p.pump,
           pump_no: p.pump_no,
           motor: p.motor,
           motor_no: p.motor_no,
-          check: 0 
+          check: 0
         }));
 
         formMethods.setValue("primary_list", tableData);
-        formMethods.setValue("secondary_list", []); 
-        
+        formMethods.setValue("secondary_list", []);
+
       } catch (error) {
         console.error("Failed to fetch pumps", error);
         toast.error("Failed to load pump list");
@@ -297,7 +297,7 @@ export default function NewLogbookPage() {
           pump_no: row.pump_no,
           motor: row.motor
         }));
-      
+
       const currentSec = formMethods.getValues("secondary_list");
       if (JSON.stringify(currentSec) !== JSON.stringify(newSecondaryList)) {
         formMethods.setValue("secondary_list", newSecondaryList);
@@ -313,7 +313,7 @@ export default function NewLogbookPage() {
   ------------------------------------------------- */
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     const getValue = (field: string, def: any = undefined) => duplicateData?.[field] ?? def;
-    
+
     // 🟢 Get Cookie User for Default Value (Runs on Render)
     const cookieUser = getCookie("user_id");
     // Fallback to localStorage if cookie is not available
@@ -326,10 +326,10 @@ export default function NewLogbookPage() {
         name: "Details",
         fields: [
           // ── SECTION 2: MODE ────────────────────────────────────────────────
-          { 
-            name: "sec_mode", 
-            label: "Operation Mode", 
-            type: "Section Break" 
+          {
+            name: "sec_mode",
+            label: "Operation Mode",
+            type: "Section Break"
           },
           {
             name: "start_pump",
@@ -343,13 +343,13 @@ export default function NewLogbookPage() {
             type: "Check",
             defaultValue: getValue("stop_pump", 0),
           },
-          { name: "cb_mode", label: "", type: "Column Break" },  
+          { name: "cb_mode", label: "", type: "Column Break" },
 
           // ── SECTION 1: CONTEXT ─────────────────────────────────────────────
           {
-             name: "sec_location", 
-             label: "Location & Date", 
-             type: "Section Break" 
+            name: "sec_location",
+            label: "Location & Date",
+            type: "Section Break"
           },
           {
             name: "entry_date",
@@ -373,13 +373,13 @@ export default function NewLogbookPage() {
             defaultValue: getValue("stage"),
             required: true,
             filterMapping: [{ sourceField: "lis_name", targetField: "lis_name" }],
-          }, 
-          
+          },
+
 
           // ── SECTION 3: OPERATION DETAILS ──────────────────────────────────
-          { 
-            name: "sec_details", 
-            label: "Operation Details", 
+          {
+            name: "sec_details",
+            label: "Operation Details",
             type: "Section Break",
             displayDependsOn: "start_pump == 1 || stop_pump == 1"
           },
@@ -390,6 +390,7 @@ export default function NewLogbookPage() {
             label: "Start Datetime",
             type: "DateTime",
             defaultValue: getValue("start_datetime"),
+            required: true,
             displayDependsOn: "start_pump == 1"
           },
           {
@@ -422,7 +423,8 @@ export default function NewLogbookPage() {
             label: "Stop Datetime",
             type: "DateTime",
             defaultValue: getValue("stop_datetime"),
-            displayDependsOn: "stop_pump == 1" 
+            required: true,
+            displayDependsOn: "stop_pump == 1"
           },
           {
             name: "pump_stop_reason",
@@ -437,7 +439,7 @@ export default function NewLogbookPage() {
             label: "Specify (if Other)",
             type: "Small Text",
             defaultValue: getValue("specify"),
-            displayDependsOn: "pump_stop_reason == 'Other'" 
+            displayDependsOn: "pump_stop_reason == 'Other'"
           },
 
           // {
@@ -481,9 +483,9 @@ export default function NewLogbookPage() {
           },
 
           // ── SECTION 4: TABLES ──────────────────────────────────────────────
-          { 
-            name: "sec_assets", 
-            label: "Asset Selection", 
+          {
+            name: "sec_assets",
+            label: "Asset Selection",
             type: "Section Break",
             displayDependsOn: "start_pump == 1 || stop_pump == 1"
           },
@@ -498,7 +500,7 @@ export default function NewLogbookPage() {
               { name: "motor", label: "Motor", type: "Link", linkTarget: "Asset" },
               { name: "pump_no", label: "Pump No", type: "Data" },
               { name: "motor_no", label: "Motor No", type: "Data" },
-              { name: "check", label: "Select", type: "Check" }, 
+              { name: "check", label: "Select", type: "Check" },
             ],
           },
           {
@@ -512,7 +514,7 @@ export default function NewLogbookPage() {
               { name: "pump_no", label: "Pump No", type: "Data" },
             ],
           },
-          
+
         ],
       },
     ];
@@ -546,7 +548,7 @@ export default function NewLogbookPage() {
     try {
       const payload: Record<string, any> = { ...data };
       payload.doctype = doctypeName;
-      
+
       // Only include relevant datetime fields based on pump selection
       if (data.start_pump) {
         // Start mode - include start_datetime, exclude stop_datetime
@@ -561,7 +563,7 @@ export default function NewLogbookPage() {
         delete payload.operator_id;
         delete payload.operator_name;
       }
-      
+
       if (Array.isArray(payload.primary_list)) {
         payload.primary_list = payload.primary_list.map((row: any) => ({
           ...row,
@@ -574,7 +576,7 @@ export default function NewLogbookPage() {
       });
 
       toast.success("Logbook created successfully!");
-      
+
       // Use the created record's ID to redirect to detail page
       const logbookId = response.data.data.name;
       router.push(`/operations/doctype/logbook/${encodeURIComponent(logbookId)}`);

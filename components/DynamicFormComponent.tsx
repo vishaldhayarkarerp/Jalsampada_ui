@@ -36,7 +36,7 @@ import { ToggleButton } from "./ToggleButton";
 import { PumpStatusToggle } from "./PumpStatusToggle";
 import { cn, getApiMessages } from "@/lib/utils";
 
-const DEFAULT_API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const DEFAULT_API_BASE_URL = "http://192.168.1.30:4412/api/resource";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (Unchanged)
@@ -167,7 +167,7 @@ async function fetchFieldValue(
   apiSecret: string
 ): Promise<any> {
   try {
-    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+    const API_BASE_URL = "http://192.168.1.30:4412/api/resource";
     const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
 
     const resp = await axios.get(url, {
@@ -196,7 +196,7 @@ async function fetchMultipleFieldValues(
   apiSecret: string
 ): Promise<Record<string, any>> {
   try {
-    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+    const API_BASE_URL = "http://192.168.1.30:4412/api/resource";
     const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
 
     const resp = await axios.get(url, {
@@ -1133,79 +1133,100 @@ export function DynamicForm({
     // We only use the custom picker for Date and DateTime to enforce formatting.
     // Time fields typically don't need strictly enforced date formats.
     if (type === "date" || type === "datetime-local") {
-      const rules = field.type === "DateTime" ? {} : rulesFor(field);
+      const rules = field.type === "DateTime" ? rulesFor(field) : rulesFor(field);
 
       return (
         <Controller
           name={field.name}
           control={control}
           rules={rules}
-          render={({ field: controllerField, fieldState: { error } }) => (
-            <div className="form-group">
-              <label htmlFor={field.name} className="form-label">
-                {field.label}
-                {field.required ? " *" : ""}
-              </label>
-              <div className={error ? "input-error-wrapper" : ""}>
-                <DatePicker
-                  selected={
-                    controllerField.value
-                      ? new Date(controllerField.value) // Ensure value is Date object
-                      : new Date() // Default to current date/time
-                  }
-                  onChange={(date: Date | null) => {
-                    // Handle Clear
-                    if (!date) {
-                      controllerField.onChange("");
-                      return;
-                    }
+          render={({ field: controllerField, fieldState: { error } }) => {
+            // Ensure the field has a proper initial value
+            let selectedDate = controllerField.value ? new Date(controllerField.value) : (field.defaultValue ? new Date(field.defaultValue) : new Date());
 
-                    // 🟢 Manual Formatting to prevent Timezone Shifts
-                    // We construct the string based on LOCAL time components
-                    const pad = (n: number) => (n < 10 ? "0" + n : n);
-                    const yyyy = date.getFullYear();
-                    const MM = pad(date.getMonth() + 1);
-                    const dd = pad(date.getDate());
+            // Auto-set current date/time if field is empty
+            if (!controllerField.value) {
+              const now = new Date();
+              const pad = (n: number) => String(n).padStart(2, '0');
+              const [yyyy, MM, dd, hh, mm, ss] = [
+                now.getFullYear(),
+                pad(now.getMonth() + 1),
+                pad(now.getDate()),
+                pad(now.getHours()),
+                pad(now.getMinutes()),
+                pad(now.getSeconds())
+              ];
 
-                    if (type === "datetime-local") {
-                      const hh = pad(date.getHours());
-                      const mm = pad(date.getMinutes());
-                      const ss = pad(date.getSeconds());
-                      // Send backend: YYYY-MM-DD HH:mm:ss
-                      controllerField.onChange(`${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`);
-                    } else {
-                      // Send backend: YYYY-MM-DD
-                      controllerField.onChange(`${yyyy}-${MM}-${dd}`);
-                    }
-                  }}
-                  // 🟢 ENFORCE INDIAN FORMAT HERE
-                  dateFormat={type === "datetime-local" ? "dd/MM/yyyy h:mm aa" : "dd/MM/yyyy"}
-                  showTimeSelect={type === "datetime-local"}
-                  timeIntervals={15}
-                  timeCaption="Time"
-                  placeholderText={type === "datetime-local" ? "DD/MM/YYYY HH:MM AM/PM" : "DD/MM/YYYY"}
-                  className={cn(
-                    "form-control w-full",
-                    getErrorClass(field.name)
-                  )}
-                  // Enable year dropdown for easier navigation
-                  showYearDropdown
-                  scrollableYearDropdown
-                  yearDropdownItemNumber={100}
-                  autoComplete="off"
-                  // 🟢 PORTAL: This prevents the calendar from being hidden by table headers
-                  withPortal
-                  portalId="root-portal"
-                />
+              controllerField.onChange(
+                type === "datetime-local"
+                  ? `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`
+                  : `${yyyy}-${MM}-${dd}`
+              );
+            }
+
+            return (
+              <div className="form-group">
+                <label htmlFor={field.name} className="form-label">
+                  {field.label}
+                  {field.required ? " *" : ""}
+                </label>
+                <div className={error ? "input-error-wrapper" : ""}>
+                  <DatePicker
+                    selected={selectedDate}
+                    onChange={(date: Date | null) => {
+                      // Handle Clear
+                      if (!date) {
+                        controllerField.onChange("");
+                        return;
+                      }
+
+                      // 🟢 Manual Formatting to prevent Timezone Shifts
+                      // We construct the string based on LOCAL time components
+                      const pad = (n: number) => (n < 10 ? "0" + n : n);
+                      const yyyy = date.getFullYear();
+                      const MM = pad(date.getMonth() + 1);
+                      const dd = pad(date.getDate());
+
+                      if (type === "datetime-local") {
+                        const hh = pad(date.getHours());
+                        const mm = pad(date.getMinutes());
+                        const ss = pad(date.getSeconds());
+                        // Send backend: YYYY-MM-DD HH:mm:ss
+                        controllerField.onChange(`${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`);
+                      } else {
+                        // Send backend: YYYY-MM-DD
+                        controllerField.onChange(`${yyyy}-${MM}-${dd}`);
+                      }
+                    }}
+                    // 🟢 ENFORCE INDIAN FORMAT HERE
+                    dateFormat={type === "datetime-local" ? "dd/MM/yyyy h:mm aa" : "dd/MM/yyyy"}
+                    showTimeSelect={type === "datetime-local"}
+                    timeIntervals={15}
+                    timeCaption="Time"
+                    placeholderText={type === "datetime-local" ? "DD/MM/YYYY HH:MM AM/PM" : "DD/MM/YYYY"}
+                    className={cn(
+                      "form-control w-full",
+                      getErrorClass(field.name)
+                    )}
+                    // Enable year dropdown for easier navigation
+                    showYearDropdown
+                    scrollableYearDropdown
+                    yearDropdownItemNumber={100}
+                    autoComplete="off"
+                    // 🟢 PORTAL: This prevents the calendar from being hidden by table headers
+                    withPortal
+                    portalId="root-portal"
+                  />
+                </div>
+                {error && (
+                  <span className="text-red-500 font-medium text-sm mt-1">
+                    {error.message}
+                  </span>
+                )}
+                <FieldHelp text={field.description} />
               </div>
-              {error && (
-                <span className="text-red-500 font-medium text-sm mt-1">
-                  {error.message}
-                </span>
-              )}
-              <FieldHelp text={field.description} />
-            </div>
-          )}
+            );
+          }}
         />
       );
     }
