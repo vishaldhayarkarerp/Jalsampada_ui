@@ -1667,7 +1667,7 @@ export function DynamicForm({
               {isSubmittable && docstatus === 2 && (
                 <>
                   {/* Cancelled: No actions allowed */}
-                  <span className="text-sm text-gray-500">Document Cancelled</span>
+                  <span className="btn btn--danger">Cancelled</span>
                 </>
               )}
 
