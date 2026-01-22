@@ -1525,9 +1525,10 @@ export function DynamicForm({
     const fieldContent = () => {
       switch (field.type) {
         case "Data":
-        case "Small Text":
         case "Text":
           return renderInput(field, "text");
+        case "Small Text":
+          return renderTextarea(field, field.rows ?? 3);
         case "Long Text":
         case "Markdown Editor":
           return renderTextarea(field, field.rows ?? 4);
