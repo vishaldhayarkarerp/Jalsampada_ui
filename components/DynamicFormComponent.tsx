@@ -11,7 +11,7 @@ import {
   UseFormReturn,
 } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Upload, X, MoreVertical, Copy, Trash2, ChevronLeft, ChevronRight, Printer } from "lucide-react";
+import { Upload, X, MoreVertical, Copy, Trash2, ChevronLeft, ChevronRight, Printer, Eye } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
@@ -1052,7 +1052,7 @@ export function DynamicForm({
         name={field.name}
         control={control}
         render={({ field: rhfField }) => (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-4">
             <ToggleButton
               checked={!!rhfField.value}
               onChange={(val) => rhfField.onChange(val ? 1 : 0)}
@@ -1491,6 +1491,24 @@ export function DynamicForm({
         {value && (
           <div className={cn("flex items-center gap-3 bg-muted/40 p-3 rounded-md border", getErrorClass(field.name))}>
             <span className="text-sm flex-1">{value?.name}</span>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => {
+                // Open file in new tab for preview
+                if (value && typeof value === 'object' && value.file_url) {
+                  window.open(value.file_url, '_blank');
+                } else if (value && typeof value === 'object' && value.name) {
+                  // If it's a File object, create object URL
+                  const fileUrl = URL.createObjectURL(value);
+                  window.open(fileUrl, '_blank');
+                }
+              }}
+            >
+              <Eye size={16} />
+            </Button>
 
             <Button
               variant="outline"
