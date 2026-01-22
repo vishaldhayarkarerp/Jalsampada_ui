@@ -89,9 +89,13 @@ export default function NewLogbookPage() {
         if (value.pump_operation === "start") {
           setPrimaryListLabel("Stopped Pumps (Select to Start)");
           fetchPumps("Stopped");
+          // Set status to "Running" for start operation
+          form.setValue("status", "Running");
         } else if (value.pump_operation === "stop") {
           setPrimaryListLabel("Running Pumps (Select to Stop)");
           fetchPumps("Running");
+          // Set status to "Stopped" for stop operation
+          form.setValue("status", "Stopped");
         }
       }
 
@@ -269,9 +273,10 @@ export default function NewLogbookPage() {
             displayDependsOn: "pump_operation == 'stop'"
           },
           {
-            name: "sec_assets",
-            label: "Asset Selection",
-            type: "Section Break",
+            name: "status",
+            label: "Status",
+            type: "Read Only",
+            readOnly: true,
             displayDependsOn: "pump_operation == 'start' || pump_operation == 'stop'"
           },
           {

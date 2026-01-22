@@ -178,9 +178,13 @@ export default function RecordDetailPage() {
         if (value.pump_operation === "start") {
           setPrimaryListLabel("Stopped Pumps (Select to Start)");
           fetchPumps("Stopped");
+          // Set status to "Running" for start operation
+          form.setValue("status", "Running");
         } else if (value.pump_operation === "stop") {
           setPrimaryListLabel("Running Pumps (Select to Stop)");
           fetchPumps("Running");
+          // Set status to "Stopped" for stop operation
+          form.setValue("status", "Stopped");
         }
       }
 
@@ -264,6 +268,14 @@ export default function RecordDetailPage() {
           { name: "specify", label: "Specify (if Other)", type: "Small Text", defaultValue: getVal("specify"), displayDependsOn: "pump_stop_reason == 'Other'" },
           { name: "operator_id_1", label: "Operator ID", type: "Read Only", linkTarget: "User", defaultValue: getVal("operator_id_1"), readOnly: true, displayDependsOn: "pump_operation == 'stop'" },
           { name: "operator_name_1", label: "Operator Name", type: "Read Only", defaultValue: getVal("operator_name_1"), readOnly: true, displayDependsOn: "pump_operation == 'stop'" },
+          {
+            name: "status",
+            label: "Status",
+            type: "Read Only",
+            readOnly: true,
+            defaultValue: getVal("status"),
+            displayDependsOn: "pump_operation == 'start' || pump_operation == 'stop'"
+          },
           { name: "sec_assets", label: "Asset Selection", type: "Section Break" },
           {
             name: "primary_list", label: primaryListLabel, type: "Table", defaultValue: getVal("primary_list", []),
