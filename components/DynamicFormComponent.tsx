@@ -1173,7 +1173,7 @@ export function DynamicForm({
     type: "date" | "datetime-local" | "time"
   ) => {
     // We only use the custom picker for Date and DateTime to enforce formatting.
-    // Time fields typically don't need strictly enforced date formats.
+    // Time fields use a simple input element.
     if (type === "date" || type === "datetime-local") {
       const rules = field.type === "DateTime" ? rulesFor(field) : rulesFor(field);
 
@@ -1203,7 +1203,7 @@ export function DynamicForm({
                     : `${yyyy}-${MM}-${dd}`
                 );
               }
-            }, []); // Only run once on mount
+            }, []);
 
             // Ensure the field has a proper initial value
             let selectedDate: Date;
@@ -1287,6 +1287,50 @@ export function DynamicForm({
                     {error.message}
                   </span>
                 )}
+                <FieldHelp text={field.description} />
+              </div>
+            );
+          }}
+        />
+      );
+    }
+
+    // Handle time type with auto-set logic
+    if (type === "time") {
+      return (
+        <Controller
+          name={field.name}
+          control={control}
+          rules={rulesFor(field)}
+          render={({ field: controllerField }) => {
+            // Auto-set current time if field is empty
+            React.useEffect(() => {
+              if (!controllerField.value) {
+                const now = new Date();
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const hh = pad(now.getHours());
+                const mm = pad(now.getMinutes());
+                const ss = pad(now.getSeconds());
+                controllerField.onChange(`${hh}:${mm}:${ss}`);
+              }
+            }, []);
+
+            return (
+              <div className="form-group">
+                <label htmlFor={field.name} className="form-label">
+                  {field.label}
+                  {field.required ? " *" : ""}
+                </label>
+                <input
+                  id={field.name}
+                  type={type}
+                  step="1"
+                  className={cn("form-control", getErrorClass(field.name))}
+                  {...reg(field.name, rulesFor(field))}
+                />
+                <FieldError
+                  error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+                />
                 <FieldHelp text={field.description} />
               </div>
             );

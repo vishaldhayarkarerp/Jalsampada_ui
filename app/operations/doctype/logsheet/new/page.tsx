@@ -8,6 +8,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { UseFormReturn } from "react-hook-form";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -17,6 +18,10 @@ export default function NewLogSheetPage() {
   const { apiKey, apiSecret } = useAuth();
   const [isSaving, setIsSaving] = React.useState(false);
   const doctypeName = "Log Sheet";
+
+  // Store form methods
+  const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
+
   const duplicateData = React.useMemo(() => {
     const duplicateParam = searchParams.get('duplicate');
     if (!duplicateParam) return null;
@@ -35,6 +40,42 @@ export default function NewLogSheetPage() {
       notificationShown.current = true;
     }
   }, [duplicateData]);
+
+  // Fetch current user info
+  React.useEffect(() => {
+    const fetchCurrentUserInfo = async () => {
+      if (!apiKey || !apiSecret) return;
+
+      try {
+        const response = await fetch(
+          "http://103.219.1.138:4412/api/method/quantlis_management.api.get_current_user_info",
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              Authorization: `token ${apiKey}:${apiSecret}`,
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        const { user, full_name } = data.message || {};
+
+        if (user && full_name && formMethods) {
+          formMethods.setValue("operator_id", user);
+          formMethods.setValue("operator_name", full_name);
+        }
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+      }
+    };
+
+    fetchCurrentUserInfo();
+  }, [apiKey, apiSecret, formMethods]);
+
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     const getValue = (fieldName: string, defaultValue: any = undefined) => {
       return duplicateData?.[fieldName] ?? defaultValue;
@@ -79,18 +120,18 @@ export default function NewLogSheetPage() {
             defaultValue: getValue("asset"),
           },
           {
-            name: "operator_id",
-            label: "Operator ID",
-            type: "Link",
-            linkTarget: "User",
-            defaultValue: getValue("operator_id"),
-          },
-          {
             name: "logbook",
             label: "Pump No",
             type: "Link",
             linkTarget: "Logbook Ledger",
             defaultValue: getValue("logbook"),
+          },
+          {
+            name: "operator_id",
+            label: "Operator ID",
+            type: "Link",
+            linkTarget: "User",
+            defaultValue: getValue("operator_id"),
           },
           {
             name: "operator_name",
@@ -124,7 +165,6 @@ export default function NewLogSheetPage() {
             name: "temperature_readings",
             label: "Temperature Readings",
             type: "Table",
-            defaultValue: getValue("temperature_readings", []),
             columns: [
               {
                 name: "temperature",
@@ -226,6 +266,7 @@ export default function NewLogSheetPage() {
       description="Create a new Log Sheet record"
       submitLabel={isSaving ? "Saving..." : "Create"}
       cancelLabel="Cancel"
+      onFormInit={setFormMethods}
     />
   );
 }
