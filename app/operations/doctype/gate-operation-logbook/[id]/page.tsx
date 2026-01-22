@@ -167,6 +167,13 @@ export default function GateOperationLogbookDetailPage() {
                         type: "Link",
                         linkTarget: "Stage No",
                         required: true,
+                        filterMapping: [
+                            {
+                                sourceField: "lis_name",
+                                
+                                targetField: "lis_name"
+                            }
+                        ],
                     },
                    
 
