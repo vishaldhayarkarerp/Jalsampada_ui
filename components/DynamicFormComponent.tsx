@@ -307,8 +307,8 @@ function buildDefaultValues(fields: FormField[]) {
       if (f.type === "Table MultiSelect") dv[f.name] = [];
     }
 
-    // Apply precision formatting to Currency fields during initialization
-    if (f.type === "Currency" && f.precision && dv[f.name]) {
+    // Apply precision formatting to Currency and Float fields during initialization
+    if ((f.type === "Currency" || f.type === "Float") && f.precision && dv[f.name]) {
       const value = parseFloat(dv[f.name]);
       if (!isNaN(value)) {
         dv[f.name] = value.toFixed(f.precision);
@@ -922,8 +922,8 @@ export function DynamicForm({
       field.type
     );
 
-    if (field.type === "Currency" && field.precision) {
-      commonProps.step = "0.01";
+    if ((field.type === "Currency" || field.type === "Float") && field.precision) {
+      commonProps.step = field.precision > 0 ? (0).toFixed(field.precision).substring(1) : "1";
 
       return (
         <Controller
