@@ -472,6 +472,7 @@ export function DynamicForm({
   const methods = useForm<Record<string, any>>({
     defaultValues,
     mode: "onBlur",
+    reValidateMode: "onSubmit",
   });
 
   const {
