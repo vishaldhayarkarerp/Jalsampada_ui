@@ -120,58 +120,27 @@ export default function LogSheetDetailPage() {
 
         return [
             {
-                name: "Main",
+                name: "Details",
                 fields: fields([
-                    // 1st row
-                    { name: "lis", label: "LIS", type: "Link", linkTarget: "Lift Irrigation Scheme",     },
+                    { name: "lis", label: "LIS", type: "Link", linkTarget: "Lift Irrigation Scheme", },
                     { name: "date", label: "Date", type: "Date", defaultValue: "Today", required: true },
-                   
-
-                    // 2nd row
                     { name: "stage", label: "Stage/ Sub Scheme", type: "Link", linkTarget: "Stage No" },
                     { name: "time", label: "Time", type: "Time", defaultValue: "Now" },
-                  
-
-                    // 3rd row
                     { name: "asset", label: "Asset", type: "Link", linkTarget: "Asset" },
                     { name: "operator_id", label: "Operator ID", type: "Link", linkTarget: "User" },
-                  
-
-                    // 4th row
                     { name: "logbook", label: "Pump No", type: "Link", linkTarget: "Logbook Ledger" },
                     { name: "operator_name", label: "Operator Name", type: "Data" },
-
-                    // Remarks
                     { name: "section_break_mgrv", label: "", type: "Section Break" },
-                    { name: "remark", label: "Remark", type: "Text" },
-                ]),
-            },
-
-            {
-                name: "Readings",
-                fields: fields([
-                    // Water & Pressure
-                    { name: "water_level", label: "Water Level", type: "Float"  },
-                  
-                    { name: "pressure_guage", label: "Pressure Guage Reading", type: "Float" },
-
-                    // Voltage Section
+                    { name: "water_level", label: "Water Level", type: "Float", precision: 2 },
+                    { name: "pressure_guage", label: "Pressure Guage Reading", type: "Float", precision: 2 },
                     { name: "voltage_section", label: "Voltage Reading", type: "Section Break" },
-                    { name: "br", label: "BR", type: "Float" },
-                  
-                    { name: "ry", label: "RY", type: "Float" },
-                  
-                    { name: "yb", label: "YB", type: "Float" },
-
-                    // Current Section
+                    { name: "br", label: "BR", type: "Float", precision: 2 },
+                    { name: "ry", label: "RY", type: "Float", precision: 2 },
+                    { name: "yb", label: "YB", type: "Float", precision: 2 },
                     { name: "current_reading_section", label: "Current Reading", type: "Section Break" },
-                    { name: "r", label: "R", type: "Float" },
-                  
-                    { name: "y", label: "Y", type: "Float" },
-                  
-                    { name: "b", label: "B", type: "Float" },
-
-                    // Temperature Table
+                    { name: "r", label: "R", type: "Float", precision: 2 },
+                    { name: "y", label: "Y", type: "Float", precision: 2 },
+                    { name: "b", label: "B", type: "Float", precision: 2 },
                     { name: "section_break_qzro", label: "", type: "Section Break" },
                     {
                         name: "temperature_readings",
@@ -181,55 +150,44 @@ export default function LogSheetDetailPage() {
                             {
                                 name: "temperature",
                                 label: "Temperature",
-                                type: "Data",
-                                
+                                type: "Link",
+                                linkTarget: "Temperature Readings",
                             },
                             {
                                 name: "temp_value",
                                 label: "Temp Value",
                                 type: "Float",
+                                precision: 2,
                             },
                         ],
                     },
+                    { name: "remark", label: "Remark", type: "Small Text" },
                 ]),
-            },
+            }
         ];
     }, [record]);
-
-    /* -------------------------------------------------
-       5. SUBMIT HANDLER
-       ------------------------------------------------- */
     const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
         if (!isDirty) {
             toast.info("No changes to save.");
             return;
         }
-
         setIsSaving(true);
-
         try {
             const payload = { ...data };
-
-            // Remove layout fields (breaks/sections)
             const nonDataFields = new Set([
                 "section_break_mgrv", "voltage_section", "current_reading_section",
                 "section_break_qzro",
             ]);
-
             const finalPayload: Record<string, any> = {};
             for (const key in payload) {
                 if (!nonDataFields.has(key)) {
                     finalPayload[key] = payload[key];
                 }
             }
-
-            // Preserve system fields
             if (record) {
                 finalPayload.modified = record.modified;
                 finalPayload.docstatus = record.docstatus;
             }
-
-            // Ensure numeric values
             const floatFields = [
                 "water_level", "pressure_guage",
                 "br", "ry", "yb",
@@ -240,9 +198,6 @@ export default function LogSheetDetailPage() {
                     finalPayload[field] = Number(finalPayload[field]) || 0;
                 }
             });
-
-            console.log("Sending payload to Frappe:", finalPayload);
-
             const resp = await axios.put(
                 `${API_BASE_URL}/${doctypeName}/${docname}`,
                 finalPayload,
@@ -254,14 +209,11 @@ export default function LogSheetDetailPage() {
                     withCredentials: true,
                 }
             );
-
             toast.success("Changes saved successfully!");
             if (resp.data?.data) {
                 setRecord(resp.data.data);
             }
-
             router.push(`/operations/doctype/logsheet/${encodeURIComponent(docname)}`);
-
         } catch (err: any) {
             console.error("Save error:", err);
             toast.error("Failed to Save", {
@@ -272,12 +224,7 @@ export default function LogSheetDetailPage() {
             setIsSaving(false);
         }
     };
-
     const handleCancel = () => router.back();
-
-    /* -------------------------------------------------
-       6. UI RENDERING STATES
-       ------------------------------------------------- */
     if (loading) {
         return (
             <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
@@ -285,7 +232,6 @@ export default function LogSheetDetailPage() {
             </div>
         );
     }
-
     if (error) {
         return (
             <div className="module active" style={{ padding: "2rem" }}>
@@ -296,7 +242,6 @@ export default function LogSheetDetailPage() {
             </div>
         );
     }
-
     if (!record) {
         return (
             <div className="module active" style={{ padding: "2rem" }}>
@@ -304,10 +249,6 @@ export default function LogSheetDetailPage() {
             </div>
         );
     }
-
-    /* -------------------------------------------------
-       7. FINAL RENDER
-       ------------------------------------------------- */
     return (
         <DynamicForm
             tabs={formTabs}

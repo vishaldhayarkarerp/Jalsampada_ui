@@ -482,7 +482,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
         <label className="form-label">{field.label}</label>
 
         <div className="stock-table-container">
-          <div className="table-scroll-container" style={{ maxHeight: "400px", overflow: "auto" }}>
+          
             <table className="stock-table child-form-table">
               <thead>
                 <tr>
@@ -627,7 +627,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                 })}
               </tbody>
             </table>
-          </div>
+          
         </div>
 
         <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
