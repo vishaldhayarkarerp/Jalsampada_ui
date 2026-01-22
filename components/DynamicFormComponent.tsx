@@ -1182,27 +1182,49 @@ export function DynamicForm({
           control={control}
           rules={rules}
           render={({ field: controllerField, fieldState: { error } }) => {
+            // Auto-set current date/time if field is empty using useEffect
+            React.useEffect(() => {
+              if (!controllerField.value) {
+                const now = new Date();
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const [yyyy, MM, dd, hh, mm, ss] = [
+                  now.getFullYear(),
+                  pad(now.getMonth() + 1),
+                  pad(now.getDate()),
+                  pad(now.getHours()),
+                  pad(now.getMinutes()),
+                  pad(now.getSeconds())
+                ];
+
+                controllerField.onChange(
+                  type === "datetime-local"
+                    ? `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`
+                    : `${yyyy}-${MM}-${dd}`
+                );
+              }
+            }, []); // Only run once on mount
+
             // Ensure the field has a proper initial value
-            let selectedDate = controllerField.value ? new Date(controllerField.value) : (field.defaultValue ? new Date(field.defaultValue) : new Date());
+            let selectedDate: Date;
+            if (controllerField.value) {
+              const parsedDate = new Date(controllerField.value);
+              // Check if the parsed date is valid
+              if (isNaN(parsedDate.getTime())) {
+                // Try default value or fallback to current date
+                const defaultDate = field.defaultValue ? new Date(field.defaultValue) : null;
+                selectedDate = (defaultDate && !isNaN(defaultDate.getTime())) ? defaultDate : new Date();
+              } else {
+                selectedDate = parsedDate;
+              }
+            } else {
+              // Try default value or fallback to current date
+              const defaultDate = field.defaultValue ? new Date(field.defaultValue) : null;
+              selectedDate = (defaultDate && !isNaN(defaultDate.getTime())) ? defaultDate : new Date();
+            }
 
-            // Auto-set current date/time if field is empty
-            if (!controllerField.value) {
-              const now = new Date();
-              const pad = (n: number) => String(n).padStart(2, '0');
-              const [yyyy, MM, dd, hh, mm, ss] = [
-                now.getFullYear(),
-                pad(now.getMonth() + 1),
-                pad(now.getDate()),
-                pad(now.getHours()),
-                pad(now.getMinutes()),
-                pad(now.getSeconds())
-              ];
-
-              controllerField.onChange(
-                type === "datetime-local"
-                  ? `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`
-                  : `${yyyy}-${MM}-${dd}`
-              );
+            // Final safety check - ensure selectedDate is always valid
+            if (!selectedDate || isNaN(selectedDate.getTime())) {
+              selectedDate = new Date();
             }
 
             return (

@@ -9,7 +9,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://192.168.1.30:4412/api/resource";
 
 export default function NewGateOperationLogbookPage() {
   const router = useRouter();
@@ -104,14 +104,14 @@ export default function NewGateOperationLogbookPage() {
             label: "Lift By (In Meters)",
             type: "Float",
             precision: 2,
-            depends_on: 'eval:doc.gate_operation=="Lift"',
+            displayDependsOn: "gate_operation=='Lift'",
             defaultValue: getValue("lift_by"),
           },
           {
             name: "lift_date",
             label: "Lift Date",
             type: "DateTime",
-            depends_on: 'eval:doc.gate_operation=="Lift"',
+            displayDependsOn: "gate_operation=='Lift'",
             defaultValue: getValue("lift_date", "Now"),
           },
 
@@ -121,14 +121,14 @@ export default function NewGateOperationLogbookPage() {
             label: "Lowered By (In Meters)",
             type: "Float",
             precision: 2,
-            depends_on: 'eval:doc.gate_operation=="Lowered"',
+            displayDependsOn: "gate_operation=='Lowered'",
             defaultValue: getValue("lowered_by"),
           },
           {
             name: "lowered_date",
             label: "Lowered Date",
             type: "DateTime",
-            depends_on: 'eval:doc.gate_operation=="Lowered"',
+            displayDependsOn: "gate_operation=='Lowered'",
             defaultValue: getValue("lowered_date", "Now"),
           },
 
