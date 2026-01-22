@@ -11,7 +11,7 @@ import {
   UseFormReturn,
 } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Upload, X, MoreVertical, Copy, Trash2, ChevronLeft, ChevronRight, Printer } from "lucide-react";
+import { Upload, X, MoreVertical, Copy, Trash2, ChevronLeft, ChevronRight, Printer, Eye } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
@@ -37,7 +37,7 @@ import { PumpStatusToggle } from "./PumpStatusToggle";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn, getApiMessages } from "@/lib/utils";
 
-const DEFAULT_API_BASE_URL = "http://192.168.1.30:4412/api/resource";
+const DEFAULT_API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (Unchanged)
@@ -169,7 +169,7 @@ async function fetchFieldValue(
   apiSecret: string
 ): Promise<any> {
   try {
-    const API_BASE_URL = "http://192.168.1.30:4412/api/resource";
+    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
     const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
 
     const resp = await axios.get(url, {
@@ -198,7 +198,7 @@ async function fetchMultipleFieldValues(
   apiSecret: string
 ): Promise<Record<string, any>> {
   try {
-    const API_BASE_URL = "http://192.168.1.30:4412/api/resource";
+    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
     const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
 
     const resp = await axios.get(url, {
@@ -307,8 +307,8 @@ function buildDefaultValues(fields: FormField[]) {
       if (f.type === "Table MultiSelect") dv[f.name] = [];
     }
 
-    // Apply precision formatting to Currency fields during initialization
-    if (f.type === "Currency" && f.precision && dv[f.name]) {
+    // Apply precision formatting to Currency and Float fields during initialization
+    if ((f.type === "Currency" || f.type === "Float") && f.precision && dv[f.name]) {
       const value = parseFloat(dv[f.name]);
       if (!isNaN(value)) {
         dv[f.name] = value.toFixed(f.precision);
@@ -472,6 +472,7 @@ export function DynamicForm({
   const methods = useForm<Record<string, any>>({
     defaultValues,
     mode: "onBlur",
+    reValidateMode: "onSubmit",
   });
 
   const {
@@ -921,8 +922,8 @@ export function DynamicForm({
       field.type
     );
 
-    if (field.type === "Currency" && field.precision) {
-      commonProps.step = "0.01";
+    if ((field.type === "Currency" || field.type === "Float") && field.precision) {
+      commonProps.step = field.precision > 0 ? (0).toFixed(field.precision).substring(1) : "1";
 
       return (
         <Controller
@@ -1051,7 +1052,7 @@ export function DynamicForm({
         name={field.name}
         control={control}
         render={({ field: rhfField }) => (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-4">
             <ToggleButton
               checked={!!rhfField.value}
               onChange={(val) => rhfField.onChange(val ? 1 : 0)}
@@ -1172,7 +1173,7 @@ export function DynamicForm({
     type: "date" | "datetime-local" | "time"
   ) => {
     // We only use the custom picker for Date and DateTime to enforce formatting.
-    // Time fields typically don't need strictly enforced date formats.
+    // Time fields use a simple input element.
     if (type === "date" || type === "datetime-local") {
       const rules = field.type === "DateTime" ? rulesFor(field) : rulesFor(field);
 
@@ -1182,27 +1183,49 @@ export function DynamicForm({
           control={control}
           rules={rules}
           render={({ field: controllerField, fieldState: { error } }) => {
+            // Auto-set current date/time if field is empty using useEffect
+            React.useEffect(() => {
+              if (!controllerField.value) {
+                const now = new Date();
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const [yyyy, MM, dd, hh, mm, ss] = [
+                  now.getFullYear(),
+                  pad(now.getMonth() + 1),
+                  pad(now.getDate()),
+                  pad(now.getHours()),
+                  pad(now.getMinutes()),
+                  pad(now.getSeconds())
+                ];
+
+                controllerField.onChange(
+                  type === "datetime-local"
+                    ? `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`
+                    : `${yyyy}-${MM}-${dd}`
+                );
+              }
+            }, []);
+
             // Ensure the field has a proper initial value
-            let selectedDate = controllerField.value ? new Date(controllerField.value) : (field.defaultValue ? new Date(field.defaultValue) : new Date());
+            let selectedDate: Date;
+            if (controllerField.value) {
+              const parsedDate = new Date(controllerField.value);
+              // Check if the parsed date is valid
+              if (isNaN(parsedDate.getTime())) {
+                // Try default value or fallback to current date
+                const defaultDate = field.defaultValue ? new Date(field.defaultValue) : null;
+                selectedDate = (defaultDate && !isNaN(defaultDate.getTime())) ? defaultDate : new Date();
+              } else {
+                selectedDate = parsedDate;
+              }
+            } else {
+              // Try default value or fallback to current date
+              const defaultDate = field.defaultValue ? new Date(field.defaultValue) : null;
+              selectedDate = (defaultDate && !isNaN(defaultDate.getTime())) ? defaultDate : new Date();
+            }
 
-            // Auto-set current date/time if field is empty
-            if (!controllerField.value) {
-              const now = new Date();
-              const pad = (n: number) => String(n).padStart(2, '0');
-              const [yyyy, MM, dd, hh, mm, ss] = [
-                now.getFullYear(),
-                pad(now.getMonth() + 1),
-                pad(now.getDate()),
-                pad(now.getHours()),
-                pad(now.getMinutes()),
-                pad(now.getSeconds())
-              ];
-
-              controllerField.onChange(
-                type === "datetime-local"
-                  ? `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`
-                  : `${yyyy}-${MM}-${dd}`
-              );
+            // Final safety check - ensure selectedDate is always valid
+            if (!selectedDate || isNaN(selectedDate.getTime())) {
+              selectedDate = new Date();
             }
 
             return (
@@ -1264,6 +1287,50 @@ export function DynamicForm({
                     {error.message}
                   </span>
                 )}
+                <FieldHelp text={field.description} />
+              </div>
+            );
+          }}
+        />
+      );
+    }
+
+    // Handle time type with auto-set logic
+    if (type === "time") {
+      return (
+        <Controller
+          name={field.name}
+          control={control}
+          rules={rulesFor(field)}
+          render={({ field: controllerField }) => {
+            // Auto-set current time if field is empty
+            React.useEffect(() => {
+              if (!controllerField.value) {
+                const now = new Date();
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const hh = pad(now.getHours());
+                const mm = pad(now.getMinutes());
+                const ss = pad(now.getSeconds());
+                controllerField.onChange(`${hh}:${mm}:${ss}`);
+              }
+            }, []);
+
+            return (
+              <div className="form-group">
+                <label htmlFor={field.name} className="form-label">
+                  {field.label}
+                  {field.required ? " *" : ""}
+                </label>
+                <input
+                  id={field.name}
+                  type={type}
+                  step="1"
+                  className={cn("form-control", getErrorClass(field.name))}
+                  {...reg(field.name, rulesFor(field))}
+                />
+                <FieldError
+                  error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+                />
                 <FieldHelp text={field.description} />
               </div>
             );
@@ -1470,6 +1537,24 @@ export function DynamicForm({
             <span className="text-sm flex-1">{value?.name}</span>
 
             <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => {
+                // Open file in new tab for preview
+                if (value && typeof value === 'object' && value.file_url) {
+                  window.open(value.file_url, '_blank');
+                } else if (value && typeof value === 'object' && value.name) {
+                  // If it's a File object, create object URL
+                  const fileUrl = URL.createObjectURL(value);
+                  window.open(fileUrl, '_blank');
+                }
+              }}
+            >
+              <Eye size={16} />
+            </Button>
+
+            <Button
               variant="outline"
               className="h-8 px-2"
               onClick={() => fileInputRefs.current[field.name]?.click()}
@@ -1502,9 +1587,10 @@ export function DynamicForm({
     const fieldContent = () => {
       switch (field.type) {
         case "Data":
-        case "Small Text":
         case "Text":
           return renderInput(field, "text");
+        case "Small Text":
+          return renderTextarea(field, field.rows ?? 3);
         case "Long Text":
         case "Markdown Editor":
           return renderTextarea(field, field.rows ?? 4);

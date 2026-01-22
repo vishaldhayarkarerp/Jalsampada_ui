@@ -38,21 +38,3 @@
 .stock-table.child-form-table {
     margin: 0;
 }
-
-.table-scroll-container::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-.table-scroll-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.table-scroll-container::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
-}
-
-.table-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}

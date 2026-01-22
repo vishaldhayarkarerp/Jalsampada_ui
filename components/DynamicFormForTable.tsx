@@ -149,10 +149,10 @@ export function DynamicFormForTable({
             initialData = {};
         }
 
-        // Apply precision formatting to Currency fields during initialization
+        // Apply precision formatting to Currency and Float fields during initialization
         const formattedData = { ...initialData };
         (fields || []).forEach(f => {
-            if (f.type === "Currency" && f.precision && formattedData[f.name]) {
+            if ((f.type === "Currency" || f.type === "Float") && f.precision && formattedData[f.name]) {
                 const value = parseFloat(formattedData[f.name]);
                 if (!isNaN(value)) {
                     formattedData[f.name] = value.toFixed(f.precision);
@@ -363,7 +363,7 @@ export function DynamicFormForTable({
         const value = formData[field.name] ?? "";
         
         const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-            if (field.type === "Currency" && field.precision) {
+            if ((field.type === "Currency" || field.type === "Float")&& field.precision) {
                 const val = parseFloat(e.target.value);
                 if (!isNaN(val)) {
                     handleInputChange(field.name, val.toFixed(field.precision));

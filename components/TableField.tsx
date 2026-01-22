@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useFieldArray, useFormContext, useWatch } from "react-hook-form"; // Import useWatch
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form"; 
 import { FormField } from "./DynamicFormComponent";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,10 @@ import { useAuth } from "@/context/AuthContext";
 import "./TableField.css";
 import "react-datepicker/dist/react-datepicker.css";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// 🔴 OLD: const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// 🟢 NEW: Split into Server Root and API Path
+const SERVER_URL = "http://103.219.1.138:4412";
+const API_BASE_URL = `${SERVER_URL}/api/resource`;
 
 interface Option {
   value: string;
@@ -30,7 +33,10 @@ interface TableFieldProps {
   errors: any;
 }
 
-// Helper functions for table field rendering
+// ... [Keep renderTableInput, renderTableTextarea, etc. unchanged] ...
+// (I will skip repeating the helper functions to save space, they are fine)
+
+// Helper functions for table field rendering (Keep these exactly as they were)
 const renderTableInput = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
   <input
     className="form-control-borderless"
@@ -184,6 +190,10 @@ const renderTableButton = (c: any, idx: number, rows: any[]) => (
   </button>
 );
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🟢 FIXED ATTACHMENT CELL
+// ─────────────────────────────────────────────────────────────────────────────
 function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChange }: {
   fieldName: string,
   control: any,
@@ -202,9 +212,13 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
     if (value instanceof File) {
       objectUrl = URL.createObjectURL(value);
       setPreviewUrl(objectUrl);
-    } else if (typeof value === 'string' && (value.startsWith("/files/") || value.startsWith("/private/files/"))) {
-      setPreviewUrl(API_BASE_URL + value);
-    } else {
+    } 
+    // Check for string paths from Frappe (e.g., "/private/files/...")
+    else if (typeof value === 'string' && (value.startsWith("/files/") || value.startsWith("/private/files/"))) {
+      // 🟢 FIX: Use SERVER_URL instead of API_BASE_URL
+      setPreviewUrl(SERVER_URL + value);
+    } 
+    else {
       setPreviewUrl(null);
     }
 
@@ -290,6 +304,7 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
   );
 }
 
+// ... [The rest of TableFieldContent and TableField component remains exactly the same] ...
 function TableFieldContent({ field, control, register, errors }: TableFieldProps) {
   const { apiKey, apiSecret } = useAuth();
   const formMethods = useFormContext();
@@ -304,26 +319,21 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
     name: field.name,
   });
 
-  // LIVE DATA Source
   const rows = watchedRows || [];
 
   const { openEditModal, closeEditModal, isEditModalOpen, editingRowIndex } = useTableRowContext();
   const [selectedIndices, setSelectedIndices] = React.useState<Set<number>>(new Set());
 
-  // NEW CLEAN INPUT HANDLER
   const handleTableInputChange = React.useCallback(async (rowIndex: number, fieldName: string, value: any) => {
 
-    // 1. Immediate Update (RHF only)
     formMethods.setValue(`${field.name}.${rowIndex}.${fieldName}`, value, { shouldDirty: true });
 
-    // 2. Fetch Logic
     const dependentColumns = field.columns?.filter(col =>
       col.fetchFrom && col.fetchFrom.sourceField === fieldName
     );
 
     if (dependentColumns && dependentColumns.length > 0) {
       if (!value || value === "") {
-        // Clear dependents
         dependentColumns.forEach(col => {
           formMethods.setValue(`${field.name}.${rowIndex}.${col.name}`, "", { shouldDirty: true });
         });
@@ -342,7 +352,6 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
             dependentColumns.forEach(col => {
               const targetField = col.fetchFrom!.targetField;
               const fetchedValue = fetchedDoc[targetField];
-              // Update dependent field (RHF only)
               formMethods.setValue(`${field.name}.${rowIndex}.${col.name}`, fetchedValue, { shouldDirty: true });
             });
           }
@@ -351,14 +360,11 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
         }
       }
     }
-    // NO CONTEXT UPDATES HERE
   }, [field.name, field.columns, formMethods, apiKey, apiSecret]);
 
-  // 🟢 MODIFIED: Use defaultValue from column definition
   const addRow = React.useCallback(() => {
     const row: any = { id: Date.now().toString() + Math.random() };
     (field.columns || []).forEach((c) => {
-      // Use defaultValue if available, otherwise empty string
       row[c.name] = c.defaultValue !== undefined ? c.defaultValue : "";
     });
     append(row);
@@ -385,7 +391,6 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
   };
 
   const handleEdit = (index: number) => {
-    // For Modal, we can pass the data directly or let the modal fetch it
     openEditModal(index);
   };
 
@@ -402,7 +407,6 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
     closeEditModal();
   };
 
-  // Download functionality
   const handleDownload = () => {
     const csvContent = [
       (field.columns || []).map(c => c.label).join(','),
@@ -422,7 +426,6 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
     URL.revokeObjectURL(url);
   };
 
-  // Upload functionality
   const uploadInputRef = React.useRef<HTMLInputElement>(null);
   const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -482,7 +485,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
         <label className="form-label">{field.label}</label>
 
         <div className="stock-table-container">
-          <div className="table-scroll-container" style={{ maxHeight: "400px", overflow: "auto" }}>
+          
             <table className="stock-table child-form-table">
               <thead>
                 <tr>
@@ -509,9 +512,6 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
               </thead>
               <tbody>
                 {fields.map((fieldItem, idx) => {
-                  // CRITICAL: We use 'fields' for the key (stable ID)
-                  // But we use 'rows' (from useWatch) for the actual data
-                  // This ensures data updates trigger re-renders without breaking React keys
                   const currentRowData = rows[idx] || {};
 
                   return (
@@ -627,7 +627,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                 })}
               </tbody>
             </table>
-          </div>
+          
         </div>
 
         <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
@@ -690,7 +690,6 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
           title={`Edit Row ${editingRowIndex + 1}`}
           size="lg"
         >
-          {/* Note: In the new system, we rely on FormProvider in the modal too, or we can fetch current data */}
           <DynamicFormForTable
             fields={field.columns}
             data={rows[editingRowIndex] || {}}
@@ -703,11 +702,9 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
   );
 }
 
-// THE WRAPPER
 export function TableField({ field, control, register, errors }: TableFieldProps) {
   const formMethods = useFormContext();
 
-  // We use useWatch here to lift the state up to the provider
   const rows = useWatch({
     control,
     name: field.name,

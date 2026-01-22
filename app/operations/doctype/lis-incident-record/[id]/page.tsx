@@ -1,454 +1,380 @@
 "use client";
 
 import * as React from "react";
-import axios from "axios";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import {
-    DynamicForm,
-    TabbedLayout,
-    FormField,
+  DynamicForm,
+  TabbedLayout,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { UseFormReturn } from "react-hook-form";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const DOCTYPE_NAME = "Issue";
 
-/* -------------------------------------------------
-   1. Issue (LIS Incident Record) interface
-   ------------------------------------------------- */
-interface IssueData {
-    name: string;
-    workflow_state?: string;
-    naming_series?: string;
-    custom_incident_datetime?: string;
-    subject?: string;
-    custom_lis?: string;
-    custom_asset?: string;
-    issue_type?: string;
-    custom_stage?: string;
-    custom_asset_no?: string;
-    issue_split_from?: string;
-    custom_reported_by?: string;
-    raised_by?: string;
-    priority?: string;
-    status?: string;
-    customer?: string;
-    custom_designation_?: string;
-    custom_incident_subject?: string;
-    description?: string;
-    custom_mechanical_failure?: 0 | 1;
-    custom_electrical_failure?: 0 | 1;
-    custom_flooding__waterlogging?: 0 | 1;
-    custom_control_scada?: 0 | 1;
-    custom_structural_damage?: 0 | 1;
-    custom_fire__short_circuit?: 0 | 1;
-    custom_personnel_injury?: 0 | 1;
-    custom_other?: 0 | 1;
-    custom_specify?: string;
-    custom_attachments?: Array<{
-        attachement?: string;
-        attach_ayav?: string;
-    }>;
-    first_response_time?: number;
-    first_responded_on?: string;
-    avg_response_time?: number;
-    custom_action_taken?: Array<{
-        action?: string;
-        taken_by?: string;
-        time?: string;
-        remarks?: string;
-    }>;
-    resolution_details?: string;
-    opening_date?: string;
-    opening_time?: string;
-    sla_resolution_date?: string;
-    resolution_time?: number;
-    user_resolution_time?: number;
-    custom_resolved_onsite?: 0 | 1;
-    custom_escalated_to_higher_authority?: 0 | 1;
-    custom_intervention_required?: 0 | 1;
-    custom_resolution_date?: string;
-    custom_equipment_replacement_pending?: 0 | 1;
-    custom_under_investigation?: 0 | 1;
-    custom_recommendations?: string;
-    custom_reporting_and_approval?: Array<{
-        name1?: string;
-        designation?: string;
-        signature?: string;
-        date?: string;
-    }>;
-    custom_component_affected?: Array<{
-        component?: string;
-        asset_id?: string;
-        description_of_damage?: string;
-    }>;
-    service_level_agreement?: string;
-    response_by?: string;
-    sla_resolution_by?: string;
-    agreement_status?: string;
-    service_level_agreement_creation?: string;
-    on_hold_since?: string;
-    total_hold_time?: number;
-    lead?: string;
-    contact?: string;
-    email_account?: string;
-    customer_name?: string;
-    project?: string;
-    company?: string;
-    via_customer_portal?: 0 | 1;
-    attachment?: string;
-    content_type?: string;
-    docstatus: 0 | 1 | 2;
-    modified: string;
-}
+export default function EditLisIncidentRecordPage() {
+  const router = useRouter();
+  const params = useParams();
+  const docname = params.id as string;
+  
+  const { apiKey, apiSecret } = useAuth();
+  const [record, setRecord] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
 
-/* -------------------------------------------------
-   2. Page component
-   ------------------------------------------------- */
-export default function LisIncidentRecordDetailPage() {
-    const params = useParams();
-    const router = useRouter();
-    const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-
-    const docname = params.id as string;
-    const doctypeName = "Issue";
-
-    const [record, setRecord] = React.useState<IssueData | null>(null);
-    const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState<string | null>(null);
-    const [isSaving, setIsSaving] = React.useState(false);
-
-    /* -------------------------------------------------
-       3. FETCH RECORD
-       ------------------------------------------------- */
-    React.useEffect(() => {
-        const fetchRecord = async () => {
-            if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret || !docname) {
-                setLoading(false);
-                return;
-            }
-
-            try {
-                setLoading(true);
-                setError(null);
-
-                const resp = await axios.get(`${API_BASE_URL}/${doctypeName}/${docname}`, {
-                    headers: {
-                        Authorization: `token ${apiKey}:${apiSecret}`,
-                        "Content-Type": "application/json",
-                    },
-                    withCredentials: true,
-                });
-
-                setRecord(resp.data.data);
-            } catch (err: any) {
-                console.error("API Error:", err);
-                setError(
-                    err.response?.status === 404
-                        ? "LIS Incident Record not found"
-                        : err.response?.status === 403
-                            ? "Unauthorized"
-                            : "Failed to load record"
-                );
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchRecord();
-    }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
-
-    /* -------------------------------------------------
-       4. Form structure - NO depends_on anywhere
-       ------------------------------------------------- */
-    const formTabs: TabbedLayout[] = React.useMemo(() => {
-        if (!record) return [];
-
-        const fields = (list: FormField[]): FormField[] =>
-            list.map((f) => ({
-                ...f,
-                defaultValue:
-                    f.name in record
-                        ? record[f.name as keyof IssueData]
-                        : f.defaultValue,
-            }));
-
-        return [
-            {
-                name: "Details",
-                fields: fields([
-                   
-                    { name: "custom_incident_datetime", label: "Incident Date and Time", type: "DateTime" },
-                    { name: "subject", label: "Incident Subject", type: "Data", required: true },
-                    
-                    { name: "custom_lis", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme" },
-                    { name: "custom_asset", label: "Asset", type: "Link", linkTarget: "Asset" },
-                    { name: "issue_type", label: "Issue Type", type: "Link", linkTarget: "Issue Type" },
-                    
-                    { name: "custom_stage", label: "Stage/ Sub Scheme", type: "Link", linkTarget: "Stage No" },
-                    { name: "custom_asset_no", label: "Asset No", type: "Data" },
-                    { name: "issue_split_from", label: "Issue Split From", type: "Link", linkTarget: "Issue" },
-                    { name: "custom_reported_by", label: "Reported By", type: "Link", linkTarget: "Employee" },
-                    { name: "raised_by", label: "Raised By (Email)", type: "Data" },
-                    
-                    { name: "priority", label: "Priority", type: "Link", linkTarget: "Issue Priority" },
-                    {
-                        name: "status",
-                        label: "Status",
-                        type: "Select",
-                        options: "Open\nReplied\nOn Hold\nResolved\nClosed",
-                    },
-                    { name: "customer", label: "Customer", type: "Link", linkTarget: "Customer" },
-                    { name: "custom_designation_", label: "Designation", type: "Link", linkTarget: "Designation" },
-
-                    // Incident Subject & Description
-                    { name: "custom_section_break_iczk0", label: "", type: "Section Break" },
-                    { name: "custom_incident_subject", label: "Incident Subject", type: "Small Text" },
-                    { name: "sb_details", label: "Description", type: "Section Break" },
-                    { name: "description", label: "Description of Incident", type: "Text" },
-
-                    // Type of Incident
-                    { name: "custom_type_of_incident", label: "Type of Incident", type: "Section Break" },
-                    { name: "custom_mechanical_failure", label: "Mechanical Failure", type: "Check" },
-                    { name: "custom_electrical_failure", label: "Electrical Failure", type: "Check" },
-                    { name: "custom_flooding__waterlogging", label: "Flooding / Waterlogging", type: "Check" },
-                    { name: "custom_control_scada", label: "Control Panel/ SCADA Malfunction", type: "Check" },
-                    
-                    { name: "custom_structural_damage", label: "Structural Damage", type: "Check" },
-                    { name: "custom_fire__short_circuit", label: "Fire / Short Circuit", type: "Check" },
-                    { name: "custom_personnel_injury", label: "Personnel Injury", type: "Check" },
-                    { name: "custom_other", label: "Other", type: "Check" },
-                    { name: "custom_specify", label: "Specify", type: "Small Text" },
-
-                    // Attachments
-                    { name: "custom_photos__attachments", label: "Photos / Attachments", type: "Section Break" },
-                    {
-                        name: "custom_attachments",
-                        label: "Attachments",
-                        type: "Table",
-                        columns: [
-                            { name: "attachement", label: "Attachment Description", type: "Data" },
-                            { name: "attach_ayav", label: "Attach File", type: "Attach" },
-                        ],
-                    },
-
-                    // SLA & Response
-                    { name: "service_level_section", label: "Service Level Agreement Details", type: "Section Break" },
-                    { name: "service_level_agreement", label: "Service Level Agreement", type: "Link", linkTarget: "Service Level Agreement" },
-                    { name: "first_response_time", label: "First Response Time", type: "Duration" },
-                    { name: "first_responded_on", label: "First Responded On", type: "DateTime" },
-                    
-                    { name: "avg_response_time", label: "Average Response Time", type: "Duration" },
-
-                    // Immediate Action Taken
-                    { name: "custom_immediate_action_taken", label: "Immediate Action Taken", type: "Section Break" },
-                    {
-                        name: "custom_action_taken",
-                        label: "Action Taken",
-                        type: "Table",
-                        columns: [
-                            { name: "action", label: "Action", type: "Text" },
-                            { name: "taken_by", label: "Taken By", type: "Link", linkTarget: "User" },
-                            { name: "time", label: "Time", type: "Time" },
-                            { name: "remarks", label: "Remarks", type: "Text" },
-                        ],
-                    },
-
-                    // Resolution Details
-                    { name: "section_break_19", label: "Resolution Details", type: "Section Break" },
-                    { name: "resolution_details", label: "Resolution Details", type: "Text" },
-                  
-                    { name: "opening_date", label: "Opening Date", type: "Date" },
-                    { name: "opening_time", label: "Opening Time", type: "Time" },
-                    { name: "sla_resolution_date", label: "Resolution Date", type: "DateTime" },
-                    { name: "resolution_time", label: "Resolution Time", type: "Duration" },
-                    { name: "user_resolution_time", label: "User Resolution Time", type: "Duration" },
-
-                    // Status of Resolution
-                    { name: "custom_status_of_resolution", label: "Status of Resolution", type: "Section Break" },
-                    { name: "custom_resolved_onsite", label: "Resolved on-site", type: "Check" },
-                    { name: "custom_escalated_to_higher_authority", label: "Escalated to higher authority", type: "Check" },
-                    { name: "custom_intervention_required", label: "Service Provider Intervention Required", type: "Check" },
-                    { name: "custom_resolution_date", label: "Resolution Date", type: "Date" },
-                  
-                    { name: "custom_equipment_replacement_pending", label: "Spare Part / Equipment Replacement Pending", type: "Check" },
-                    { name: "custom_under_investigation", label: "Under Investigation", type: "Check" },
-
-                    // Affected Components
-                    {
-                        name: "custom_component_affected",
-                        label: "Components Affected",
-                        type: "Table",
-                        columns: [
-                            {
-                                name: "component",
-                                label: "Component Category",
-                                type: "Link",
-                                linkTarget: "Asset Category",
-                            },
-                            {
-                                name: "asset_id",
-                                label: "Specific Asset",
-                                type: "Link",
-                                linkTarget: "Asset",
-                            },
-                            {
-                                name: "description_of_damage",
-                                label: "Description of Damage",
-                                type: "Text",
-                            },
-                        ],
-                    },
-
-                    // Preventive Action / Recommendations
-                    { name: "custom_preventive_action", label: "Preventive Action / Recommendations", type: "Section Break" },
-                    { name: "custom_recommendations", label: "Recommendations", type: "Long Text" },
-
-                    // Reporting and Approval
-                    {
-                        name: "custom_reporting_and_approval",
-                        label: "Reporting and Approval",
-                        type: "Table",
-                        columns: [
-                            { name: "name1", label: "Name", type: "Link", linkTarget: "Employee" },
-                            { name: "designation", label: "Designation", type: "Link", linkTarget: "Designation" },
-                            { name: "signature", label: "Signature", type: "Attach" },
-                            { name: "date", label: "Date", type: "Date" },
-                        ],
-                    },
-
-                    // Reference / Additional Info
-                    { name: "additional_info", label: "Reference", type: "Section Break" },
-                    { name: "lead", label: "Lead", type: "Link", linkTarget: "Lead" },
-                    { name: "contact", label: "Contact", type: "Link", linkTarget: "Contact" },
-                    { name: "email_account", label: "Email Account", type: "Link", linkTarget: "Email Account" },
-                  
-                    { name: "customer_name", label: "Customer Name", type: "Data" },
-                    { name: "project", label: "Project", type: "Link", linkTarget: "Project" },
-                    { name: "company", label: "Company", type: "Link", linkTarget: "Company" },
-                    { name: "via_customer_portal", label: "Via Customer Portal", type: "Check" },
-                    { name: "attachment", label: "Attachment", type: "Attach" },
-                    { name: "content_type", label: "Content Type", type: "Data" },
-                ]),
-            },
-        ];
-    }, [record]);
-
-    /* -------------------------------------------------
-       5. SUBMIT HANDLER
-       ------------------------------------------------- */
-    const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-        if (!isDirty) {
-            toast.info("No changes to save.");
-            return;
-        }
-
-        setIsSaving(true);
-
+  // 1. Fetch Existing Record
+  React.useEffect(() => {
+    const fetchRecord = async () => {
         try {
-            const payload = { ...data };
-
-            // Remove layout fields (column/section breaks)
-            const nonDataFields = new Set([
-                "subject_section",  "cb00",
-                , "custom_section_break_iczk0",
-                "sb_details", "custom_type_of_incident", "custom_column_break_tq8lj",
-                "custom_photos__attachments", 
-                "custom_immediate_action_taken", "section_break_19", 
-                "custom_status_of_resolution", 
-                "custom_preventive_action", "additional_info",
-            ]);
-
-            const finalPayload: Record<string, any> = {};
-            for (const key in payload) {
-                if (!nonDataFields.has(key)) {
-                    finalPayload[key] = payload[key];
-                }
-            }
-
-            // Preserve system fields
-            if (record) {
-                finalPayload.modified = record.modified;
-                finalPayload.docstatus = record.docstatus;
-            }
-
-            // Convert check fields to 0/1
-            const checkFields = [
-                "custom_mechanical_failure", "custom_electrical_failure", "custom_flooding__waterlogging",
-                "custom_control_scada", "custom_structural_damage", "custom_fire__short_circuit",
-                "custom_personnel_injury", "custom_other",
-                "custom_resolved_onsite", "custom_escalated_to_higher_authority",
-                "custom_intervention_required", "custom_equipment_replacement_pending",
-                "custom_under_investigation", "via_customer_portal"
-            ];
-            checkFields.forEach(field => {
-                if (field in finalPayload) {
-                    finalPayload[field] = finalPayload[field] ? 1 : 0;
+            const res = await fetch(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
+                headers: {
+                    'Authorization': `token ${apiKey}:${apiSecret}`
                 }
             });
-
-            console.log("Sending payload:", finalPayload);
-
-            const resp = await axios.put(
-                `${API_BASE_URL}/${doctypeName}/${docname}`,
-                finalPayload,
-                {
-                    headers: {
-                        Authorization: `token ${apiKey}:${apiSecret}`,
-                        "Content-Type": "application/json",
-                    },
-                    withCredentials: true,
-                }
-            );
-
-            toast.success("LIS Incident Record updated successfully!");
-            if (resp.data?.data) {
-                setRecord(resp.data.data);
-            }
-
-            router.push(`/operations/doctype/lis-incident-record/${encodeURIComponent(docname)}`);
-
-        } catch (err: any) {
-            console.error("Save error:", err);
-            toast.error("Failed to Save", {
-                description: err.response?.data?.message || err.message || "Unknown error"
-            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.exception || "Failed to fetch record");
+            setRecord(data.data);
+        } catch (error: any) {
+            toast.error("Error loading record", { description: error.message });
         } finally {
-            setIsSaving(false);
+            setIsLoading(false);
         }
     };
 
-    const handleCancel = () => router.back();
+    if (apiKey && apiSecret && docname) {
+        fetchRecord();
+    }
+  }, [apiKey, apiSecret, docname]);
 
-    /* -------------------------------------------------
-       6. UI STATES
-       ------------------------------------------------- */
-    if (loading) return <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>Loading LIS Incident Record...</div>;
-    if (error) return (
-        <div className="module active" style={{ padding: "2rem" }}>
-            <p style={{ color: "var(--color-error)" }}>{error}</p>
-            <button className="btn btn--primary" onClick={() => window.location.reload()}>Retry</button>
-        </div>
-    );
-    if (!record) return <div className="module active" style={{ padding: "2rem" }}>LIS Incident Record not found.</div>;
+  // 2. Define Form Configuration (Mirrors new/page.tsx)
+  const formTabs: TabbedLayout[] = React.useMemo(() => {
+    if (!record) return [];
 
-    /* -------------------------------------------------
-       7. RENDER FORM
-       ------------------------------------------------- */
-    return (
-        <DynamicForm
-            tabs={formTabs}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
-            title={`${doctypeName}: ${record.name}`}
-            description={`Record ID: ${docname}`}
-            submitLabel={isSaving ? "Saving..." : "Save"}
-            cancelLabel="Cancel"
-            deleteConfig={{
-                doctypeName: doctypeName,
-                docName: docname,
-                redirectUrl: "/lis-management/doctype/issue"
-            }}
-        />
-    );
+    // Helper to get value from the fetched record
+    const getValue = (fieldName: string, defaultValue: any = undefined) =>
+      record?.[fieldName] ?? defaultValue;
+
+    return [
+      {
+        name: "Incident Record",
+        fields: [
+          /* -----------------------------------------------------------
+             Section 1: Incident Details (The Control Center)
+             ----------------------------------------------------------- */
+          { name: "custom_incident_details_header", label: "Incident Details", type: "Section Break" },
+          
+          // Row 1: Incident Date & Time, Lift Irrigation Scheme
+          { name: "custom_incident_datetime", label: "Incident Date & Time", type: "DateTime", defaultValue: getValue("custom_incident_datetime"), required: true },
+          { 
+            name: "custom_lis", 
+            label: "Lift Irrigation Scheme", 
+            type: "Link", 
+            linkTarget: "Lift Irrigation Scheme", 
+            defaultValue: getValue("custom_lis"),
+            required: true 
+          },
+          { 
+            name: "custom_asset", 
+            label: "Asset", 
+            type: "Link", 
+            linkTarget: "Asset", 
+            defaultValue: getValue("custom_asset"),
+            // Filter: Must match LIS and Stage (SAME AS NEW PAGE)
+            filters: (getFormValue) => ({
+                custom_lis_name: getFormValue("custom_lis"),
+                custom_stage_no: getFormValue("custom_stage"),
+                custom_obsolete: 0
+            })
+          },
+          { name: "issue_type", label: "Issue Type", type: "Link", linkTarget: "Issue Type", defaultValue: getValue("issue_type") },
+          { 
+            name: "custom_stage", 
+            label: "Stage / Sub Scheme", 
+            type: "Link", 
+            linkTarget: "Stage No", 
+            defaultValue: getValue("custom_stage"),
+            // Filter: Must match LIS
+            filters: (getFormValue) => ({
+                lis_name: getFormValue("custom_lis")
+            })
+          },
+          { name: "custom_asset_no", label: "Asset No", type: "Data", defaultValue: getValue("custom_asset_no"), readOnlyValue: getValue("custom_asset_no") }, 
+          { name: "custom_reported_by", label: "Reported By", type: "Link", linkTarget: "Employee", defaultValue: getValue("custom_reported_by") },
+          { name: "priority", label: "Priority", type: "Link", linkTarget: "Issue Priority", defaultValue: getValue("priority") },
+          { name: "status", label: "Status", type: "Select", options: "Open\nReplied\nOn Hold\nResolved\nClosed", defaultValue: getValue("status", "Open") },
+          { 
+            name: "custom_designation_", 
+            label: "Designation", 
+            type: "Data", 
+            defaultValue: getValue("custom_designation_"),
+            fetchFrom: { sourceField: "custom_reported_by", targetDoctype: "Employee", targetField: "designation" }
+          },
+
+          /* -----------------------------------------------------------
+             Section 2: Subject (Hidden standard subject, visible custom subject)
+             ----------------------------------------------------------- */
+          { name: "custom_subject_section", label: "Subject", type: "Section Break" },
+          { name: "custom_incident_subject", label: "Incident Subject", type: "Small Text", required: true, defaultValue: getValue("custom_incident_subject") },
+          // Hidden field to satisfy backend requirement
+          { name: "subject", label: "System Subject", type: "Data", displayDependsOn: "false", defaultValue: getValue("subject") },
+
+          /* -----------------------------------------------------------
+             Section 3: Description
+             ----------------------------------------------------------- */
+          { name: "custom_description_section", label: "Description", type: "Section Break" },
+          { name: "description", label: "Description", type: "Small Text", defaultValue: getValue("description") },
+
+          /* -----------------------------------------------------------
+             Section 4: Failure Classification
+             ----------------------------------------------------------- */
+          { name: "custom_failure_classification", label: "Failure Classification", type: "Section Break" },
+          { name: "custom_mechanical_failure", label: "Mechanical Failure", type: "Check", defaultValue: getValue("custom_mechanical_failure") },
+          { name: "custom_electrical_failure", label: "Electrical Failure", type: "Check", defaultValue: getValue("custom_electrical_failure") },
+          { name: "custom_flooding__waterlogging", label: "Flooding / Waterlogging", type: "Check", defaultValue: getValue("custom_flooding__waterlogging") },
+          { name: "custom_control_scada", label: "Control Panel / SCADA", type: "Check", defaultValue: getValue("custom_control_scada") },
+          { name: "custom_structural_damage", label: "Structural Damage", type: "Check", defaultValue: getValue("custom_structural_damage") },
+          { name: "custom_fire__short_circuit", label: "Fire / Short Circuit", type: "Check", defaultValue: getValue("custom_fire__short_circuit") },
+          { name: "custom_personnel_injury", label: "Personnel Injury", type: "Check", defaultValue: getValue("custom_personnel_injury") },
+          { name: "custom_other", label: "Other", type: "Check", defaultValue: getValue("custom_other") },
+          
+          { 
+            name: "custom_specify", 
+            label: "Specify (Other)", 
+            type: "Small Text", 
+            defaultValue: getValue("custom_specify"),
+            displayDependsOn: "custom_other == true"
+          },
+
+          /* -----------------------------------------------------------
+             Section 5: Attachments & Evidence
+             ----------------------------------------------------------- */
+          { name: "custom_photos__attachments", label: "Photos / Attachments", type: "Section Break" },
+          {
+            name: "custom_attachments",
+            label: "Incident Evidence",
+            type: "Table",
+            defaultValue: getValue("custom_attachments", []),
+            allowPreview: true,
+            columns: [
+              { name: "attachement", label: "Description", type: "Data" },
+              { name: "attach_ayav", label: "File", type: "Attach" },
+            ],
+          },
+          { name: "custom_scada_log_file", label: "SCADA Log File", type: "Select", options: "Yes\nNo", defaultValue: getValue("custom_scada_log_file") },
+          
+          { 
+            name: "custom_scada_attach", 
+            label: "SCADA Attachment", 
+            type: "Attach", 
+            defaultValue: getValue("custom_scada_attach"),
+            displayDependsOn: "custom_scada_log_file == 'Yes'",
+            allowPreview: true
+          },
+
+          /* -----------------------------------------------------------
+             Section 6: Components Affected
+             ----------------------------------------------------------- */
+          { name: "custom_components_section", label: "Components Affected", type: "Section Break" },
+          {
+            name: "custom_component_affected",
+            label: "Components",
+            type: "Table",
+            defaultValue: getValue("custom_component_affected", []),
+            columns: [
+              { name: "component", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
+              { 
+                name: "asset_id", 
+                label: "Asset", 
+                type: "Link", 
+                linkTarget: "Asset",
+                // Attempt to filter based on main form + row component
+                filters: (getFormValue) => ({
+                    custom_lis_name: getFormValue("custom_lis"),
+                    custom_stage_no: getFormValue("custom_stage"),
+                })
+              },
+              { name: "description_of_damage", label: "Damage Description", type: "Small Text" },
+            ],
+          },
+
+          /* -----------------------------------------------------------
+             Section 7: Response Timeline
+             ----------------------------------------------------------- */
+          { name: "custom_timeline_section", label: "Response Timeline", type: "Section Break" },
+          { name: "first_responded_on", label: "First Responded On", type: "DateTime", defaultValue: getValue("first_responded_on") },
+
+          /* -----------------------------------------------------------
+             Section 8: Immediate Actions
+             ----------------------------------------------------------- */
+          { name: "custom_immediate_action_taken", label: "Immediate Actions", type: "Section Break" },
+          {
+            name: "custom_action_taken",
+            label: "Action Log",
+            type: "Table",
+            defaultValue: getValue("custom_action_taken", []),
+            columns: [
+              { name: "action", label: "Action Taken", type: "Small Text" },
+              { name: "taken_by", label: "Taken By", type: "Link", linkTarget: "User" },
+              { name: "time", label: "Time", type: "Time" },
+              { name: "remarks", label: "Remarks", type: "Small Text" },
+            ],
+          },
+
+          /* -----------------------------------------------------------
+             Section 9: Opening Date
+             ----------------------------------------------------------- */
+          { name: "custom_opening_section", label: "Opening Info", type: "Section Break" },
+          { name: "opening_date", label: "Opening Date", type: "Date", defaultValue: getValue("opening_date") },
+
+          /* -----------------------------------------------------------
+             Section 10: Resolution Status
+             ----------------------------------------------------------- */
+          { name: "custom_status_of_resolution", label: "Resolution Status", type: "Section Break" },
+          { name: "custom_resolved_onsite", label: "Resolved On-site", type: "Check", defaultValue: getValue("custom_resolved_onsite") },
+          { name: "custom_escalated_to_higher_authority", label: "Escalated", type: "Check", defaultValue: getValue("custom_escalated_to_higher_authority") },
+          { name: "custom_intervention_required", label: "Intervention Required", type: "Check", defaultValue: getValue("custom_intervention_required") },
+          { name: "custom_resolution_date", label: "Resolution Date", type: "Date", defaultValue: getValue("custom_resolution_date") },
+          { name: "custom_equipment_replacement_pending", label: "Replacement Pending", type: "Check", defaultValue: getValue("custom_equipment_replacement_pending") },
+          { name: "custom_under_investigation", label: "Under Investigation", type: "Check", defaultValue: getValue("custom_under_investigation") },
+
+          /* -----------------------------------------------------------
+             Section 11: Recommendations
+             ----------------------------------------------------------- */
+          { name: "custom_preventive_action", label: "Preventive Action", type: "Section Break" },
+          { name: "custom_recommendations", label: "Recommendations", type: "Text", defaultValue: getValue("custom_recommendations") },
+
+          /* -----------------------------------------------------------
+             Section 12: Reporting and Approval
+             ----------------------------------------------------------- */
+          { name: "custom_approval_section", label: "Reporting & Approval", type: "Section Break" },
+          {
+            name: "custom_reporting_and_approval",
+            label: "Signatures",
+            type: "Table",
+            defaultValue: getValue("custom_reporting_and_approval", []),
+            columns: [
+              { name: "name1", label: "Employee", type: "Link", linkTarget: "Employee" },
+              { name: "designation", label: "Designation", type: "Data", fetchFrom: { sourceField: "name1", targetDoctype: "Employee", targetField: "designation" } },
+              { name: "signature", label: "Signature", type: "Attach" },
+              { name: "date", label: "Date", type: "Date" },
+            ],
+          },
+        ],
+      },
+    ];
+  }, [record]);
+
+  // 3. Form Initialization Hook (The Subject Hack)
+  const handleFormInit = (methods: UseFormReturn<any>) => {
+    // Watch 'custom_incident_subject' and copy it to 'subject'
+    const subscription = methods.watch((value, { name, type }) => {
+      if (name === "custom_incident_subject") {
+        methods.setValue("subject", value.custom_incident_subject || record?.subject || "Incident");
+      }
+    });
+  };
+
+  // 4. Submit Handler (PUT instead of POST)
+  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+    // Basic validation
+    if (!data.custom_incident_subject) {
+      toast.error("Incident Subject is required");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = { ...data };
+      
+      // Ensure hidden subject is populated if missed by watcher
+      if (!payload.subject) {
+         payload.subject = payload.custom_incident_subject;
+      }
+
+      // Clean up payload (remove breaks, convert checks, handle complex objects)
+      const finalPayload: Record<string, any> = {};
+      
+      for (const key in payload) {
+        // Skip UI-only fields
+        if (payload[key] === undefined) continue;
+        if (key.startsWith("custom_section") || key.startsWith("sb_") || key.startsWith("custom_subject_section")) continue;
+        
+        const value = payload[key];
+        if (value && typeof value === 'object') {
+          if (value instanceof Date) {
+            finalPayload[key] = value.toISOString();
+          }
+          else if (Array.isArray(value)) {
+            finalPayload[key] = value;
+          }
+          else {
+            continue; // Skip unknown objects
+          }
+        } else {
+          finalPayload[key] = value;
+        }
+      }
+
+      // Convert booleans to 1/0 for Frappe
+      const checkFields = [
+        "custom_mechanical_failure", "custom_electrical_failure", "custom_flooding__waterlogging",
+        "custom_control_scada", "custom_structural_damage", "custom_fire__short_circuit",
+        "custom_personnel_injury", "custom_other", "custom_resolved_onsite", 
+        "custom_escalated_to_higher_authority", "custom_intervention_required", 
+        "custom_equipment_replacement_pending", "custom_under_investigation"
+      ];
+      
+      checkFields.forEach(field => {
+        if (typeof finalPayload[field] === 'boolean') {
+            finalPayload[field] = finalPayload[field] ? 1 : 0;
+        }
+      });
+
+      console.log("Updating Payload:", finalPayload);
+
+      const resp = await fetch(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `token ${apiKey}:${apiSecret}`,
+        },
+        body: JSON.stringify(finalPayload),
+      });
+
+      const responseData = await resp.json();
+      if (!resp.ok) {
+        throw new Error(responseData.exception || responseData._server_messages || "Failed to update");
+      }
+
+      toast.success("Incident Updated Successfully");
+      router.push(`/operations/doctype/lis-incident-record`);
+
+    } catch (err: any) {
+      console.error("Save Error:", err);
+      toast.error("Failed to save record", { description: err.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) return <div className="p-8">Loading...</div>;
+
+  return (
+    <DynamicForm
+      tabs={formTabs}
+      onSubmit={handleSubmit}
+      onCancel={() => router.back()}
+      onFormInit={handleFormInit} 
+      title={`Edit LIS Incident: ${docname}`}
+      description="Update operational issues and failures"
+      submitLabel={isSaving ? "Saving..." : "Update Record"}
+      cancelLabel="Cancel"
+      deleteConfig={{
+        doctypeName: DOCTYPE_NAME,
+        docName: docname,
+        redirectUrl: "/operations/doctype/lis-incident-record"
+      }}
+    />
+  );
 }

@@ -138,7 +138,16 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
         control={control}
         name={field.name}
         defaultValue={field.defaultValue || ""}
-        rules={{ required: field.required ? `${field.label} is required` : false }}
+        rules={{ 
+          required: field.required ? `${field.label} is required` : false,
+          validate: (value) => {
+            // Custom validation to ensure the field is not just an empty string
+            if (field.required && (!value || value.trim() === '')) {
+              return `${field.label} is required`;
+            }
+            return true;
+          }
+        }}
         render={({ field: { onChange, onBlur, value } }) => {
 
 
@@ -236,7 +245,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                   type="text"
                   id={field.name}
                   className={`form-control w-full pr-10 
-                    ${error ? "border-red-500" : ""}
+                    ${error ? "border-red-500 !border-red-500 !ring-red-500 !focus:border-red-500 !focus:ring-red-500 ring-1 ring-red-500" : ""}
                     ${!isAuthenticated ? "bg-gray-50 cursor-not-allowed" : ""}`}
                   placeholder={field.placeholder || `Select ${field.label}...`}
                   value={searchTerm}

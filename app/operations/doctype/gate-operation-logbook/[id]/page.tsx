@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
 import {
     DynamicForm,
@@ -10,6 +9,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -48,6 +48,17 @@ export default function GateOperationLogbookDetailPage() {
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
+    const [formInitialized, setFormInitialized] = React.useState(false);
+
+    // Status mapping function
+    const getStatusDisplay = (docstatus: number | undefined) => {
+        switch (docstatus) {
+            case 0: return "Draft";
+            case 1: return "Submitted";
+            case 2: return "Cancelled";
+            default: return "Draft";
+        }
+    };
 
     /* -------------------------------------------------
        3. FETCH RECORD
@@ -63,21 +74,28 @@ export default function GateOperationLogbookDetailPage() {
                 setLoading(true);
                 setError(null);
 
-                const resp = await axios.get(`${API_BASE_URL}/${doctypeName}/${docname}`, {
-                    headers: {
-                        Authorization: `token ${apiKey}:${apiSecret}`,
-                        "Content-Type": "application/json",
-                    },
-                    withCredentials: true,
+                const headers: HeadersInit = {
+                    'Authorization': `token ${apiKey}:${apiSecret}`,
+                };
+
+                const resp = await fetch(`${API_BASE_URL}/${doctypeName}/${docname}`, {
+                    method: 'GET',
+                    headers: headers,
+                    credentials: 'include',
                 });
 
-                setRecord(resp.data.data);
+                if (!resp.ok) {
+                    throw new Error(`Failed to load ${doctypeName}`);
+                }
+                
+                const responseData = await resp.json();
+                setRecord(responseData.data);
             } catch (err: any) {
                 console.error("API Error:", err);
                 setError(
-                    err.response?.status === 404
+                    err.status === 404
                         ? "Gate Operation Logbook not found"
-                        : err.response?.status === 403
+                        : err.status === 403
                             ? "Unauthorized"
                             : "Failed to load record"
                 );
@@ -89,24 +107,56 @@ export default function GateOperationLogbookDetailPage() {
         fetchRecord();
     }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
+    // Handle form initialization to set proper baseline values
+    const handleFormInit = React.useCallback((methods: any) => {
+        if (record && !formInitialized) {
+            const formData = {
+                lis_name: record.lis_name || "",
+                stage: record.stage || "",
+                gate_no: record.gate_no || "",
+                gate_operation: record.gate_operation || "",
+                lift_by: record.lift_by ?? "",
+                lift_date: record.lift_date || "",
+                lowered_by: record.lowered_by ?? "",
+                lowered_date: record.lowered_date || "",
+                instruction_reference: record.instruction_reference || "",
+                remark: record.remark || "",
+            };
+            
+            // Use setTimeout to ensure the form is fully initialized
+            setTimeout(() => {
+                methods.reset(formData);
+                setFormInitialized(true);
+            }, 100);
+        }
+    }, [record, formInitialized]);
+
     /* -------------------------------------------------
        4. Form structure
        ------------------------------------------------- */
     const formTabs: TabbedLayout[] = React.useMemo(() => {
         if (!record) return [];
 
+        const fields = (list: FormField[]): FormField[] =>
+            list.map((f) => ({
+                ...f,
+                defaultValue:
+                    f.name in record
+                        ? // @ts-ignore
+                        record[f.name as keyof GateOperationLogbookData]
+                        : f.defaultValue,
+            }));
+
         return [
             {
                 name: "Details",
-                fields: [
+                fields: fields([
                     // Main information row
                     {
                         name: "lis_name",
                         label: "LIS Name",
                         type: "Link",
                         linkTarget: "Lift Irrigation Scheme",
-                        defaultValue: record.lis_name || "",
-                        inListView: true,
                         required: true,
                     },
                   
@@ -116,9 +166,14 @@ export default function GateOperationLogbookDetailPage() {
                         label: "Stage/ Sub Scheme",
                         type: "Link",
                         linkTarget: "Stage No",
-                        defaultValue: record.stage || "",
-                        inListView: true,
                         required: true,
+                        filterMapping: [
+                            {
+                                sourceField: "lis_name",
+                                
+                                targetField: "lis_name"
+                            }
+                        ],
                     },
                    
 
@@ -127,8 +182,6 @@ export default function GateOperationLogbookDetailPage() {
                         label: "Gate No",
                         type: "Link",
                         linkTarget: "Gate",
-                        defaultValue: record.gate_no || "",
-                        inListView: true,
                         required: true,
                     },
 
@@ -144,41 +197,37 @@ export default function GateOperationLogbookDetailPage() {
                         label: "Gate Operation",
                         type: "Select",
                         options: "Lift\nLowered",
-                        defaultValue: record.gate_operation || "",
                         required: true,
-                        inListView: true,
                     },
 
+                    // Conditional Fields: Lift
                     {
                         name: "lift_by",
                         label: "Lift By (In Meters)",
                         type: "Float",
                         precision: 2,
-                        defaultValue: record.lift_by ?? "",
-                        depends_on: 'eval:doc.gate_operation=="Lift"',
+                        displayDependsOn: "gate_operation=='Lift'",
                     },
+                    {
+                        name: "lift_date",
+                        label: "Lift Date",
+                        type: "DateTime",
+                        displayDependsOn: "gate_operation=='Lift'",
+                    },
+
+                    // Conditional Fields: Lowered
                     {
                         name: "lowered_by",
                         label: "Lowered By (In Meters)",
                         type: "Float",
                         precision: 2,
-                        defaultValue: record.lowered_by ?? "",
-                        depends_on: 'eval:doc.gate_operation=="Lowered"',
-                    },
-
-                    {
-                        name: "lift_date",
-                        label: "Lift Date",
-                        type: "DateTime",
-                        defaultValue: record.lift_date || "Now",
-                        depends_on: 'eval:doc.gate_operation=="Lift"',
+                        displayDependsOn: "gate_operation=='Lowered'",
                     },
                     {
                         name: "lowered_date",
                         label: "Lowered Date",
                         type: "DateTime",
-                        defaultValue: record.lowered_date || "Now",
-                        depends_on: 'eval:doc.gate_operation=="Lowered"',
+                        displayDependsOn: "gate_operation=='Lowered'",
                     },
 
                     // Final information
@@ -188,17 +237,14 @@ export default function GateOperationLogbookDetailPage() {
                         name: "instruction_reference",
                         label: "Instruction Reference",
                         type: "Small Text",
-                        defaultValue: record.instruction_reference || "",
-                        inListView: true,
                     },
 
                     {
                         name: "remark",
                         label: "Remark",
                         type: "Text",
-                        defaultValue: record.remark || "",
                     },
-                ],
+                ]),
             },
         ];
     }, [record]);
@@ -215,7 +261,7 @@ export default function GateOperationLogbookDetailPage() {
         setIsSaving(true);
 
         try {
-            const payload: Partial<GateOperationLogbookData> = {
+            const payload: Record<string, any> = {
                 lis_name: data.lis_name?.trim() || "",
                 stage: data.stage?.trim() || "",
                 gate_no: data.gate_no?.trim() || "",
@@ -226,45 +272,58 @@ export default function GateOperationLogbookDetailPage() {
                 docstatus: record?.docstatus,
             };
 
-            // // Include conditional fields only if relevant
-            // if (data.gate_operation === "Lift") {
-            //     payload.lift_by = Number(data.lift_by) || null;
-            //     payload.lift_date = data.lift_date || "Now";
-            //     payload.lowered_by = null;
-            //     payload.lowered_date = null;
-            // } else if (data.gate_operation === "Lowered") {
-            //     payload.lowered_by = Number(data.lowered_by) || null;
-            //     payload.lowered_date = data.lowered_date || "Now";
-            //     payload.lift_by = null;
-            //     payload.lift_date = null;
-            // }
+            // Include conditional fields only if relevant
+            if (data.gate_operation === "Lift") {
+                payload.lift_by = Number(data.lift_by) || 0;
+                payload.lift_date = data.lift_date || "";
+                payload.lowered_by = 0;
+                payload.lowered_date = "";
+            } else if (data.gate_operation === "Lowered") {
+                payload.lowered_by = Number(data.lowered_by) || 0;
+                payload.lowered_date = data.lowered_date || "";
+                payload.lift_by = 0;
+                payload.lift_date = "";
+            }
 
             console.log("Sending payload:", payload);
 
-            const resp = await axios.put(
-                `${API_BASE_URL}/${doctypeName}/${docname}`,
-                payload,
-                {
-                    headers: {
-                        Authorization: `token ${apiKey}:${apiSecret}`,
-                        "Content-Type": "application/json",
-                    },
-                    withCredentials: true,
-                }
-            );
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+                'Authorization': `token ${apiKey}:${apiSecret}`,
+            };
+            
+            const storedCsrfToken = localStorage.getItem('csrfToken');
+            if (storedCsrfToken) {
+                headers['X-Frappe-CSRF-Token'] = storedCsrfToken;
+            }
+
+            const resp = await fetch(`${API_BASE_URL}/${doctypeName}/${docname}`, {
+                method: 'PUT',
+                headers: headers,
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+
+            const responseData = await resp.json();
+
+            if (!resp.ok) {
+                console.log("Full server error:", responseData);
+                throw new Error(responseData.exception || responseData._server_messages || "Failed to save");
+            }
 
             toast.success("Gate Operation Logbook updated successfully!");
 
-            if (resp.data?.data) {
-                setRecord(resp.data.data);
+            if (responseData && responseData.data) {
+                setRecord(responseData.data);
             }
 
             router.push(`/operations/doctype/gate-operation-logbook/${encodeURIComponent(docname)}`);
 
         } catch (err: any) {
             console.error("Save error:", err);
-        toast.error("Failed to Save", {
-                description: err.response?.data?.message || err.message || "Unknown error",
+            console.log("Full server error:", err.message);
+        toast.error("Failed to save", {
+                description: (err as Error).message || "Check console for details.",
                 duration: Infinity
             });
         } finally {
@@ -296,8 +355,11 @@ export default function GateOperationLogbookDetailPage() {
             tabs={formTabs}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
+            onFormInit={handleFormInit}
             title={`${doctypeName}: ${record.name}`}
             description={`Record ID: ${docname}`}
+            initialStatus={getStatusDisplay(record.docstatus)}
+            docstatus={record.docstatus}
             submitLabel={isSaving ? "Saving..." : "Save"}
             cancelLabel="Cancel"
             deleteConfig={{

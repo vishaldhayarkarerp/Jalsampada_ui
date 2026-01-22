@@ -89,9 +89,13 @@ export default function NewLogbookPage() {
         if (value.pump_operation === "start") {
           setPrimaryListLabel("Stopped Pumps (Select to Start)");
           fetchPumps("Stopped");
+          // Set status to "Running" for start operation
+          form.setValue("status", "Running");
         } else if (value.pump_operation === "stop") {
           setPrimaryListLabel("Running Pumps (Select to Stop)");
           fetchPumps("Running");
+          // Set status to "Stopped" for stop operation
+          form.setValue("status", "Stopped");
         }
       }
 
@@ -269,9 +273,10 @@ export default function NewLogbookPage() {
             displayDependsOn: "pump_operation == 'stop'"
           },
           {
-            name: "sec_assets",
-            label: "Asset Selection",
-            type: "Section Break",
+            name: "status",
+            label: "Status",
+            type: "Read Only",
+            readOnly: true,
             displayDependsOn: "pump_operation == 'start' || pump_operation == 'stop'"
           },
           {
@@ -311,6 +316,27 @@ export default function NewLogbookPage() {
     if (!data.pump_operation) {
       toast.error("Please select either Start Pump or Stop Pump");
       return;
+    }
+
+    // 2. BETTER: Conditional Validation Logic
+    // Explicitly check for missing fields based on operation type
+    if (data.pump_operation === 'start') {
+      if (!data.start_datetime) {
+        toast.error("Start Datetime is required");
+        return;
+      }
+    }
+
+    if (data.pump_operation === 'stop') {
+      if (!data.stop_datetime) {
+        toast.error("Stop Datetime is required");
+        return;
+      }
+      // This fixes your specific issue:
+      if (!data.pump_stop_reason) {
+        toast.error("Pump Stop Reason is required");
+        return;
+      }
     }
     if (!data.secondary_list || data.secondary_list.length === 0) {
       toast.error("Please select at least one pump");

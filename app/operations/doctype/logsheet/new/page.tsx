@@ -8,6 +8,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { UseFormReturn } from "react-hook-form";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -16,26 +17,22 @@ export default function NewLogSheetPage() {
   const searchParams = useSearchParams();
   const { apiKey, apiSecret } = useAuth();
   const [isSaving, setIsSaving] = React.useState(false);
-
   const doctypeName = "Log Sheet";
 
-  // Parse duplicate data from URL parameters
+  // Store form methods
+  const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
+
   const duplicateData = React.useMemo(() => {
     const duplicateParam = searchParams.get('duplicate');
     if (!duplicateParam) return null;
-    
     try {
       const decodedData = JSON.parse(atob(decodeURIComponent(duplicateParam)));
-      console.log("Parsed duplicate data:", decodedData);
       return decodedData;
     } catch (error) {
-      console.error("Error parsing duplicate data:", error);
       toast.error("Failed to parse duplicate data", { duration: Infinity });
       return null;
     }
   }, [searchParams]);
-
-  // Show notification if we have duplicate data (only once)
   const notificationShown = React.useRef(false);
   React.useEffect(() => {
     if (duplicateData && !notificationShown.current) {
@@ -44,215 +41,206 @@ export default function NewLogSheetPage() {
     }
   }, [duplicateData]);
 
-  /* -------------------------------------------------
-     1. Define the form structure
-     ------------------------------------------------- */
+  // Fetch current user info
+  React.useEffect(() => {
+    const fetchCurrentUserInfo = async () => {
+      if (!apiKey || !apiSecret) return;
+
+      try {
+        const response = await fetch(
+          "http://103.219.1.138:4412/api/method/quantlis_management.api.get_current_user_info",
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              Authorization: `token ${apiKey}:${apiSecret}`,
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        const { user, full_name } = data.message || {};
+
+        if (user && full_name && formMethods) {
+          formMethods.setValue("operator_id", user);
+          formMethods.setValue("operator_name", full_name);
+        }
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+      }
+    };
+
+    fetchCurrentUserInfo();
+  }, [apiKey, apiSecret, formMethods]);
+
   const formTabs: TabbedLayout[] = React.useMemo(() => {
-    // Helper function to get value from duplicate data or fallback to default
     const getValue = (fieldName: string, defaultValue: any = undefined) => {
       return duplicateData?.[fieldName] ?? defaultValue;
     };
 
     return [
       {
-        name: "Main",
+        name: "Details",
         fields: [
-          // 1st row
-          { 
-            name: "lis", 
-            label: "LIS", 
-            type: "Link", 
+          {
+            name: "lis",
+            label: "LIS",
+            type: "Link",
             linkTarget: "Lift Irrigation Scheme",
             defaultValue: getValue("lis"),
           },
-          { 
-            name: "date", 
-            label: "Date", 
-            type: "Date", 
+          {
+            name: "date",
+            label: "Date",
+            type: "Date",
             required: true,
-            defaultValue: getValue("date"), // Note: "Today" keyword is usually handled by frontend logic if passed
+            defaultValue: getValue("date"),
           },
-
-          // 2nd row
-          { 
-            name: "stage", 
-            label: "Stage/ Sub Scheme", 
-            type: "Link", 
+          {
+            name: "stage",
+            label: "Stage/ Sub Scheme",
+            type: "Link",
             linkTarget: "Stage No",
             defaultValue: getValue("stage"),
           },
-          { 
-            name: "time", 
-            label: "Time", 
-            type: "Time", 
+          {
+            name: "time",
+            label: "Time",
+            type: "Time",
             defaultValue: getValue("time"),
           },
-
-          // 3rd row
-          { 
-            name: "asset", 
-            label: "Asset", 
-            type: "Link", 
+          {
+            name: "asset",
+            label: "Asset",
+            type: "Link",
             linkTarget: "Asset",
             defaultValue: getValue("asset"),
           },
-          { 
-            name: "operator_id", 
-            label: "Operator ID", 
-            type: "Link", 
-            linkTarget: "User",
-            defaultValue: getValue("operator_id"),
-          },
-
-          // 4th row
-          { 
-            name: "logbook", 
-            label: "Pump No", 
-            type: "Link", 
+          {
+            name: "logbook",
+            label: "Pump No",
+            type: "Link",
             linkTarget: "Logbook Ledger",
             defaultValue: getValue("logbook"),
           },
-          { 
-            name: "operator_name", 
-            label: "Operator Name", 
+          {
+            name: "operator_id",
+            label: "Operator ID",
+            type: "Link",
+            linkTarget: "User",
+            defaultValue: getValue("operator_id"),
+          },
+          {
+            name: "operator_name",
+            label: "Operator Name",
             type: "Data",
             defaultValue: getValue("operator_name"),
           },
-
-          // Remarks
           { name: "section_break_mgrv", label: "", type: "Section Break" },
-          { 
-            name: "remark", 
-            label: "Remark", 
-            type: "Text",
-            defaultValue: getValue("remark"),
-          },
-        ],
-      },
-      {
-        name: "Readings",
-        fields: [
-          // Water & Pressure
-          { 
-            name: "water_level", 
-            label: "Water Level", 
+          {
+            name: "water_level",
+            label: "Water Level",
             type: "Float",
             defaultValue: getValue("water_level"),
           },
-          { 
-            name: "pressure_guage", 
-            label: "Pressure Guage Reading", 
+          {
+            name: "pressure_guage",
+            label: "Pressure Guage Reading",
             type: "Float",
             defaultValue: getValue("pressure_guage"),
           },
-
-          // Voltage Section
           { name: "voltage_section", label: "Voltage Reading", type: "Section Break" },
-          { name: "br", label: "BR", type: "Float", defaultValue: getValue("br") },
-          { name: "ry", label: "RY", type: "Float", defaultValue: getValue("ry") },
-          { name: "yb", label: "YB", type: "Float", defaultValue: getValue("yb") },
-
-          // Current Section
+          { name: "br", label: "BR", type: "Float", defaultValue: getValue("br"), precision: 2 },
+          { name: "ry", label: "RY", type: "Float", defaultValue: getValue("ry"), precision: 2 },
+          { name: "yb", label: "YB", type: "Float", defaultValue: getValue("yb"), precision: 2 },
           { name: "current_reading_section", label: "Current Reading", type: "Section Break" },
-          { name: "r", label: "R", type: "Float", defaultValue: getValue("r") },
-          { name: "y", label: "Y", type: "Float", defaultValue: getValue("y") },
-          { name: "b", label: "B", type: "Float", defaultValue: getValue("b") },
-
-          // Temperature Table
+          { name: "r", label: "R", type: "Float", defaultValue: getValue("r"), precision: 2 },
+          { name: "y", label: "Y", type: "Float", defaultValue: getValue("y"), precision: 2 },
+          { name: "b", label: "B", type: "Float", defaultValue: getValue("b"), precision: 2 },
           { name: "section_break_qzro", label: "", type: "Section Break" },
           {
             name: "temperature_readings",
             label: "Temperature Readings",
             type: "Table",
-            defaultValue: getValue("temperature_readings", []),
             columns: [
               {
                 name: "temperature",
                 label: "Temperature",
-                type: "Data",
+                type: "Link",
+                linkTarget: "Temperature Readings",
               },
               {
                 name: "temp_value",
                 label: "Temp Value",
                 type: "Float",
+                precision: 2,
               },
             ],
           },
+          {
+            name: "remark",
+            label: "Remark",
+            type: "Small Text",
+            defaultValue: getValue("remark"),
+          },
         ],
-      },
+      }
     ];
   }, [duplicateData]);
 
-  /* -------------------------------------------------
-     2. SUBMIT (Create)
-     ------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-    // Check if we have valid data to submit
     const hasValidData = isDirty || (duplicateData && data.date);
-    
+
     if (!hasValidData) {
       toast.info("Please fill out the form.");
       return;
     }
-    
+
     setIsSaving(true);
-    
+
     try {
       const payload: Record<string, any> = { ...data };
-      
-      // Cleanup section breaks if necessary (though DynamicForm usually handles extraction)
       delete payload.section_break_mgrv;
       delete payload.voltage_section;
       delete payload.current_reading_section;
       delete payload.section_break_qzro;
-
       payload.doctype = doctypeName;
-
-      // Ensure numeric values for floats
       const floatFields = [
-          "water_level", "pressure_guage",
-          "br", "ry", "yb",
-          "r", "y", "b"
+        "water_level", "pressure_guage",
+        "br", "ry", "yb",
+        "r", "y", "b"
       ];
       floatFields.forEach(field => {
-          if (field in payload) {
-              payload[field] = Number(payload[field]) || 0;
-          }
+        if (field in payload) {
+          payload[field] = Number(payload[field]) || 0;
+        }
       });
-
-      console.log("Sending NEW Log Sheet payload:", payload);
-      
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'Authorization': `token ${apiKey}:${apiSecret}`,
       };
-
       const storedCsrfToken = localStorage.getItem('csrfToken');
       if (storedCsrfToken) {
         headers['X-Frappe-CSRF-Token'] = storedCsrfToken;
       }
-
       const resp = await fetch(`${API_BASE_URL}/${doctypeName}`, {
         method: 'POST',
         headers: headers,
-        credentials: 'include', 
-        body: JSON.stringify(payload), 
+        credentials: 'include',
+        body: JSON.stringify(payload),
       });
-
       const responseData = await resp.json();
-
       if (!resp.ok) {
         console.log("Full server error:", responseData);
         throw new Error(responseData.exception || responseData._server_messages || "Failed to create document");
       }
-      
       toast.success("Log Sheet created successfully!");
-      
       router.push(`/operations/doctype/logsheet`);
-
     } catch (err: any) {
       console.error("Save error:", err);
-      
       if (err.response?.data?.exc_type === "DuplicateEntryError") {
         toast.error("Duplicate Entry Error", {
           description: "This Log Sheet record may already exist.",
@@ -268,12 +256,7 @@ export default function NewLogSheetPage() {
       setIsSaving(false);
     }
   };
-
   const handleCancel = () => router.back();
-
-  /* -------------------------------------------------
-     3. RENDER FORM
-     ------------------------------------------------- */
   return (
     <DynamicForm
       tabs={formTabs}
@@ -283,6 +266,7 @@ export default function NewLogSheetPage() {
       description="Create a new Log Sheet record"
       submitLabel={isSaving ? "Saving..." : "Create"}
       cancelLabel="Cancel"
+      onFormInit={setFormMethods}
     />
   );
 }
