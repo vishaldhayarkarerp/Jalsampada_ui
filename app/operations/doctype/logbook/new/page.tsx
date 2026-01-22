@@ -317,6 +317,27 @@ export default function NewLogbookPage() {
       toast.error("Please select either Start Pump or Stop Pump");
       return;
     }
+
+    // 2. BETTER: Conditional Validation Logic
+    // Explicitly check for missing fields based on operation type
+    if (data.pump_operation === 'start') {
+      if (!data.start_datetime) {
+        toast.error("Start Datetime is required");
+        return;
+      }
+    }
+
+    if (data.pump_operation === 'stop') {
+      if (!data.stop_datetime) {
+        toast.error("Stop Datetime is required");
+        return;
+      }
+      // This fixes your specific issue:
+      if (!data.pump_stop_reason) {
+        toast.error("Pump Stop Reason is required");
+        return;
+      }
+    }
     if (!data.secondary_list || data.secondary_list.length === 0) {
       toast.error("Please select at least one pump");
       return;

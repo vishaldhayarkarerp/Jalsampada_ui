@@ -9,7 +9,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://192.168.1.30:4412/api/resource";
+const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 export default function NewGateOperationLogbookPage() {
   const router = useRouter();
@@ -23,7 +23,7 @@ export default function NewGateOperationLogbookPage() {
   const duplicateData = React.useMemo(() => {
     const duplicateParam = searchParams.get('duplicate');
     if (!duplicateParam) return null;
-    
+
     try {
       const decodedData = JSON.parse(atob(decodeURIComponent(duplicateParam)));
       console.log("Parsed duplicate data:", decodedData);
@@ -157,14 +157,14 @@ export default function NewGateOperationLogbookPage() {
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     // Check if we have valid data to submit
     const hasValidData = isDirty || (duplicateData && data.gate_no);
-    
+
     if (!hasValidData) {
       toast.info("Please fill out the form.");
       return;
     }
-    
+
     setIsSaving(true);
-    
+
     try {
       // Build the payload
       const payload: Record<string, any> = {
@@ -192,7 +192,7 @@ export default function NewGateOperationLogbookPage() {
       }
 
       console.log("Sending NEW Gate Operation Logbook payload:", payload);
-      
+
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'Authorization': `token ${apiKey}:${apiSecret}`,
@@ -206,8 +206,8 @@ export default function NewGateOperationLogbookPage() {
       const resp = await fetch(`${API_BASE_URL}/${doctypeName}`, {
         method: 'POST',
         headers: headers,
-        credentials: 'include', 
-        body: JSON.stringify(payload), 
+        credentials: 'include',
+        body: JSON.stringify(payload),
       });
 
       const responseData = await resp.json();
@@ -216,15 +216,15 @@ export default function NewGateOperationLogbookPage() {
         console.log("Full server error:", responseData);
         throw new Error(responseData.exception || responseData._server_messages || "Failed to create document");
       }
-      
+
       toast.success("Gate Operation Logbook created successfully!");
-      
+
       // Navigate to the list view
       router.push(`/operations/doctype/gate-operation-logbook`);
 
     } catch (err: any) {
       console.error("Save error:", err);
-      
+
       if (err.response?.data?.exc_type === "DuplicateEntryError") {
         toast.error("Duplicate Entry Error", {
           description: "This record may already exist.",
