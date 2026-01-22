@@ -12,9 +12,9 @@ import {
 
 const maintenanceDoctypes: Doctype[] = [
   { name: "parameter-checklist", title: "Parameter Checklist", icon: ListChecks },
-  { name: "maintenance-checklist", title: "Maintenance Checklist", icon: ClipboardList },
-  { name: "maintenance-schedule", title: "Maintenance Schedule", icon: CalendarCheck },
-  { name: "maintenance-log", title: "Maintenance Log", icon: FileText },
+  { name: "parameter-category", title: "Parameter Category", icon: ClipboardList },
+  { name: "parameter-type", title: "Parameter Type", icon: CalendarCheck },
+  { name: "device-type", title: "Device Type", icon: FileText },
 ];
 
 const maintenanceDoctypeGroups: DoctypeGroup[] = [
