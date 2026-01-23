@@ -9,6 +9,12 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
+import {
+  fetchCurrentUserInfo,
+  fetchTemperatureNames,
+  populateUserInfo,
+  populateTemperatureReadings,
+} from "../services";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -43,37 +49,26 @@ export default function NewLogSheetPage() {
 
   // Fetch current user info
   React.useEffect(() => {
-    const fetchCurrentUserInfo = async () => {
+    const fetchAndPopulateUserInfo = async () => {
       if (!apiKey || !apiSecret) return;
 
-      try {
-        const response = await fetch(
-          "http://103.219.1.138:4412/api/method/quantlis_management.api.get_current_user_info",
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-              Authorization: `token ${apiKey}:${apiSecret}`,
-            },
-          }
-        );
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const data = await response.json();
-        const { user, full_name } = data.message || {};
-
-        if (user && full_name && formMethods) {
-          formMethods.setValue("operator_id", user);
-          formMethods.setValue("operator_name", full_name);
-        }
-      } catch (error) {
-        console.error("Error fetching user info:", error);
-      }
+      const userInfo = await fetchCurrentUserInfo(apiKey, apiSecret);
+      populateUserInfo(userInfo, formMethods);
     };
 
-    fetchCurrentUserInfo();
+    fetchAndPopulateUserInfo();
+  }, [apiKey, apiSecret, formMethods]);
+
+  // Fetch temperature names and populate temperature_readings table
+  React.useEffect(() => {
+    const fetchAndPopulateTemperatureNames = async () => {
+      if (!apiKey || !apiSecret || !formMethods) return;
+
+      const temperatureRows = await fetchTemperatureNames(apiKey, apiSecret);
+      populateTemperatureReadings(temperatureRows, formMethods);
+    };
+
+    fetchAndPopulateTemperatureNames();
   }, [apiKey, apiSecret, formMethods]);
 
   const formTabs: TabbedLayout[] = React.useMemo(() => {
@@ -105,6 +100,9 @@ export default function NewLogSheetPage() {
             type: "Link",
             linkTarget: "Stage No",
             defaultValue: getValue("stage"),
+            filterMapping: [
+              { sourceField: "lis", targetField: "lis_name" }
+            ]
           },
           {
             name: "time",
@@ -117,6 +115,19 @@ export default function NewLogSheetPage() {
             label: "Asset",
             type: "Link",
             linkTarget: "Asset",
+            customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+            customSearchParams: {
+              filters: {
+                asset_category: "Pump",
+                custom_pump_status: "Running"
+              }
+            },
+            filters: (getValue) => ({
+              custom_stage_no: getValue("stage"),
+              custom_lis_name: getValue("lis")
+            }),
+            referenceDoctype: "Log Sheet",
+            doctype: "Asset",
             defaultValue: getValue("asset"),
           },
           {

@@ -18,7 +18,7 @@ interface LinkFieldOption {
 interface LinkFieldProps {
   control: any;
   // Support custom searchField
-  field: FormField & { defaultValue?: string; linkTarget?: string; searchField?: string };
+  field: FormField & { defaultValue?: string; linkTarget?: string; searchField?: string; customSearchUrl?: string; customSearchParams?: Record<string, any> };
   error?: any;
   className?: string;
   filters?: Record<string, any>;
@@ -37,7 +37,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  
+
   // Store the full selected option object (ID + Label)
   const selectedOptionRef = React.useRef<LinkFieldOption | null>(null);
 
@@ -49,38 +49,88 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
 
     setIsLoading(true);
     try {
-      const searchFilters: any[] = [];
-      if (term?.trim()) {
-        searchFilters.push([field.linkTarget, searchKey, "like", `%${term.trim()}%`]);
-      }
+      // Use custom search URL if provided
+      if (field.customSearchUrl) {
+        // Merge static custom search params with dynamic filters
+        const dynamicFilters = typeof field.filters === 'function' ? field.filters((name: string) => {
+          // Get current value from form state
+          const formValues = control._formValues || {};
+          return formValues[name];
+        }) : {};
 
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value != null && value !== "") {
-          searchFilters.push([field.linkTarget, key, "=", value]);
+        const mergedFilters = {
+          ...field.customSearchParams?.filters,
+          ...dynamicFilters
+        };
+
+        const params: Record<string, any> = {
+          txt: term || "",
+          ignore_user_permissions: 0,
+          reference_doctype: field.referenceDoctype,
+          page_length: 10,
+          doctype: field.doctype,
+          filters: mergedFilters
+        };
+
+        const formData = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            if (key === 'filters' && typeof value === 'object') {
+              formData.append(key, JSON.stringify(value));
+            } else {
+              formData.append(key, String(value));
+            }
+          }
+        });
+
+        const resp = await axios.post(field.customSearchUrl, formData, {
+          headers: {
+            Authorization: `token ${apiKey}:${apiSecret}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          withCredentials: true,
+        });
+
+        const message = resp.data.message || [];
+        setOptions(message.map((r: any) => ({
+          value: r.value,
+          label: r.label || r.value
+        })));
+      } else {
+        // Default search logic
+        const searchFilters: any[] = [];
+        if (term?.trim()) {
+          searchFilters.push([field.linkTarget, searchKey, "like", `%${term.trim()}%`]);
         }
-      });
 
-      const query = getQuery ? getQuery(filters) : JSON.stringify(searchFilters);
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value != null && value !== "") {
+            searchFilters.push([field.linkTarget, key, "=", value]);
+          }
+        });
 
-      const fieldsToFetch = ["name"];
-      if (searchKey !== "name") fieldsToFetch.push(searchKey);
+        const query = getQuery ? getQuery(filters) : JSON.stringify(searchFilters);
 
-      const resp = await axios.get(`${API_BASE_URL}/${field.linkTarget}`, {
-        params: {
-          fields: JSON.stringify(fieldsToFetch),
-          limit_page_length: "20",
-          order_by: `${searchKey} asc`,
-          filters: query
-        },
-        headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-        withCredentials: true,
-      });
+        const fieldsToFetch = ["name"];
+        if (searchKey !== "name") fieldsToFetch.push(searchKey);
 
-      const raw = (resp.data.data || []) as any[];
-      setOptions(raw.map((r) => ({ 
-        value: r.name, 
-        label: r[searchKey] || r.name 
-      })));
+        const resp = await axios.get(`${API_BASE_URL}/${field.linkTarget}`, {
+          params: {
+            fields: JSON.stringify(fieldsToFetch),
+            limit_page_length: "20",
+            order_by: `${searchKey} asc`,
+            filters: query
+          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+          withCredentials: true,
+        });
+
+        const raw = (resp.data.data || []) as any[];
+        setOptions(raw.map((r) => ({
+          value: r.name,
+          label: r[searchKey] || r.name
+        })));
+      }
 
     } catch (e) {
       console.error("LinkField search error:", e);
@@ -88,7 +138,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, apiKey, apiSecret, field.linkTarget, filters, getQuery, searchKey]);
+  }, [isAuthenticated, apiKey, apiSecret, field.linkTarget, field.customSearchUrl, field.customSearchParams, field.filters, filters, getQuery, searchKey]);
 
   const debouncedSearch = React.useCallback((term: string) => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -138,7 +188,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
         control={control}
         name={field.name}
         defaultValue={field.defaultValue || ""}
-        rules={{ 
+        rules={{
           required: field.required ? `${field.label} is required` : false,
           validate: (value) => {
             // Custom validation to ensure the field is not just an empty string
@@ -152,58 +202,58 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
 
 
           React.useEffect(() => {
-             if (value && !selectedOptionRef.current && (!searchTerm || searchTerm === value)) {
-                 // Temporarily show ID to prevent empty field
-                 if (!searchTerm) setSearchTerm(value);
+            if (value && !selectedOptionRef.current && (!searchTerm || searchTerm === value)) {
+              // Temporarily show ID to prevent empty field
+              if (!searchTerm) setSearchTerm(value);
 
-                 const fetchLabel = async () => {
-                    if (!isAuthenticated || !apiKey) return;
-                    try {
-                        const fieldsToFetch = ["name"];
-                        if (searchKey !== "name") fieldsToFetch.push(searchKey);
+              const fetchLabel = async () => {
+                if (!isAuthenticated || !apiKey) return;
+                try {
+                  const fieldsToFetch = ["name"];
+                  if (searchKey !== "name") fieldsToFetch.push(searchKey);
 
-                        const resp = await axios.get(`${API_BASE_URL}/${field.linkTarget}`, {
-                            params: {
-                                filters: JSON.stringify([["name", "=", value]]),
-                                fields: JSON.stringify(fieldsToFetch)
-                            },
-                            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-                        });
+                  const resp = await axios.get(`${API_BASE_URL}/${field.linkTarget}`, {
+                    params: {
+                      filters: JSON.stringify([["name", "=", value]]),
+                      fields: JSON.stringify(fieldsToFetch)
+                    },
+                    headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+                  });
 
-                        if (resp.data?.data?.[0]) {
-                            const row = resp.data.data[0];
-                            const label = row[searchKey] || row.name;
-                            
-                            // Update cache so it sticks
-                            selectedOptionRef.current = { value: row.name, label: label };
-                            // Update display
-                            setSearchTerm(label);
-                        }
-                    } catch (e) {
-                        console.error("Autofetch label failed", e);
-                    }
-                 };
-                 fetchLabel();
-             }
+                  if (resp.data?.data?.[0]) {
+                    const row = resp.data.data[0];
+                    const label = row[searchKey] || row.name;
+
+                    // Update cache so it sticks
+                    selectedOptionRef.current = { value: row.name, label: label };
+                    // Update display
+                    setSearchTerm(label);
+                  }
+                } catch (e) {
+                  console.error("Autofetch label failed", e);
+                }
+              };
+              fetchLabel();
+            }
           }, []); // Run once on mount (per key change)
 
           // 🟢 2. SYNC LOGIC (Keeps Label displayed)
           React.useEffect(() => {
             if (!isOpen) {
-               // Case A: We have a cached label for this value -> Show Label
-               if (selectedOptionRef.current && selectedOptionRef.current.value === value) {
-                  if (searchTerm !== selectedOptionRef.current.label) {
-                     setSearchTerm(selectedOptionRef.current.label);
-                  }
-               } 
-               // Case B: No cache yet (Fetch hasn't finished) -> Show ID
-               else if (value && value !== searchTerm && !selectedOptionRef.current) {
-                  setSearchTerm(value);
-               }
-               // Case C: Value cleared -> Clear search
-               else if (!value && searchTerm) {
-                  setSearchTerm("");
-               }
+              // Case A: We have a cached label for this value -> Show Label
+              if (selectedOptionRef.current && selectedOptionRef.current.value === value) {
+                if (searchTerm !== selectedOptionRef.current.label) {
+                  setSearchTerm(selectedOptionRef.current.label);
+                }
+              }
+              // Case B: No cache yet (Fetch hasn't finished) -> Show ID
+              else if (value && value !== searchTerm && !selectedOptionRef.current) {
+                setSearchTerm(value);
+              }
+              // Case C: Value cleared -> Clear search
+              else if (!value && searchTerm) {
+                setSearchTerm("");
+              }
             }
           }, [value, isOpen]);
 
@@ -213,7 +263,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
             setIsOpen(true);
             updateDropdownPosition();
             debouncedSearch(newValue);
-            
+
             // If user clears input, clear the selection cache
             if (!newValue) selectedOptionRef.current = null;
           };
@@ -221,13 +271,13 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
           const handleOptionSelect = (option: LinkFieldOption) => {
             // 1. Update Visuals (Display Label)
             setSearchTerm(option.label);
-            
+
             // 2. Cache the selection
             selectedOptionRef.current = option;
-            
+
             // 3. Update Data (Store ID)
             onChange(option.value);
-            
+
             setIsOpen(false);
           };
 
@@ -255,7 +305,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                     onBlur();
                     setTimeout(() => {
                       if (!options.find(o => o.label === searchTerm) && searchTerm !== (selectedOptionRef.current?.label || value)) {
-                         setSearchTerm(selectedOptionRef.current?.label || value || "");
+                        setSearchTerm(selectedOptionRef.current?.label || value || "");
                       }
                       setIsOpen(false);
                     }, 200);

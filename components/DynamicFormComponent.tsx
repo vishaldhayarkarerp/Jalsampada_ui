@@ -80,8 +80,12 @@ export interface FormField {
   name: string;
   label: string;
   type: FieldType;
-  linkTarget?: string;
+  linkTarget?: string;  
   searchField?: string;
+  customSearchUrl?: string;
+  customSearchParams?: Record<string, any>;
+  referenceDoctype?: string;
+  doctype?: string;
   required?: boolean;
   description?: string;
   placeholder?: string;
