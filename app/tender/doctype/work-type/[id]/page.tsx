@@ -10,6 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { renameDocument } from "@/lib/services";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -75,8 +76,8 @@ export default function RecordDetailPage() {
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-            ? "Unauthorized"
-            : `Failed to load ${doctypeName}`
+              ? "Unauthorized"
+              : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -99,7 +100,7 @@ export default function RecordDetailPage() {
         defaultValue:
           f.name in record
             ? // @ts-ignore
-              record[f.name as keyof WorkTypeData]
+            record[f.name as keyof WorkTypeData]
             : f.defaultValue,
       }));
 
@@ -143,6 +144,38 @@ export default function RecordDetailPage() {
 
     setIsSaving(true);
     try {
+      // Check if work_type_name has changed and needs renaming
+      const newWorkTypeName = data.work_type_name;
+      let currentDocname = docname;
+
+      // If work_type_name changed and is different from current docname, rename the document
+      if (newWorkTypeName && newWorkTypeName !== record.work_type_name && newWorkTypeName !== record.name) {
+        try {
+          await renameDocument(
+            apiKey,
+            apiSecret,
+            doctypeName,
+            record.name,
+            newWorkTypeName
+          );
+          // Update the docname to the new name for subsequent operations
+          currentDocname = newWorkTypeName;
+
+          // Update the record name in state
+          setRecord(prev => prev ? { ...prev, name: newWorkTypeName, work_type_name: newWorkTypeName } : null);
+
+          // Update the URL to reflect the new name
+          router.replace(`/tender/doctype/work-type/${newWorkTypeName}`);
+
+        } catch (renameError: any) {
+          console.error("Rename error:", renameError);
+          toast.error("Failed to rename document", {
+            description: renameError.response?.data?.message || renameError.message,
+          });
+          return;
+        }
+      }
+
       // Deep copy form data to payload
       const payload: any = JSON.parse(JSON.stringify(data));
 
@@ -172,9 +205,9 @@ export default function RecordDetailPage() {
       finalPayload.modified = record.modified;
       finalPayload.docstatus = record.docstatus;
 
-      // Send to Frappe
+      // Send to Frappe using the current docname (which may have been updated)
       const resp = await axios.put(
-        `${API_BASE_URL}/${doctypeName}/${docname}`,
+        `${API_BASE_URL}/${doctypeName}/${currentDocname}`,
         finalPayload,
         {
           headers: {
@@ -192,7 +225,7 @@ export default function RecordDetailPage() {
         setRecord(resp.data.data as WorkTypeData);
       }
 
-      router.push(`/tender/doctype/work-type/${docname}`);
+      router.push(`/tender/doctype/work-type/${currentDocname}`);
     } catch (err: any) {
       console.error("Save error:", err);
       const serverData = err.response?.data;
