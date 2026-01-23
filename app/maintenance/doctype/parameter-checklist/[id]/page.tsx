@@ -11,31 +11,40 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
+// API base URL
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
+// ----------------------
+// 1. Types
+// ----------------------
 interface ParameterData {
   name: string;
-  parameter_data?: string;
+  parameter?: string;
   monitoring_type?: "Daily" | "Weekly" | "Monthly";
   asset_category?: string;
   docstatus: 0 | 1 | 2;
   modified: string;
 }
 
+// ----------------------
+// 2. Component
+// ----------------------
 export default function ParameterDataDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
   const docname = params.id as string;
-  const doctypeName = "Parameter Data";
+  const doctypeName = "Parameter Checklist";
 
   const [record, setRecord] = React.useState<ParameterData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
 
-  // FETCH DOC
+  // ----------------------
+  // Fetch record
+  // ----------------------
   React.useEffect(() => {
     const fetchDoc = async () => {
       if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret || !docname) {
@@ -65,10 +74,10 @@ export default function ParameterDataDetailPage() {
         console.error("API Error:", err);
         setError(
           err.response?.status === 404
-            ? "Record not found"
+            ? `${doctypeName} not found`
             : err.response?.status === 403
             ? "Unauthorized"
-            : "Failed to load record"
+            : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -78,7 +87,9 @@ export default function ParameterDataDetailPage() {
     fetchDoc();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-  // BUILD TABS
+  // ----------------------
+  // Build form tabs
+  // ----------------------
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!record) return [];
 
@@ -94,28 +105,33 @@ export default function ParameterDataDetailPage() {
         name: "Details",
         fields: fields([
           {
-            name: "parameter_data",
-            label: "Parameter Data",
+            name: "parameter",
+            label: "Parameter",
             type: "Text",
+            required: true,
           },
           {
             name: "monitoring_type",
             label: "Monitoring Type",
             type: "Select",
-            options: "Daily\nWeekly"
+            options: "Daily\nWeekly\nMonthly",
+            required: true,
           },
           {
             name: "asset_category",
             label: "Asset Category",
             type: "Link",
             linkTarget: "Asset Category",
+            required: true,
           },
         ]),
       },
     ];
   }, [record]);
 
-  // SUBMIT
+  // ----------------------
+  // Submit handler
+  // ----------------------
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) {
       toast.info("No changes to save.");
@@ -131,6 +147,7 @@ export default function ParameterDataDetailPage() {
     try {
       const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
 
+      // Exclude non-data fields
       const allFields = formTabs.flatMap((tab) => tab.fields);
       const nonDataFields = new Set<string>();
       allFields.forEach((field) => {
@@ -151,10 +168,9 @@ export default function ParameterDataDetailPage() {
         }
       }
 
+      // Preserve metadata
       finalPayload.modified = record.modified;
       finalPayload.docstatus = record.docstatus;
-
-      console.log("Sending this PAYLOAD to Frappe:", finalPayload);
 
       const resp = await axios.put(
         `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
@@ -176,14 +192,13 @@ export default function ParameterDataDetailPage() {
         setRecord(resp.data.data as ParameterData);
       }
 
-      router.push(`/maintenance/doctype/parameter-data/${docname}`);
+      router.push(`/maintenance/doctype/parameter-checklist/${docname}`);
     } catch (err: any) {
       console.error("Save error:", err);
       console.log("Full server error:", err.response?.data);
       toast.error("Failed to save", {
-        description:
-          err.message || "Check the browser console (F12) for the full server error.",
-        duration: Infinity
+        description: err.message || "Check console for full server error.",
+        duration: Infinity,
       });
     } finally {
       setIsSaving(false);
@@ -192,11 +207,13 @@ export default function ParameterDataDetailPage() {
 
   const handleCancel = () => router.back();
 
-  // UI STATES
+  // ----------------------
+  // UI States
+  // ----------------------
   if (loading) {
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
-        <p>Loading parameter data...</p>
+        <p>Loading {doctypeName} details...</p>
       </div>
     );
   }
@@ -215,12 +232,14 @@ export default function ParameterDataDetailPage() {
   if (!record) {
     return (
       <div className="module active" style={{ padding: "2rem" }}>
-        <p>Record not found.</p>
+        <p>{doctypeName} not found.</p>
       </div>
     );
   }
 
-  // RENDER FORM
+  // ----------------------
+  // Render form
+  // ----------------------
   return (
     <DynamicForm
       tabs={formTabs}
@@ -230,6 +249,11 @@ export default function ParameterDataDetailPage() {
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      deleteConfig={{
+        doctypeName: doctypeName,
+        docName: docname,
+        redirectUrl: "/maintenance/doctype/parameter-checklist",
+      }}
     />
   );
 }
