@@ -124,11 +124,40 @@ export default function LogSheetDetailPage() {
                 fields: fields([
                     { name: "lis", label: "LIS", type: "Link", linkTarget: "Lift Irrigation Scheme", },
                     { name: "date", label: "Date", type: "Date", defaultValue: "Today", required: true },
-                    { name: "stage", label: "Stage/ Sub Scheme", type: "Link", linkTarget: "Stage No" },
-                    { name: "time", label: "Time", type: "Time", defaultValue: "Now" },
-                    { name: "asset", label: "Asset", type: "Link", linkTarget: "Asset" },
+                    {
+                        name: "stage",
+                        label: "Stage/ Sub Scheme",
+                        type: "Link",
+                        linkTarget: "Stage No",
+                        defaultValue: record?.stage,
+                        filterMapping: [
+                            { sourceField: "lis", targetField: "lis_name" }
+                        ]
+                    },
+                    { name: "time", label: "Time", type: "Time", defaultValue: record?.time },
+                    {
+                        name: "asset",
+                        label: "Asset",
+                        type: "Link",
+                        linkTarget: "Asset",
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        customSearchParams: {
+                            filters: {
+                                asset_category: "Pump",
+                                custom_pump_status: "Running"
+                            }
+                        },
+                        filters: (getValue) => ({
+                            custom_stage_no: getValue("stage"),
+                            custom_lis_name: getValue("lis")
+                        }),
+                        referenceDoctype: "Log Sheet",
+                        doctype: "Asset",
+                        defaultValue: record?.asset,
+                    },
+
+                    { name: "logbook", label: "Pump No", type: "Link", linkTarget: "Logbook Ledger", fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "custom_asset_no" } },
                     { name: "operator_id", label: "Operator ID", type: "Link", linkTarget: "User" },
-                    { name: "logbook", label: "Pump No", type: "Link", linkTarget: "Logbook Ledger" },
                     { name: "operator_name", label: "Operator Name", type: "Data" },
                     { name: "section_break_mgrv", label: "", type: "Section Break" },
                     { name: "water_level", label: "Water Level", type: "Float", precision: 2 },

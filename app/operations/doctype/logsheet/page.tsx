@@ -22,7 +22,7 @@ import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { getApiMessages} from "@/lib/utils";
+import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL
@@ -236,7 +236,7 @@ export default function LogSheetPage() {
 
         if (errorMessages.length > 0) {
           // Show error messages from server
-          toast.error("Failed to delete records", { 
+          toast.error("Failed to delete records", {
             description: <FrappeErrorDisplay messages={errorMessages} />,
             duration: Infinity
           });
@@ -250,14 +250,14 @@ export default function LogSheetPage() {
       fetchLogSheet();
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
-      
+
       const messages = getApiMessages(
         null,
         err,
         "Records deleted successfully",
         "Failed to delete records"
       );
-      
+
       toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsDeleting(false);
@@ -298,7 +298,7 @@ export default function LogSheetPage() {
     return fields;
   };
 
-  const title = "LogSheet";
+  const title = "Log Sheet";
 
   const handleCardClick = (id: string) => {
     router.push(`/operations/doctype/logsheet/${encodeURIComponent(id)}`);
@@ -309,118 +309,118 @@ export default function LogSheetPage() {
      ------------------------------------------------- */
 
   const renderListView = () => (
-  <div
-    className="stock-table-container"
-    style={{ overflowX: "auto" }}
-  >
-    <table
-      className="stock-table"
-      // wider base width so all columns get more space
-      style={{ minWidth: "1300px", whiteSpace: "nowrap" }}
+    <div
+      className="stock-table-container"
+      style={{ overflowX: "auto" }}
     >
-      <thead>
-        <tr>
-          {/* 🟢 Header Checkbox */}
-          <th style={{ width: "40px", textAlign: "center" }}>
-            <input
-              type="checkbox"
-              checked={isAllSelected}
-              onChange={handleSelectAll}
-              style={{ cursor: "pointer", width: "16px", height: "16px" }}
-            />
-          </th>
-          <th
-            style={{ cursor: "pointer", minWidth: 140 }}
-            onClick={() => requestSort("name")}
-          >
-            ID
-          </th>
-          <th
-            style={{ cursor: "pointer", minWidth: 120 }}
-            onClick={() => requestSort("lis")}
-          >
-            LIS
-          </th>
-          <th
-            style={{ cursor: "pointer", minWidth: 120 }}
-            onClick={() => requestSort("stage")}
-          >
-            Stage
-          </th>
-          <th
-            style={{ cursor: "pointer", minWidth: 120 }}
-            onClick={() => requestSort("date")}
-          >
-            Date
-          </th>
-          <th
-            style={{ cursor: "pointer", minWidth: 120 }}
-            onClick={() => requestSort("time")}
-          >
-            Time
-          </th>
-          <th style={{ minWidth: 110 }}>BR</th>
-          <th style={{ minWidth: 110 }}>RY</th>
-          <th style={{ minWidth: 140 }}>Water Level</th>
-          <th style={{ minWidth: 150 }}>Pressure Gauge</th>
-          <th style={{ minWidth: 110 }}>YB</th>
-          <th style={{ minWidth: 110 }}>R</th>
-          <th style={{ minWidth: 110 }}>Y</th>
-          <th style={{ minWidth: 110 }}>B</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sortedRows.length ? (
-          sortedRows.map((row) => {
-            const isSelected = selectedIds.has(row.name);
-            return (
-              <tr
-                key={row.name}
-                onClick={() => handleCardClick(row.name)}
-                style={{ 
-                  cursor: "pointer",
-                  backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
-                }}
-              >
-                {/* 🟢 Row Checkbox */}
-                <td 
-                  style={{ textAlign: "center" }} 
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => handleSelectOne(row.name)}
-                    style={{ cursor: "pointer", width: "16px", height: "16px" }}
-                  />
-                </td>
-                <td style={{ minWidth: 140 }}>{row.name}</td>
-                <td style={{ minWidth: 120 }}>{row.lis || "—"}</td>
-                <td style={{ minWidth: 120 }}>{row.stage || "—"}</td>
-                <td style={{ minWidth: 120 }}>{row.date || "—"}</td>
-                <td style={{ minWidth: 120 }}>{row.time || "—"}</td>
-                <td style={{ minWidth: 110 }}>{row.br || "—"}</td>
-                <td style={{ minWidth: 110 }}>{row.ry || "—"}</td>
-                <td style={{ minWidth: 140 }}>{row.water_level || "—"}</td>
-                <td style={{ minWidth: 150 }}>{row.pressure_guage || "—"}</td>
-                <td style={{ minWidth: 110 }}>{row.yb || "—"}</td>
-                <td style={{ minWidth: 110 }}>{row.r || "—"}</td>
-                <td style={{ minWidth: 110 }}>{row.y || "—"}</td>
-                <td style={{ minWidth: 110 }}>{row.b || "—"}</td>
-              </tr>
-            );
-          })
-        ) : (
+      <table
+        className="stock-table"
+        // wider base width so all columns get more space
+        style={{ minWidth: "1300px", whiteSpace: "nowrap" }}
+      >
+        <thead>
           <tr>
-            <td colSpan={14} style={{ textAlign: "center", padding: "32px" }}>
-              No records found.
-            </td>
+            {/* 🟢 Header Checkbox */}
+            <th style={{ width: "40px", textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+                style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              />
+            </th>
+            <th
+              style={{ cursor: "pointer", minWidth: 140 }}
+              onClick={() => requestSort("name")}
+            >
+              ID
+            </th>
+            <th
+              style={{ cursor: "pointer", minWidth: 120 }}
+              onClick={() => requestSort("lis")}
+            >
+              LIS
+            </th>
+            <th
+              style={{ cursor: "pointer", minWidth: 120 }}
+              onClick={() => requestSort("stage")}
+            >
+              Stage
+            </th>
+            <th
+              style={{ cursor: "pointer", minWidth: 120 }}
+              onClick={() => requestSort("date")}
+            >
+              Date
+            </th>
+            <th
+              style={{ cursor: "pointer", minWidth: 120 }}
+              onClick={() => requestSort("time")}
+            >
+              Time
+            </th>
+            <th style={{ minWidth: 110 }}>BR</th>
+            <th style={{ minWidth: 110 }}>RY</th>
+            <th style={{ minWidth: 140 }}>Water Level</th>
+            <th style={{ minWidth: 150 }}>Pressure Gauge</th>
+            <th style={{ minWidth: 110 }}>YB</th>
+            <th style={{ minWidth: 110 }}>R</th>
+            <th style={{ minWidth: 110 }}>Y</th>
+            <th style={{ minWidth: 110 }}>B</th>
           </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-);
+        </thead>
+        <tbody>
+          {sortedRows.length ? (
+            sortedRows.map((row) => {
+              const isSelected = selectedIds.has(row.name);
+              return (
+                <tr
+                  key={row.name}
+                  onClick={() => handleCardClick(row.name)}
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                  }}
+                >
+                  {/* 🟢 Row Checkbox */}
+                  <td
+                    style={{ textAlign: "center" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(row.name)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                  </td>
+                  <td style={{ minWidth: 140 }}>{row.name}</td>
+                  <td style={{ minWidth: 120 }}>{row.lis || "—"}</td>
+                  <td style={{ minWidth: 120 }}>{row.stage || "—"}</td>
+                  <td style={{ minWidth: 120 }}>{row.date || "—"}</td>
+                  <td style={{ minWidth: 120 }}>{row.time || "—"}</td>
+                  <td style={{ minWidth: 110 }}>{row.br || "—"}</td>
+                  <td style={{ minWidth: 110 }}>{row.ry || "—"}</td>
+                  <td style={{ minWidth: 140 }}>{row.water_level || "—"}</td>
+                  <td style={{ minWidth: 150 }}>{row.pressure_guage || "—"}</td>
+                  <td style={{ minWidth: 110 }}>{row.yb || "—"}</td>
+                  <td style={{ minWidth: 110 }}>{row.r || "—"}</td>
+                  <td style={{ minWidth: 110 }}>{row.y || "—"}</td>
+                  <td style={{ minWidth: 110 }}>{row.b || "—"}</td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan={14} style={{ textAlign: "center", padding: "32px" }}>
+                No records found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 
 
   const renderGridView = () => (
@@ -462,7 +462,7 @@ export default function LogSheetPage() {
           <h2>{title}</h2>
           <p>LogSheet entries with electrical and water parameters</p>
         </div>
-        
+
         {/* 🟢 3. Header Action Switch */}
         {selectedIds.size > 0 ? (
           <BulkActionBar
@@ -495,11 +495,11 @@ export default function LogSheetPage() {
         <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
           <input
             type="text"
-            placeholder="Search LogSheet..."
+            placeholder="Search Log Sheet..."
             className="form-control w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search LogSheet"
+            aria-label="Search Log Sheet"
           />
         </div>
 
@@ -540,11 +540,10 @@ export default function LogSheetPage() {
                   {SORT_OPTIONS.map((option) => (
                     <button
                       key={option.key}
-                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                        sortConfig.key === option.key
+                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${sortConfig.key === option.key
                           ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
                           : "text-gray-700 dark:text-gray-200"
-                      }`}
+                        }`}
                       onClick={() => {
                         setSortConfig((prev) => ({ ...prev, key: option.key }));
                         setIsSortMenuOpen(false);

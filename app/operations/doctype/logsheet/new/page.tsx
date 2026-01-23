@@ -136,6 +136,7 @@ export default function NewLogSheetPage() {
             type: "Link",
             linkTarget: "Logbook Ledger",
             defaultValue: getValue("logbook"),
+            fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "custom_asset_no" }
           },
           {
             name: "operator_id",
@@ -233,10 +234,6 @@ export default function NewLogSheetPage() {
         'Content-Type': 'application/json',
         'Authorization': `token ${apiKey}:${apiSecret}`,
       };
-      const storedCsrfToken = localStorage.getItem('csrfToken');
-      if (storedCsrfToken) {
-        headers['X-Frappe-CSRF-Token'] = storedCsrfToken;
-      }
       const resp = await fetch(`${API_BASE_URL}/${doctypeName}`, {
         method: 'POST',
         headers: headers,
@@ -244,12 +241,13 @@ export default function NewLogSheetPage() {
         body: JSON.stringify(payload),
       });
       const responseData = await resp.json();
+      const docName = responseData.data.name;
       if (!resp.ok) {
         console.log("Full server error:", responseData);
         throw new Error(responseData.exception || responseData._server_messages || "Failed to create document");
       }
       toast.success("Log Sheet created successfully!");
-      router.push(`/operations/doctype/logsheet`);
+      router.push(`/operations/doctype/logsheet/${encodeURIComponent(docName)}`);
     } catch (err: any) {
       console.error("Save error:", err);
       if (err.response?.data?.exc_type === "DuplicateEntryError") {
