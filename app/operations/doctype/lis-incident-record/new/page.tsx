@@ -272,7 +272,7 @@ export default function NewLisIncidentRecordPage() {
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     // Basic validation
     if (!data.custom_incident_subject) {
-      toast.error("Incident Subject is required");
+      toast.error("Incident Subject is required", { duration: Infinity });
       return;
     }
 
@@ -351,7 +351,7 @@ export default function NewLisIncidentRecordPage() {
 
     } catch (err: any) {
       console.error("Save Error:", err);
-      toast.error("Failed to save record", { description: err.message });
+      toast.error("Failed to save record", { description: err.message, duration: Infinity});
     } finally {
       setIsSaving(false);
     }

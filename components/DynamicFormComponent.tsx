@@ -673,7 +673,7 @@ export function DynamicForm({
 
     if (deleteConfig) {
       if (!apiKey || !apiSecret) {
-        toast.error("Authentication required to delete.");
+        toast.error("Authentication required to delete.", { duration: Infinity });
         return;
       }
 
@@ -702,7 +702,7 @@ export function DynamicForm({
         } catch (err: any) {
           console.error("Delete error:", err);
           const messages = getApiMessages(null, err, `${doctypeName} deleted successfully`, "Failed to delete record");
-          toast.error(messages.message, { description: messages.description });
+          toast.error(messages.message, { description: messages.description , duration: Infinity});
         }
       }
     }

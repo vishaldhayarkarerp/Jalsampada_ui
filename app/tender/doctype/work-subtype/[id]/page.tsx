@@ -147,7 +147,7 @@ export default function WorkSubtypeDetailPage() {
     }
 
     if (!apiKey || !apiSecret) {
-      toast.error("Missing API credentials.");
+      toast.error("Missing API credentials.", { duration: Infinity });
       return;
     }
 
@@ -218,7 +218,7 @@ export default function WorkSubtypeDetailPage() {
 
       toast.error("Failed to save", {
         description: serverMessage,
-      });
+       duration: Infinity});
     } finally {
       setIsSaving(false);
     }

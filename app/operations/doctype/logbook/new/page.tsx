@@ -138,7 +138,7 @@ export default function NewLogbookPage() {
         formMethods.setValue("primary_list", tableData);
         formMethods.setValue("secondary_list", []);
       } catch (error) {
-        toast.error("Failed to load pump list");
+        toast.error("Failed to load pump list", { duration: Infinity });
       }
     };
 
@@ -314,7 +314,7 @@ export default function NewLogbookPage() {
   ------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>) => {
     if (!data.pump_operation) {
-      toast.error("Please select either Start Pump or Stop Pump");
+      toast.error("Please select either Start Pump or Stop Pump", { duration: Infinity });
       return;
     }
 
@@ -322,24 +322,24 @@ export default function NewLogbookPage() {
     // Explicitly check for missing fields based on operation type
     if (data.pump_operation === 'start') {
       if (!data.start_datetime) {
-        toast.error("Start Datetime is required");
+        toast.error("Start Datetime is required", { duration: Infinity });
         return;
       }
     }
 
     if (data.pump_operation === 'stop') {
       if (!data.stop_datetime) {
-        toast.error("Stop Datetime is required");
+        toast.error("Stop Datetime is required", { duration: Infinity });
         return;
       }
       // This fixes your specific issue:
       if (!data.pump_stop_reason) {
-        toast.error("Pump Stop Reason is required");
+        toast.error("Pump Stop Reason is required", { duration: Infinity });
         return;
       }
     }
     if (!data.secondary_list || data.secondary_list.length === 0) {
-      toast.error("Please select at least one pump");
+      toast.error("Please select at least one pump", { duration: Infinity });
       return;
     }
 
@@ -381,7 +381,7 @@ export default function NewLogbookPage() {
       toast.success("Logbook created successfully!");
       router.push(`/operations/doctype/logbook/${encodeURIComponent(response.data.data.name)}`);
     } catch (err: any) {
-      toast.error(err.response?.data?.exception || "Failed to save");
+      toast.error(err.response?.data?.exception || "Failed to save", { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

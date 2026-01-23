@@ -80,6 +80,13 @@ export default function NewGatePage() {
             linkTarget: "Stage No",
             required: true,
             defaultValue: getValue("stage"),
+            filterMapping: [
+                            {
+                                sourceField: "lis_name",
+                                
+                                targetField: "lis_name"
+                            }
+                        ],
           },
         ],
       },

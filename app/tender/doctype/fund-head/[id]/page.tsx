@@ -136,7 +136,7 @@ export default function FundHeadDetailPage() {
     }
 
     if (!apiKey || !apiSecret) {
-      toast.error("Missing API credentials.");
+      toast.error("Missing API credentials.", { duration: Infinity });
       return;
     }
 
@@ -211,7 +211,7 @@ export default function FundHeadDetailPage() {
 
       toast.error("Failed to save", {
         description: serverMessage,
-      });
+       duration: Infinity});
     } finally {
       setIsSaving(false);
     }

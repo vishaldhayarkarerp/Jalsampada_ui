@@ -142,7 +142,7 @@ export default function SessionDefaultPage() {
         }
 
         if (!apiKey || !apiSecret) {
-            toast.error("Missing API credentials.");
+            toast.error("Missing API credentials.", { duration: Infinity });
             return;
         }
 
@@ -210,7 +210,7 @@ export default function SessionDefaultPage() {
             console.error("Save error:", err);
             toast.error("Failed to save session defaults", {
                 description: err.response?.data?.exception || err.message || "Unknown error",
-            });
+             duration: Infinity});
         } finally {
             setIsSaving(false);
         }

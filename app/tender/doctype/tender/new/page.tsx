@@ -314,7 +314,7 @@ export default function NewTenderPage() {
     }
 
     if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
+      toast.error("Authentication required. Please log in.", { duration: Infinity });
       return;
     }
 
@@ -433,7 +433,7 @@ export default function NewTenderPage() {
       if (messages.success) {
         toast.success(messages.message, { description: messages.description });
       } else {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description, duration: Infinity});
       }
 
       // Navigate to the newly created record using name
@@ -459,13 +459,28 @@ export default function NewTenderPage() {
           // Custom handler for create errors
           if (error.response?.status === 404) return "Record not found";
           if (error.response?.status === 403) return "Unauthorized";
-          if (error.response?.status === 417) return "Expectation Failed";
+          if (error.response?.status === 417) {
+            // Extract actual validation message from server response
+            const serverMessages = error.response?.data?._server_messages;
+            if (serverMessages) {
+              try {
+                const parsed = JSON.parse(serverMessages);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  const messageObj = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
+                  return messageObj.message || error.response?.data?.exception || "Validation failed";
+                }
+              } catch (e) {
+                console.error("Failed to parse server messages:", e);
+              }
+            }
+            return error.response?.data?.exception || "Validation failed - Server cannot meet requirements";
+          }
           return "Failed to create Tender";
         }
       );
 
       if (!messages.success) {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description, duration: Infinity});
       }
     } finally {
       setIsSaving(false);

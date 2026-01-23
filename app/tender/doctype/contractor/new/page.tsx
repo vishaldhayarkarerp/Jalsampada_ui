@@ -136,7 +136,7 @@ export default function NewContractorPage() {
     }
 
     if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
+      toast.error("Authentication required. Please log in.", { duration: Infinity });
       return;
     }
 
@@ -200,7 +200,7 @@ export default function NewContractorPage() {
 
       toast.error("Failed to create Contractor", {
         description: serverMessage,
-      });
+       duration: Infinity});
     } finally {
       setIsSaving(false);
     }

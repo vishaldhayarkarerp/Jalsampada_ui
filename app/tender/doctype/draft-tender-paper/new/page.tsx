@@ -106,7 +106,7 @@ export default function NewDraftTenderPaperPage() {
     }
 
     if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
+      toast.error("Authentication required. Please log in.", { duration: Infinity });
       return;
     }
 
@@ -158,7 +158,7 @@ export default function NewDraftTenderPaperPage() {
 
       toast.error("Failed to create Draft Tender Paper", {
         description: serverMessage,
-      });
+       duration: Infinity});
     } finally {
       setIsSaving(false);
     }

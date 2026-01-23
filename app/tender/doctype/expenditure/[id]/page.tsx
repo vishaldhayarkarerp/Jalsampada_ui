@@ -167,7 +167,22 @@ export default function RecordDetailPage() {
             // Custom handler for load errors with status codes
             if (error.response?.status === 404) return "Record not found";
             if (error.response?.status === 403) return "Unauthorized";
-            if (error.response?.status === 417) return "Expectation Failed - Server cannot meet requirements";
+            if (error.response?.status === 417) {
+              // Extract actual validation message from server response
+              const serverMessages = error.response?.data?._server_messages;
+              if (serverMessages) {
+                try {
+                  const parsed = JSON.parse(serverMessages);
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    const messageObj = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
+                    return messageObj.message || error.response?.data?.exception || "Validation failed";
+                  }
+                } catch (e) {
+                  console.error("Failed to parse server messages:", e);
+                }
+              }
+              return error.response?.data?.exception || "Validation failed - Server cannot meet requirements";
+            }
             return "Failed to load record";
           }
         );
@@ -524,7 +539,7 @@ export default function RecordDetailPage() {
     if (billAmount > tenderAmount) {
       toast.error("Validation Failed", {
         description: "The Bill Amount cannot be greater than the Tender Amount. Please verify the bill amount."
-      });
+       ,duration: Infinity});
       return; // Stop the save process
     }
 
@@ -677,7 +692,7 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
       if (messages.success) {
         toast.success(messages.message, { description: messages.description });
       } else {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description , duration: Infinity});
       }
 
       if (resp.data && resp.data.data) {
@@ -703,12 +718,27 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
           // Custom handler for save errors with status codes
           if (error.response?.status === 404) return "Record not found";
           if (error.response?.status === 403) return "Unauthorized";
-          if (error.response?.status === 417) return "Expectation Failed - Server cannot meet requirements";
+          if (error.response?.status === 417) {
+            // Extract actual validation message from server response
+            const serverMessages = error.response?.data?._server_messages;
+            if (serverMessages) {
+              try {
+                const parsed = JSON.parse(serverMessages);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  const messageObj = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
+                  return messageObj.message || error.response?.data?.exception || "Validation failed";
+                }
+              } catch (e) {
+                console.error("Failed to parse server messages:", e);
+              }
+            }
+            return error.response?.data?.exception || "Validation failed - Server cannot meet requirements";
+          }
           return "Failed to save record";
         }
       );
 
-      toast.error(messages.message, { description: messages.description });
+      toast.error(messages.message, { description: messages.description, duration: Infinity});
     } finally {
       setIsSaving(false);
     }

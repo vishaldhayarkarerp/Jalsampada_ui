@@ -242,7 +242,7 @@ export default function GateOperationLogbookDetailPage() {
                     {
                         name: "remark",
                         label: "Remark",
-                        type: "Text",
+                        type: "Small Text",
                     },
                 ]),
             },
