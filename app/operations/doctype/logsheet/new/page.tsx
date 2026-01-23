@@ -110,7 +110,7 @@ export default function NewLogSheetPage() {
             name: "time",
             label: "Time",
             type: "Time",
-            defaultValue: getValue("time"),
+            defaultValue: getValue("time") || new Date().toTimeString().slice(0, 5),
           },
           {
             name: "asset",
