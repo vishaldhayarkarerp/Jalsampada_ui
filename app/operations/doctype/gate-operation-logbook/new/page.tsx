@@ -148,7 +148,7 @@ defaultValue: getValue("instruction_reference"),
 {
 name: "remark",
 label: "Remark",
-type: "Text",
+type: "Small Text",
 defaultValue: getValue("remark"),
 },
 ],

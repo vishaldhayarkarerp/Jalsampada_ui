@@ -267,7 +267,7 @@ export default function NewEmployeePage() {
   // ─────────────────────────────────────────────────────────────────────────────
   const handleSubmit = async (data: any) => {
     if (!apiKey || !apiSecret) {
-      toast.error("Authentication missing. Please login.");
+      toast.error("Authentication missing. Please login.", { duration: Infinity });
       return;
     }
 
@@ -297,7 +297,7 @@ export default function NewEmployeePage() {
       console.error("Error creating employee:", error);
       toast.error(
         error.response?.data?.exception || "Failed to create employee"
-      );
+      , { duration: Infinity });
     }
   };
 

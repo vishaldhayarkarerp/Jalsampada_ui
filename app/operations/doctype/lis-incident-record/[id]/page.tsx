@@ -36,7 +36,7 @@ export default function EditLisIncidentRecordPage() {
             if (!res.ok) throw new Error(data.exception || "Failed to fetch record");
             setRecord(data.data);
         } catch (error: any) {
-            toast.error("Error loading record", { description: error.message });
+            toast.error("Error loading record", { description: error.message, duration: Infinity});
         } finally {
             setIsLoading(false);
         }
@@ -279,7 +279,7 @@ export default function EditLisIncidentRecordPage() {
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     // Basic validation
     if (!data.custom_incident_subject) {
-      toast.error("Incident Subject is required");
+      toast.error("Incident Subject is required", { duration: Infinity });
       return;
     }
 
@@ -352,7 +352,7 @@ export default function EditLisIncidentRecordPage() {
 
     } catch (err: any) {
       console.error("Save Error:", err);
-      toast.error("Failed to save record", { description: err.message });
+      toast.error("Failed to save record", { description: err.message, duration: Infinity});
     } finally {
       setIsSaving(false);
     }

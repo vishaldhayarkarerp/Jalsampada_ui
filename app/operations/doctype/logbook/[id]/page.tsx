@@ -127,11 +127,11 @@ export default function RecordDetailPage() {
         toast.success(messages.message);
         setLogbook(resp.data.data);
       } else {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description, duration: Infinity});
       }
     } catch (err: any) {
       const messages = getApiMessages(null, err, null, "Failed to submit document");
-      toast.error(messages.message, { description: messages.description });
+      toast.error(messages.message, { description: messages.description, duration: Infinity});
     } finally {
       setIsSaving(false);
     }
@@ -156,11 +156,11 @@ export default function RecordDetailPage() {
         toast.success(messages.message);
         setLogbook(resp.data.data);
       } else {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description, duration: Infinity});
       }
     } catch (err: any) {
       const messages = getApiMessages(null, err, null, "Failed to cancel document");
-      toast.error(messages.message, { description: messages.description });
+      toast.error(messages.message, { description: messages.description, duration: Infinity});
     } finally {
       setIsSaving(false);
     }
@@ -214,7 +214,7 @@ export default function RecordDetailPage() {
         formMethods.setValue("primary_list", tableData);
         formMethods.setValue("secondary_list", []);
       } catch (error) {
-        toast.error("Failed to load pump list");
+        toast.error("Failed to load pump list", { duration: Infinity });
       }
     };
 
@@ -304,7 +304,7 @@ export default function RecordDetailPage() {
     if (!isDirty) { toast.info("No changes to save."); return; }
 
     if (!data.pump_operation) {
-      toast.error("Please select either Start Pump or Stop Pump");
+      toast.error("Please select either Start Pump or Stop Pump", { duration: Infinity });
       return;
     }
 
@@ -338,7 +338,7 @@ export default function RecordDetailPage() {
       toast.success("Logbook updated successfully!");
       fetchRecord();
     } catch (err: any) {
-      toast.error("Failed to update record");
+      toast.error("Failed to update record", { duration: Infinity });
     } finally {
       setIsSaving(false);
     }

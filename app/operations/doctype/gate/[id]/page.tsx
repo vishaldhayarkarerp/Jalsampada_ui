@@ -115,6 +115,10 @@ export default function GateDetailPage() {
                         linkTarget: "Stage No",
                         defaultValue: record.stage || "",
                         required: true,
+                        filterMapping: [{
+                            sourceField: "lis_name",
+                            targetField: "lis_name"
+                        }]
                     },
                 ],
             },

@@ -93,7 +93,7 @@ export default function PrapanSuchiDetailPage() {
             "Could not fetch stages for the selected LIS."
           );
 
-          toast.error(messages.message, { description: messages.description });
+          toast.error(messages.message, { description: messages.description, duration: Infinity});
         }
       }
     });
@@ -227,7 +227,7 @@ export default function PrapanSuchiDetailPage() {
     }
 
     if (!record) {
-      toast.error("Record not loaded. Cannot save.");
+      toast.error("Record not loaded. Cannot save.", { duration: Infinity });
       return;
     }
 
@@ -327,7 +327,7 @@ export default function PrapanSuchiDetailPage() {
 
       const messages = getApiMessages(null, err, "Changes saved!", "Failed to save");
 
-      toast.error(messages.message, { description: messages.description });
+      toast.error(messages.message, { description: messages.description, duration: Infinity});
     } finally {
       setIsSaving(false);
     }

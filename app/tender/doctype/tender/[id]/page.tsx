@@ -326,7 +326,7 @@ export default function RecordDetailPage() {
         name: "custom_contractor_name",
         label: "Contractor Name",
         type: "Link",
-        linkTarget: "Supplier",
+        linkTarget: "Contractor",
       },
       {
         name: "custom_mobile_no",
@@ -426,7 +426,7 @@ export default function RecordDetailPage() {
     }
 
     if (!apiKey || !apiSecret) {
-      toast.error("MissingAPICredentials.");
+      toast.error("MissingAPICredentials.", { duration: Infinity });
       return;
     }
 
@@ -515,7 +515,7 @@ export default function RecordDetailPage() {
       if (messages.success) {
         toast.success(messages.message, { description: messages.description });
       } else {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description , duration: Infinity});
       }
 
       if (resp.data && resp.data.data) {
@@ -536,17 +536,32 @@ export default function RecordDetailPage() {
         err,
         "Changes saved!",
         "Failed to save",
-        (error) => {
-          // Custom handler for save errors
-          if (error.response?.status === 404) return "Record not found";
-          if (error.response?.status === 403) return "Unauthorized";
-          if (error.response?.status === 417) return "Expectation Failed";
-          return "Failed to save";
-        }
+          (error) => {
+            // Custom handler for save errors
+            if (error.response?.status === 404) return "Record not found";
+            if (error.response?.status === 403) return "Unauthorized";
+            if (error.response?.status === 417) {
+              // Extract actual validation message from server response
+              const serverMessages = error.response?.data?._server_messages;
+              if (serverMessages) {
+                try {
+                  const parsed = JSON.parse(serverMessages);
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    const messageObj = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
+                    return messageObj.message || error.response?.data?.exception || "Validation failed";
+                  }
+                } catch (e) {
+                  console.error("Failed to parse server messages:", e);
+                }
+              }
+              return error.response?.data?.exception || "Validation failed - Server cannot meet requirements";
+            }
+            return "Failed to save";
+          }
       );
 
       if (!messages.success) {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description, duration: Infinity});
       }
     } finally {
       setIsSaving(false);

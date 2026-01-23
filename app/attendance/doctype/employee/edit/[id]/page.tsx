@@ -34,7 +34,7 @@ export default function EditEmployeePage() {
         setDefaultValues(response.data.data);
       } catch (err) {
         console.error("Failed to load employee:", err);
-        toast.error("Failed to load employee data");
+        toast.error("Failed to load employee data", { duration: Infinity });
         router.push("/attendance/doctype/employee");
       } finally {
         setLoading(false);
@@ -278,7 +278,7 @@ export default function EditEmployeePage() {
       router.push(`/attendance/doctype/employee/${id}`); // Go back to detail view
     } catch (error: any) {
       console.error("Error updating employee:", error);
-      toast.error(error.response?.data?.exception || "Failed to update employee");
+      toast.error(error.response?.data?.exception || "Failed to update employee", { duration: Infinity });
     }
   };
 

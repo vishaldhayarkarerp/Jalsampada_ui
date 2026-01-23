@@ -85,7 +85,7 @@ export default function NewPrapanSuchiPage() {
             "Could not fetch stages for the selected LIS."
           );
 
-          toast.error(messages.message, { description: messages.description });
+          toast.error(messages.message, { description: messages.description, duration: Infinity});
         }
       }
     });
@@ -164,7 +164,7 @@ export default function NewPrapanSuchiPage() {
     }
 
     if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
+      toast.error("Authentication required. Please log in.", { duration: Infinity });
       return;
     }
 
@@ -255,7 +255,7 @@ export default function NewPrapanSuchiPage() {
 
       const messages = getApiMessages(null, err, "Prapan Suchi created successfully!", "Failed to create Prapan Suchi");
 
-      toast.error(messages.message, { description: messages.description });
+      toast.error(messages.message, { description: messages.description, duration: Infinity});
     } finally {
       setIsSaving(false);
     }

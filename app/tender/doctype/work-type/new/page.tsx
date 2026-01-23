@@ -62,7 +62,7 @@ export default function NewWorkTypePage() {
     }
 
     if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
+      toast.error("Authentication required. Please log in.", { duration: Infinity });
       return;
     }
 
@@ -101,7 +101,7 @@ export default function NewWorkTypePage() {
 
       toast.error("Failed to create Work Type", {
         description: serverMessage,
-      });
+       duration: Infinity});
     } finally {
       setIsSaving(false);
     }

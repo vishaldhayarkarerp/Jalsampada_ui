@@ -175,7 +175,7 @@ export default function DraftTenderPaperDetailPage() {
     }
 
     if (!apiKey || !apiSecret) {
-      toast.error("Missing API credentials.");
+      toast.error("Missing API credentials.", { duration: Infinity });
       return;
     }
 
@@ -231,7 +231,7 @@ export default function DraftTenderPaperDetailPage() {
 
       toast.error("Failed to save", {
         description: serverMessage,
-      });
+       duration: Infinity});
     } finally {
       setIsSaving(false);
     }

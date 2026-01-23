@@ -446,7 +446,7 @@ export default function NewExpenditurePage() {
     }
 
     if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
+      toast.error("Authentication required. Please log in.", { duration: Infinity });
       return;
     }
 
@@ -570,10 +570,28 @@ export default function NewExpenditurePage() {
     } catch (err: any) {
       console.error("Create error:", err);
       console.log("Full server error:", err.response?.data);
+      
+      // Extract actual validation message from server response
+      let errorMessage = (err as Error).message || "Check the browser console (F12) for the full server error.";
+      
+      if (err.response?.status === 417) {
+        const serverMessages = err.response?.data?._server_messages;
+        if (serverMessages) {
+          try {
+            const parsed = JSON.parse(serverMessages);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const messageObj = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
+              errorMessage = messageObj.message || err.response?.data?.exception || errorMessage;
+            }
+          } catch (e) {
+            console.error("Failed to parse server messages:", e);
+          }
+        }
+      }
+      
       toast.error("Failed to create Expenditure", {
-        description:
-          (err as Error).message ||
-          "Check the browser console (F12) for the full server error.",
+        description: errorMessage,
+        duration: Infinity
       });
     } finally {
       setIsSaving(false);

@@ -54,7 +54,7 @@ export default function ContractorDetailsPage({
   const fetchData = React.useCallback(async () => {
     if (!isInitialized) return;
     if (!isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required");
+      toast.error("Authentication required", { duration: Infinity });
       router.push("/login");
       return;
     }
@@ -70,7 +70,7 @@ export default function ContractorDetailsPage({
       setData(response.data.data);
     } catch (err: any) {
       console.error("Fetch error:", err);
-      toast.error("Failed to load Contractor details");
+      toast.error("Failed to load Contractor details", { duration: Infinity });
       router.push("/tender/doctype/contractor");
     } finally {
       setLoading(false);
@@ -222,7 +222,7 @@ export default function ContractorDetailsPage({
         // Refresh data to reflect changes
         fetchData();
       } else {
-        toast.error(messages.message, { description: messages.description });
+        toast.error(messages.message, { description: messages.description , duration: Infinity});
       }
     } catch (err: any) {
       console.error("Update error:", err);
@@ -232,7 +232,7 @@ export default function ContractorDetailsPage({
         "Contractor updated successfully!",
         "Failed to update Contractor"
       );
-      toast.error(messages.message, { description: messages.description });
+      toast.error(messages.message, { description: messages.description , duration: Infinity});
     } finally {
       setIsSaving(false);
     }
@@ -278,7 +278,7 @@ export default function ContractorDetailsPage({
       console.error("Delete error:", err);
       toast.error("Failed to delete Contractor", {
         description: err.response?.data?.exception || err.message,
-      });
+       duration: Infinity});
     } finally {
       setIsDeleting(false);
     }
