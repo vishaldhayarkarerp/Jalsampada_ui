@@ -9,8 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 // Helper function to strip HTML tags from a string
 export function stripHtml(html: string): string {
   const stripped = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-  console.log("HTML Stripper - Input:", html);
-  console.log("HTML Stripper - Output:", stripped);
+  
   return stripped;
 }
 
