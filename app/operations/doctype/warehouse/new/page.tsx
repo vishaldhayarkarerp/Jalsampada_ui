@@ -45,33 +45,26 @@ export default function NewWarehousePage() {
   }, [duplicateData]);
 
   /* -------------------------------------------------
-     1. Define the form structure
+     1. Define the form structure (Reduced to 2 Tabs)
      ------------------------------------------------- */
   const formTabs: TabbedLayout[] = React.useMemo(() => {
-    // Helper function to get value from duplicate data or fallback to default
     const getValue = (fieldName: string, defaultValue: any = undefined) => {
       return duplicateData?.[fieldName] ?? defaultValue;
     };
 
     return [
+      // TAB 1: CORE DETAILS (Identity -> Operations -> Accounting)
       {
-        name: "Details",
+        name: "Core Details",
         fields: [
+          // -- Section: Identity & Hierarchy --
           {
             name: "warehouse_name",
             label: "Store Location Name",
             type: "Data",
             required: true,
             defaultValue: getValue("warehouse_name"),
-            description: "Name of the new warehouse",
-          },
-          {
-            name: "parent_warehouse",
-            label: "Parent Store Location",
-            type: "Link",
-            linkTarget: "Warehouse",
-            defaultValue: getValue("parent_warehouse"),
-            description: "Parent warehouse (only if this is not a group)",
+            description: "Name of the new warehouse/store location"
           },
           {
             name: "company",
@@ -82,34 +75,107 @@ export default function NewWarehousePage() {
             defaultValue: getValue("company"),
           },
           {
-            name: "warehouse_type",
-            label: "Store Location Type",
-            type: "Select",
-            options: [
-              { label: "Normal", value: "Normal" },
-              { label: "View", value: "View" },
-              { label: "Transit", value: "Transit" },
-              { label: "Manufacturing", value: "Manufacturing" },
-              { label: "Sub-Contracted", value: "Sub-Contracted" },
-            ],
-            defaultValue: getValue("warehouse_type"),
-          },
-          {
-            name: "account",
-            label: "Account",
+            name: "parent_warehouse",
+            label: "Parent Warehouse",
             type: "Link",
-            linkTarget: "Account",
-            defaultValue: getValue("account"),
-            description: "Linked account for accounting purposes",
+            linkTarget: "Warehouse",
+            defaultValue: getValue("parent_warehouse"),
           },
           {
             name: "is_group",
-            label: "Is Group",
+            label: "Is Group Warehouse",
             type: "Check",
             defaultValue: getValue("is_group", 0),
           },
+          {
+            name: "disabled",
+            label: "Disabled",
+            type: "Check",
+            defaultValue: getValue("disabled", 0),
+          },
+
+          // -- Section: Operations & Transit --
+          {
+            name: "warehouse_type",
+            label: "Warehouse Type",
+            type: "Link",
+            linkTarget: "Warehouse Type",
+            defaultValue: getValue("warehouse_type"),
+            description: "Used for transit operations (e.g., Transit, Sub-Contracted)."
+          },
+          {
+            name: "default_in_transit_warehouse",
+            label: "Default In-Transit Warehouse",
+            type: "Link",
+            linkTarget: "Warehouse",
+            defaultValue: getValue("default_in_transit_warehouse"),
+          },
+          {
+            name: "is_rejected_warehouse",
+            label: "Is Rejected Warehouse",
+            type: "Check",
+            defaultValue: getValue("is_rejected_warehouse", 0),
+            description: "Check if used exclusively for storing rejected materials"
+          },
+
+          // -- Section: Accounting --
+          {
+            name: "account",
+            label: "Linked Account",
+            type: "Link",
+            linkTarget: "Account",
+            defaultValue: getValue("account"),
+            description: "Financial ledger account (Filtered by current Company)",
+            // Advanced dynamic filtering based on selected company
+            customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+            customSearchParams: {
+              filters: {
+                is_group: 0,
+                account_type: "Stock"                
+              }
+            },
+            filters: (getValue) => {
+              const company = getValue("company");
+              const filters: Record<string, any> = {
+                is_group: 0,
+                account_type: "Stock"
+              };
+              if (company) {
+                filters.company = company;
+              }
+              return filters;
+            },
+            referenceDoctype: "Warehouse",
+            doctype: "Account",
+          },
+          {
+            name: "customer",
+            label: "Linked Customer",
+            type: "Link",
+            linkTarget: "Customer",
+            defaultValue: getValue("customer"),
+            description: "Only used for Subcontracting Inward."
+          },
         ],
       },
+
+      // TAB 2: ADDRESS & CONTACT (Location -> Reachability)
+      {
+        name: "Address & Contact",
+        fields: [
+          // -- Section: Address --
+          { name: "address_line_1", label: "Address Line 1", type: "Data", defaultValue: getValue("address_line_1") },
+          { name: "address_line_2", label: "Address Line 2", type: "Data", defaultValue: getValue("address_line_2") },
+          { name: "city", label: "City", type: "Data", defaultValue: getValue("city") },
+          { name: "state", label: "State/Province", type: "Data", defaultValue: getValue("state") },
+          { name: "pin", label: "PIN", type: "Data", defaultValue: getValue("pin") },
+
+          // -- Section: Contact --
+          { name: "email_id", label: "Email Address", type: "Data", defaultValue: getValue("email_id") },
+          { name: "phone_no", label: "Phone No", type: "Data", defaultValue: getValue("phone_no") },
+          { name: "mobile_no", label: "Mobile No", type: "Data", defaultValue: getValue("mobile_no") },
+        ],
+      }
     ];
   }, [duplicateData]);
 
@@ -134,6 +200,12 @@ export default function NewWarehousePage() {
       // Convert boolean to ERPNext format (0/1)
       if ("is_group" in payload) {
         payload.is_group = payload.is_group ? 1 : 0;
+      }
+      if ("disabled" in payload) {
+        payload.disabled = payload.disabled ? 1 : 0;
+      }
+      if ("is_rejected_warehouse" in payload) {
+        payload.is_rejected_warehouse = payload.is_rejected_warehouse ? 1 : 0;
       }
 
       console.log("Sending NEW Warehouse payload:", payload);

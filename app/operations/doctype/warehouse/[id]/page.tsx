@@ -78,9 +78,10 @@ export default function WarehouseDetailPage() {
     fetchWarehouse();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-  const formTabs: TabbedLayout[] = React.useMemo(() => {
+const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!warehouse) return [];
 
+    // Helper to auto-populate existing data into the fields
     const fields = (list: FormField[]): FormField[] =>
       list.map((f) => ({
         ...f,
@@ -92,17 +93,11 @@ export default function WarehouseDetailPage() {
       }));
 
     return [
+      // TAB 1: CORE DETAILS (Combines General, Operations, and Accounting)
       {
-        name: "Details",
+        name: "Core Details",
         fields: fields([
-          
-          {
-            name: "parent_warehouse",
-            label: "Parent Store Location",
-            type: "Link",
-            linkTarget: "Warehouse",
-            description: "Parent warehouse (only if this is not a group)",
-          },
+          // -- Section: General Information --
           {
             name: "company",
             label: "Company",
@@ -111,31 +106,117 @@ export default function WarehouseDetailPage() {
             linkTarget: "Company",
           },
           {
-            name: "warehouse_type",
-            label: "Store Location Type",
-            type: "Select",
-            options: [
-              { label: "Normal", value: "Normal" },
-              { label: "View", value: "View" },
-              { label: "Transit", value: "Transit" },
-              { label: "Manufacturing", value: "Manufacturing" },
-              { label: "Sub-Contracted", value: "Sub-Contracted" },
-            ],
-          },
-          {
-            name: "account",
-            label: "Account",
+            name: "parent_warehouse",
+            label: "Parent Warehouse",
             type: "Link",
-            linkTarget: "Account",
-            description: "Linked account for accounting purposes",
+            linkTarget: "Warehouse",
           },
           {
             name: "is_group",
-            label: "Is Group",
-            type: "Check"
+            label: "Is Group Warehouse",
+            type: "Check",
+          },
+          {
+            name: "disabled",
+            label: "Disabled",
+            type: "Check",
+          },
+          
+          // -- Section: Operations & Transit --
+          {
+            name: "warehouse_type",
+            label: "Warehouse Type",
+            type: "Link",
+            linkTarget: "Warehouse Type",
+            description: "Used for transit operations (e.g., Transit, Sub-Contracted)."
+          },
+          {
+            name: "default_in_transit_warehouse",
+            label: "Default In-Transit Warehouse",
+            type: "Link",
+            linkTarget: "Warehouse",
+          },
+          {
+            name: "is_rejected_warehouse",
+            label: "Is Rejected Warehouse",
+            type: "Check",
+            description: "Check if used exclusively for storing rejected materials."
+          },
+
+          // -- Section: Accounting --
+          // -- Section: Accounting --
+          {
+            name: "account",
+            label: "Linked Account",
+            type: "Link",
+            linkTarget: "Account",
+            // EXACT FRAPPE FILTER:
+            filters: (getValue) => ({
+              is_group: 0, // Must be a Ledger account, not a Group
+              account_type: "Stock", // Must be a Stock account
+              company: warehouse?.company // Must belong to the current company
+            }),
+            description: "Financial ledger account (Filtered by current Company)."
+          },
+          {
+            name: "customer",
+            label: "Linked Customer",
+            type: "Link",
+            linkTarget: "Customer",
+            description: "Only used for Subcontracting Inward."
           },
         ]),
       },
+
+      // TAB 2: ADDRESS & CONTACT (Combines Location and Reachability)
+      {
+        name: "Address & Contact",
+        fields: fields([
+          // -- Section: Address --
+          {
+            name: "address_line_1",
+            label: "Address Line 1",
+            type: "Data"
+          },
+          {
+            name: "address_line_2",
+            label: "Address Line 2",
+            type: "Data"
+          },
+          {
+            name: "city",
+            label: "City",
+            type: "Data"
+          },
+          {
+            name: "state",
+            label: "State/Province",
+            type: "Data"
+          },
+          {
+            name: "pin",
+            label: "PIN",
+            type: "Data"
+          },
+
+          // -- Section: Contact --
+          {
+            name: "email_id",
+            label: "Email Address",
+            type: "Data"
+          },
+          {
+            name: "phone_no",
+            label: "Phone No",
+            type: "Data"
+          },
+          {
+            name: "mobile_no",
+            label: "Mobile No",
+            type: "Data"
+          },
+        ]),
+      }
     ];
   }, [warehouse]);
 
