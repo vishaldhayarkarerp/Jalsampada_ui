@@ -22,7 +22,7 @@ import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { getApiMessages} from "@/lib/utils";
+import { getApiMessages, parseServerMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL
@@ -200,12 +200,8 @@ export default function LogbookPage() {
       // Check if the response contains server messages indicating errors
       // For bulk delete, error messages are directly in response._server_messages
       if (response._server_messages) {
-        // Parse the server messages to check for errors
-        const serverMessages = JSON.parse(response._server_messages);
-        const errorMessages = serverMessages.map((msgStr: string) => {
-          const parsed = JSON.parse(msgStr);
-          return parsed.message;
-        });
+        // Use the parseServerMessages function to strip HTML
+        const errorMessages = parseServerMessages(response._server_messages);
 
         if (errorMessages.length > 0) {
           // Show error messages from server
