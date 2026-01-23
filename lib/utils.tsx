@@ -6,6 +6,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Helper function to strip HTML tags from a string
+export function stripHtml(html: string): string {
+  const stripped = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  
+  return stripped;
+}
+
 // Helper function to parse server messages from Frappe API responses
 export function parseServerMessages(serverMessages: string): string[] {
   try {
@@ -14,7 +21,9 @@ export function parseServerMessages(serverMessages: string): string[] {
       return messagesArray.map((msgStr: string) => {
         try {
           const parsed = JSON.parse(msgStr);
-          return parsed.message || "";
+          const message = parsed.message || "";
+          // Strip HTML tags from the message
+          return stripHtml(message);
         } catch {
           return "";
         }
