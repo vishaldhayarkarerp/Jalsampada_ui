@@ -11,31 +11,38 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
+// API base URL
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
-interface ParameterData {
+// ----------------------
+// 1. Types
+// ----------------------
+interface ParameterCategoryData {
   name: string;
-  parameter_data?: string;
-  monitoring_type?: "Daily" | "Weekly" | "Monthly";
-  asset_category?: string;
+  parameter_category?: string;
   docstatus: 0 | 1 | 2;
   modified: string;
 }
 
-export default function ParameterDataDetailPage() {
+// ----------------------
+// 2. Component
+// ----------------------
+export default function ParameterCategoryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
   const docname = params.id as string;
-  const doctypeName = "Parameter Data";
+  const doctypeName = "Parameter Category";
 
-  const [record, setRecord] = React.useState<ParameterData | null>(null);
+  const [record, setRecord] = React.useState<ParameterCategoryData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
 
-  // FETCH DOC
+  // ----------------------
+  // Fetch record
+  // ----------------------
   React.useEffect(() => {
     const fetchDoc = async () => {
       if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret || !docname) {
@@ -60,15 +67,15 @@ export default function ParameterDataDetailPage() {
           }
         );
 
-        setRecord(resp.data.data as ParameterData);
+        setRecord(resp?.data?.data as ParameterCategoryData);
       } catch (err: any) {
         console.error("API Error:", err);
         setError(
           err.response?.status === 404
-            ? "Record not found"
+            ? `${doctypeName} not found`
             : err.response?.status === 403
             ? "Unauthorized"
-            : "Failed to load record"
+            : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -78,7 +85,9 @@ export default function ParameterDataDetailPage() {
     fetchDoc();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-  // BUILD TABS
+  // ----------------------
+  // Build form tabs
+  // ----------------------
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!record) return [];
 
@@ -86,7 +95,7 @@ export default function ParameterDataDetailPage() {
       list.map((f) => ({
         ...f,
         // @ts-ignore
-        defaultValue: f.name in record ? record[f.name as keyof ParameterData] : f.defaultValue,
+        defaultValue: f.name in record ? record[f.name as keyof ParameterCategoryData] : f.defaultValue,
       }));
 
     return [
@@ -94,28 +103,19 @@ export default function ParameterDataDetailPage() {
         name: "Details",
         fields: fields([
           {
-            name: "parameter_data",
-            label: "Parameter Data",
-            type: "Text",
-          },
-          {
-            name: "monitoring_type",
-            label: "Monitoring Type",
-            type: "Select",
-            options: "Daily\nWeekly"
-          },
-          {
-            name: "asset_category",
-            label: "Asset Category",
-            type: "Link",
-            linkTarget: "Asset Category",
+            name: "parameter_category",
+            label: "Parameter Category",
+            type: "Data",
+            required: true,
           },
         ]),
       },
     ];
   }, [record]);
 
-  // SUBMIT
+  // ----------------------
+  // Submit handler
+  // ----------------------
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) {
       toast.info("No changes to save.");
@@ -151,10 +151,9 @@ export default function ParameterDataDetailPage() {
         }
       }
 
+      // Preserve metadata
       finalPayload.modified = record.modified;
       finalPayload.docstatus = record.docstatus;
-
-      console.log("Sending this PAYLOAD to Frappe:", finalPayload);
 
       const resp = await axios.put(
         `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
@@ -173,17 +172,17 @@ export default function ParameterDataDetailPage() {
       toast.success("Changes saved!");
 
       if (resp.data && resp.data.data) {
-        setRecord(resp.data.data as ParameterData);
+        console.log("Updated record:", resp.data.data);
+        setRecord(resp.data.data as ParameterCategoryData);
       }
 
-      router.push(`/maintenance/doctype/parameter-data/${docname}`);
+      router.push(`/maintenance/doctype/parameter-category/${docname}`);
     } catch (err: any) {
       console.error("Save error:", err);
       console.log("Full server error:", err.response?.data);
       toast.error("Failed to save", {
-        description:
-          err.message || "Check the browser console (F12) for the full server error.",
-        duration: Infinity
+        description: err.message || "Check console for full server error.",
+        duration: Infinity,
       });
     } finally {
       setIsSaving(false);
@@ -192,11 +191,13 @@ export default function ParameterDataDetailPage() {
 
   const handleCancel = () => router.back();
 
-  // UI STATES
+  // ----------------------
+  // UI States
+  // ----------------------
   if (loading) {
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
-        <p>Loading parameter data...</p>
+        <p>Loading {doctypeName} details...</p>
       </div>
     );
   }
@@ -215,12 +216,14 @@ export default function ParameterDataDetailPage() {
   if (!record) {
     return (
       <div className="module active" style={{ padding: "2rem" }}>
-        <p>Record not found.</p>
+        <p>{doctypeName} not found.</p>
       </div>
     );
   }
 
-  // RENDER FORM
+  // ----------------------
+  // Render form
+  // ----------------------
   return (
     <DynamicForm
       tabs={formTabs}
@@ -230,6 +233,11 @@ export default function ParameterDataDetailPage() {
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      deleteConfig={{
+        doctypeName: doctypeName,
+        docName: docname,
+        redirectUrl: "/maintenance/doctype/parameter-category",
+      }}
     />
   );
 }
