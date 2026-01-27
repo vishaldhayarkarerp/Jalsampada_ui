@@ -6,324 +6,352 @@ import { useParams, useRouter } from "next/navigation";
 import {
     DynamicForm,
     TabbedLayout,
-    FormField,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { UseFormReturn } from "react-hook-form";
+import { fetchAssetsFromLisAndStage } from "../services";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+// Backend DocType name
+const DOCTYPE_NAME = "Material Request";
 
-/* -------------------------------------------------
-   1. Material Request interface
-   ------------------------------------------------- */
-interface MaterialRequestData {
-    name: string;
-    naming_series?: string;
-    title?: string;
-    material_request_type?: string;
-    customer?: string;
-    company?: string;
-    transaction_date?: string;
-    schedule_date?: string;
-    buying_price_list?: string;
-    amended_from?: string;
-    scan_barcode?: string;
-    last_scanned_warehouse?: string;
-    set_from_warehouse?: string;
-    set_warehouse?: string;
-    items?: Array<{
-        // Material Request Item fields (simplified - add more as per your actual child doctype)
-        item_code?: string;
-        item_name?: string;
-        description?: string;
-        qty?: number;
-        uom?: string;
-        warehouse?: string;
-        rate?: number;
-        amount?: number;
-    }>;
-    status?: string;
-    per_ordered?: number;
-    transfer_status?: string;
-    per_received?: number;
-    letter_head?: string;
-    select_print_heading?: string;
-    job_card?: string;
-    work_order?: string;
-    docstatus: 0 | 1 | 2;
-    modified: string;
-}
-
-/* -------------------------------------------------
-   2. Page component
-   ------------------------------------------------- */
-export default function MaterialRequestDetailPage() {
+export default function SpareIndentDetailPage() {
     const params = useParams();
-    const router = useRouter();
     const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-
     const docname = params.id as string;
-    const doctypeName = "Material Request";
 
-    const [record, setRecord] = React.useState<MaterialRequestData | null>(null);
+    const [record, setRecord] = React.useState<any | null>(null);
     const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
+    const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
 
-    /* -------------------------------------------------
-       3. FETCH RECORD
-       ------------------------------------------------- */
-    React.useEffect(() => {
-        const fetchRecord = async () => {
-            if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret || !docname) {
-                setLoading(false);
-                return;
-            }
+    // 🟢 1. FETCH RECORD
+    const fetchRecord = async () => {
+        if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
+        try {
+            setLoading(true);
+            const resp = await axios.get(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
+                headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            });
+            setRecord(resp.data.data);
+        } catch (err: any) {
+            toast.error("Failed to load record.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            try {
-                setLoading(true);
-                setError(null);
+    React.useEffect(() => { fetchRecord(); }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-                const resp = await axios.get(`${API_BASE_URL}/${doctypeName}/${docname}`, {
-                    headers: {
-                        Authorization: `token ${apiKey}:${apiSecret}`,
-                        "Content-Type": "application/json",
-                    },
-                    withCredentials: true,
-                });
+    // 🟢 HELPER: GET CURRENT STATUS
+    const getCurrentStatus = () => {
+        if (!record) return "";
+        // Priority: DocStatus -> Workflow State -> Status field
+        if (record.docstatus === 2) return "Cancelled";
+        if (record.docstatus === 1) return record.status || "Submitted";
+        // If Draft
+        if (formMethods?.formState.isDirty) return "Not Saved";
+        return record.workflow_state || record.status || "Draft";
+    };
 
-                setRecord(resp.data.data);
-            } catch (err: any) {
-                console.error("API Error:", err);
-                setError(
-                    err.response?.status === 404
-                        ? "Material Request not found"
-                        : err.response?.status === 403
-                            ? "Unauthorized"
-                            : "Failed to load record"
-                );
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchRecord();
-    }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
-
-    /* -------------------------------------------------
-       4. Form structure
-       ------------------------------------------------- */
+    // 🟢 FORM DEFINITION
     const formTabs: TabbedLayout[] = React.useMemo(() => {
         if (!record) return [];
-
-        const fields = (list: FormField[]): FormField[] =>
-            list.map((f) => ({
-                ...f,
-                defaultValue:
-                    f.name in record
-                        ? record[f.name as keyof MaterialRequestData]
-                        : f.defaultValue,
-            }));
+        const getVal = (key: string, def?: any) => record[key] ?? def;
 
         return [
             {
                 name: "Details",
-                fields: fields([
-                   
-                    {
-                        name: "title",
-                        label: "Title",
-                        type: "Data",
-                    },
+                fields: [
                     {
                         name: "material_request_type",
                         label: "Purpose",
                         type: "Select",
-                        options: "Purchase\nMaterial Transfer\nMaterial Issue\nManufacture\nCustomer Provided",
+                        options: [
+                            { label: "Material Issue", value: "Material Issue" },
+                            { label: "Material Transfer", value: "Material Transfer" },
+                        ],
+                        defaultValue: getVal("material_request_type"),
                         required: true,
                     },
-                    {
-                        name: "customer",
-                        label: "Customer",
-                        type: "Link",
-                        linkTarget: "Customer",
-                    },
-                    {
-                        name: "company",
-                        label: "Company",
-                        type: "Link",
-                        linkTarget: "Company",
-                        required: true,
-                    },
+
                     {
                         name: "transaction_date",
-                        label: "Transaction Date",
+                        label: "Date",
                         type: "Date",
-                        defaultValue: "Today",
+                        defaultValue: getVal("transaction_date"),
                         required: true,
                     },
                     {
                         name: "schedule_date",
                         label: "Required By",
                         type: "Date",
+                        defaultValue: getVal("schedule_date"),
+                        required: true,
+                    },
+                    {
+                        name: "custom_prepared_by",
+                        label: "Prepared By",
+                        type: "Link",
+                        linkTarget: "Employee",
+                        defaultValue: getVal("custom_prepared_by"),
+                    },
+                    {
+                        name: "custom_designation",
+                        label: "Designation",
+                        type: "Data",
+                        readOnly: true,
+                        defaultValue: getVal("custom_designation"),
                     },
                     {
                         name: "buying_price_list",
                         label: "Price List",
                         type: "Link",
                         linkTarget: "Price List",
+                        defaultValue: getVal("buying_price_list"),
+                    },
+                    { name: "custom_section_break_9pzmb", label: "LIS Details", type: "Section Break" },
+                    {
+                        name: "custom_lis_name",
+                        label: "LIS Name",
+                        type: "Link",
+                        linkTarget: "Lift Irrigation Scheme",
+                        defaultValue: getVal("custom_lis_name"),
+                    },
+                    {
+                        name: "custom_stage",
+                        label: "Stage",
+                        type: "Link",
+                        linkTarget: "Stage No",
+                        defaultValue: getVal("custom_stage"),
+                        filterMapping: [{ sourceField: "custom_lis_name", targetField: "lis_name" }]
+                    },
+                    {
+                        name: "custom_asset_category",
+                        label: "Asset category",
+                        type: "Link",
+                        linkTarget: "Asset Category",
+                        defaultValue: getVal("custom_asset_category"),
                     },
 
-                    // Warehouse & Scan
-                    { name: "warehouse_section", label: "Warehouse", type: "Section Break" },
-                   
                     {
-                        name: "set_from_warehouse",
-                        label: "Set Source Warehouse",
-                        type: "Link",
-                        linkTarget: "Warehouse",
+                        name: "custom_assets",
+                        label: "Assets",
+                        type: "Table MultiSelect",
+                        linkTarget: "Asset",
+                        defaultValue: getVal("custom_assets"),
                     },
+
+                    // ── Items / Warehouse Section ───────────────────────────────────
+                    { name: "warehouse_section", label: "Items", type: "Section Break" },
+                    {
+                        name: "scan_barcode",
+                        label: "Scan Barcode",
+                        type: "Data",
+                        placeholder: "Barcode",
+                        defaultValue: getVal("scan_barcode"),
+                    },
+
                     {
                         name: "set_warehouse",
                         label: "Set Target Warehouse",
                         type: "Link",
                         linkTarget: "Warehouse",
+                        defaultValue: getVal("set_warehouse"),
+                    },
+                    {
+                        name: "set_from_warehouse",
+                        label: "Set Source Warehouse",
+                        type: "Link",
+                        linkTarget: "Warehouse",
+                        defaultValue: getVal("set_from_warehouse"),
+                        displayDependsOn: "material_request_type == 'Material Transfer'",
                     },
 
-                    // Items Table
-                    { name: "items_section", label: "Items", type: "Section Break" },
                     {
                         name: "items",
                         label: "Items",
                         type: "Table",
+                        required: true,
+                        defaultValue: getVal("items", []),
                         columns: [
-                            // Common Material Request Item fields
-                            { name: "item_code", label: "Item Code", type: "Link", linkTarget: "Item" },
-                            { name: "item_name", label: "Item Name", type: "Data" },
-                            { name: "description", label: "Description", type: "Small Text" },
-                            { name: "qty", label: "Qty", type: "Float" },
+                            { name: "item_code", label: "Item Code", type: "Link", linkTarget: "Item", required: true },
+                            { name: "item_name", label: "Item Name", type: "Data", readOnly: true },
+                            { name: "description", label: "Description", type: "Text" },
+                            { name: "qty", label: "Quantity", type: "Float", required: true },
                             { name: "uom", label: "UOM", type: "Link", linkTarget: "UOM" },
-                            { name: "warehouse", label: "Warehouse", type: "Link", linkTarget: "Warehouse" },
-                            { name: "rate", label: "Rate", type: "Currency" },
-                            { name: "amount", label: "Amount", type: "Currency" },
+                            { name: "warehouse", label: "Target Warehouse", type: "Link", linkTarget: "Warehouse" },
+                            { name: "rate", label: "Rate", type: "Currency", precision: 2 },
+                            { name: "amount", label: "Amount", type: "Currency", readOnly: true, precision: 2 },
                         ],
                     },
-                ]),
+                    // ── Approval Section ────────────────────────────────────────────
+                    { name: "custom_approval_section", label: "Approval Section", type: "Section Break" },
+                    {
+                        name: "custom_recommended_by",
+                        label: "Recommended By (Incharge/JE)",
+                        type: "Link",
+                        linkTarget: "User",
+                        defaultValue: getVal("custom_recommended_by"),
+                    },
+                    {
+                        name: "custom_verified_by",
+                        label: "Verified By (DE)",
+                        type: "Link",
+                        linkTarget: "Employee",
+                        defaultValue: getVal("custom_verified_by"),
+                    },
+                    {
+                        name: "custom_approved_by",
+                        label: "Approved By (EE)",
+                        type: "Link",
+                        linkTarget: "Employee",
+                        defaultValue: getVal("custom_approved_by"),
+                    },
+                    {
+                        name: "custom_name1",
+                        label: "Name",
+                        type: "Data",
+                        readOnly: true,
+                        defaultValue: getVal("custom_name1"),
+                    },
+                    {
+                        name: "custom_name2",
+                        label: "Name",
+                        type: "Data",
+                        readOnly: true,
+                        defaultValue: getVal("custom_name2"),
+                    },
+                    {
+                        name: "custom_name3",
+                        label: "Name",
+                        type: "Data",
+                        readOnly: true,
+                        defaultValue: getVal("custom_name3"),
+                    },
+                    { name: "custom_date1", label: "Date", type: "Date", defaultValue: getVal("custom_date1") },
+                    { name: "custom_date2", label: "Date", type: "Date", defaultValue: getVal("custom_date2") },
+                    { name: "custom_date3", label: "Date", type: "Date", defaultValue: getVal("custom_date3") },
+                ],
             },
-            
+
+            // ── Terms Tab ───────────────────────────────────────────────────────
+            {
+                name: "Terms",
+                fields: [
+                    {
+                        name: "tc_name",
+                        label: "Terms",
+                        type: "Link",
+                        linkTarget: "Terms and Conditions",
+                        defaultValue: getVal("tc_name"),
+                    },
+                    {
+                        name: "terms",
+                        label: "Terms and Conditions Content",
+                        type: "Markdown Editor",
+                        defaultValue: getVal("terms"),
+                    },
+                ],
+            },
+
+            // ── More Info / Status Tab ──────────────────────────────────────────
+            {
+                name: "More Info",
+                fields: [
+                    {
+                        name: "letter_head",
+                        label: "Letter Head",
+                        type: "Link",
+                        linkTarget: "Letter Head",
+                        defaultValue: getVal("letter_head"),
+                    },
+                    {
+                        name: "select_print_heading",
+                        label: "Print Heading",
+                        type: "Link",
+                        linkTarget: "Print Heading",
+                        defaultValue: getVal("select_print_heading"),
+                    }
+                ],
+            },
         ];
     }, [record]);
 
-    /* -------------------------------------------------
-       5. SUBMIT HANDLER
-       ------------------------------------------------- */
+    // 🟢 UPDATE (SAVE) HANDLER
     const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-        if (!isDirty) {
-            toast.info("No changes to save.");
-            return;
-        }
+        if (!isDirty) { toast.info("No changes to save."); return; }
 
         setIsSaving(true);
-
         try {
-            const payload = { ...data };
+            // Preserve docstatus and modified timestamp
+            const payload: Record<string, any> = {
+                ...data,
+                modified: record?.modified,
+                docstatus: record?.docstatus
+            };
 
-            // Remove layout/break fields
-            const nonDataFields = new Set([
-                "column_break_2", "warehouse_section", "column_break5",
-                "items_section", "terms_section_break", "status_section",
-                "column_break2", "printing_details", "column_break_31",
-                "reference", "column_break_35",
-            ]);
-
-            const finalPayload: Record<string, any> = {};
-            for (const key in payload) {
-                if (!nonDataFields.has(key)) {
-                    finalPayload[key] = payload[key];
-                }
-            }
-
-            // Preserve system fields
-            if (record) {
-                finalPayload.modified = record.modified;
-                finalPayload.docstatus = record.docstatus;
-            }
-
-            // Convert numeric fields
-            ["per_ordered", "per_received"].forEach(field => {
-                if (field in finalPayload) finalPayload[field] = Number(finalPayload[field]) || 0;
+            await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, payload, {
+                headers: { Authorization: `token ${apiKey}:${apiSecret}` },
             });
-
-            // Items table - ensure numbers
-            if (finalPayload.items) {
-                finalPayload.items = finalPayload.items.map((row: any) => ({
-                    ...row,
-                    qty: Number(row.qty) || 0,
-                    rate: Number(row.rate) || 0,
-                    amount: Number(row.amount) || 0,
-                }));
-            }
-
-            console.log("Sending payload:", finalPayload);
-
-            const resp = await axios.put(
-                `${API_BASE_URL}/${doctypeName}/${docname}`,
-                finalPayload,
-                {
-                    headers: {
-                        Authorization: `token ${apiKey}:${apiSecret}`,
-                        "Content-Type": "application/json",
-                    },
-                    withCredentials: true,
-                }
-            );
-
-            toast.success("Material Request updated successfully!");
-            if (resp.data?.data) {
-                setRecord(resp.data.data);
-            }
-
-            router.push(`/operations/doctype/spare-indent/${encodeURIComponent(docname)}`);
-
+            toast.success("Spare Indent updated successfully!");
+            fetchRecord();
         } catch (err: any) {
-            console.error("Save error:", err);
-            toast.error("Failed to Save", {
-                description: err.response?.data?.message || err.message || "Unknown error",
-                duration: Infinity
-            });
+            toast.error("Failed to update record", { duration: Infinity });
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleCancel = () => router.back();
+    // 🟢 ASSET FETCHING EFFECT
+    React.useEffect(() => {
+        if (!formMethods || !apiKey || !apiSecret) return;
 
-    /* -------------------------------------------------
-       6. UI STATES
-       ------------------------------------------------- */
-    if (loading) return <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>Loading Material Request...</div>;
-    if (error) return (
-        <div className="module active" style={{ padding: "2rem" }}>
-            <p style={{ color: "var(--color-error)" }}>{error}</p>
-            <button className="btn btn--primary" onClick={() => window.location.reload()}>Retry</button>
-        </div>
-    );
-    if (!record) return <div className="module active" style={{ padding: "2rem" }}>Material Request not found.</div>;
+        const subscription = formMethods.watch(async (values, { name }) => {
+            if (name !== "custom_asset_category") return;
 
-    /* -------------------------------------------------
-       7. RENDER FORM
-       ------------------------------------------------- */
+            const customLisName = values.custom_lis_name;
+            const customStage = values.custom_stage;
+            const customAssetCategory = values.custom_asset_category;
+
+            if (!customLisName || !customStage || !customAssetCategory) return;
+
+            try {
+                const assets = await fetchAssetsFromLisAndStage(
+                    {
+                        custom_lis_name: customLisName,
+                        custom_stage: customStage,
+                        custom_asset_category: customAssetCategory,
+                    },
+                    apiKey,
+                    apiSecret
+                );
+
+                formMethods.setValue("custom_assets", assets, { shouldDirty: true });
+            } catch (error) {
+                console.error("Failed to fetch assets:", error);
+                toast.error("Failed to load assets", { duration: Infinity });
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, [apiKey, apiSecret, formMethods]);
+
+    if (loading) return <div className="p-8 text-center text-gray-500">Loading Indent...</div>;
+    if (!record) return <div className="p-8 text-center">Record not found.</div>;
+
     return (
         <DynamicForm
             tabs={formTabs}
             onSubmit={handleSubmit}
-            onCancel={handleCancel}
-            title={`${doctypeName}: ${record.name}`}
-            description={`Record ID: ${docname}`}
-            submitLabel={isSaving ? "Saving..." : "Save"}
-            cancelLabel="Cancel"
+            title={`Spare Indent: ${record.name}`}
+            submitLabel={isSaving ? "Saving..." : "Save Changes"}
+            docstatus={record.docstatus}
+            initialStatus={getCurrentStatus()}
+            onFormInit={setFormMethods}
             deleteConfig={{
-                doctypeName: doctypeName,
+                doctypeName: DOCTYPE_NAME,
                 docName: docname,
                 redirectUrl: "/operations/doctype/spare-indent"
             }}

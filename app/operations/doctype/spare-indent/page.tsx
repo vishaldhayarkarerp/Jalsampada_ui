@@ -22,7 +22,7 @@ import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { getApiMessages} from "@/lib/utils";
+import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL
@@ -45,7 +45,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 /* -------------------------------------------------
-   Material Request Type Definition
+   Spare Indent Type Definition
    ------------------------------------------------- */
 interface MaterialRequest {
   name: string;
@@ -114,7 +114,7 @@ export default function MaterialRequestPage() {
   }, []);
 
   /* -------------------------------------------------
-     FETCH MATERIAL REQUESTS
+     FETCH Spare IndentS
      ------------------------------------------------- */
   const fetchMaterialRequests = React.useCallback(async () => {
     if (!isInitialized) return;
@@ -167,7 +167,7 @@ export default function MaterialRequestPage() {
     } catch (err: any) {
       console.error("API error:", err);
       setError(
-        err.response?.status === 403 ? "Unauthorized" : "Failed to fetch material requests"
+        err.response?.status === 403 ? "Unauthorized" : "Failed to fetch Spare Indents"
       );
     } finally {
       setLoading(false);
@@ -210,7 +210,7 @@ export default function MaterialRequestPage() {
 
         if (errorMessages.length > 0) {
           // Show error messages from server
-          toast.error("Failed to delete records", { 
+          toast.error("Failed to delete records", {
             description: <FrappeErrorDisplay messages={errorMessages} />,
             duration: Infinity
           });
@@ -224,14 +224,14 @@ export default function MaterialRequestPage() {
       fetchMaterialRequests();
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
-      
+
       const messages = getApiMessages(
         null,
         err,
         "Records deleted successfully",
         "Failed to delete records"
       );
-      
+
       toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsDeleting(false);
@@ -313,14 +313,14 @@ export default function MaterialRequestPage() {
                 <tr
                   key={req.name}
                   onClick={() => handleCardClick(req.name)}
-                  style={{ 
+                  style={{
                     cursor: "pointer",
                     backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
                   }}
                 >
                   {/* 🟢 Row Checkbox */}
-                  <td 
-                    style={{ textAlign: "center" }} 
+                  <td
+                    style={{ textAlign: "center" }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <input
@@ -340,7 +340,7 @@ export default function MaterialRequestPage() {
           ) : (
             <tr>
               <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
-                No material requests found.
+                No Spare Indent found.
               </td>
             </tr>
           )}
@@ -362,7 +362,7 @@ export default function MaterialRequestPage() {
           />
         ))
       ) : (
-        <p style={{ color: "var(--color-text-secondary)" }}>No material requests found.</p>
+        <p style={{ color: "var(--color-text-secondary)" }}>No Spare Indent found.</p>
       )}
     </div>
   );
@@ -370,7 +370,7 @@ export default function MaterialRequestPage() {
   if (loading && requests.length === 0)
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
-        Loading material requests...
+        Loading Spare Indents...
       </div>
     );
 
@@ -385,10 +385,10 @@ export default function MaterialRequestPage() {
     <div className="module active">
       <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2>Material Requests</h2>
-          <p>List of material requests with type, title and date</p>
+          <h2>Spare Indent</h2>
+          <p>List of Spare Indents with type, title and date</p>
         </div>
-        
+
         {/* 🟢 3. Header Action Switch */}
         {selectedIds.size > 0 ? (
           <BulkActionBar
@@ -400,7 +400,7 @@ export default function MaterialRequestPage() {
         ) : (
           <Link href="/operations/doctype/spare-indent/new" passHref>
             <button className="btn btn--primary flex items-center gap-2">
-              <Plus className="w-4 h-4" /> New Material Request
+              <Plus className="w-4 h-4" /> New Spare Indent
             </button>
           </Link>
         )}
@@ -421,11 +421,11 @@ export default function MaterialRequestPage() {
         <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
           <input
             type="text"
-            placeholder="Search Material Requests..."
+            placeholder="Search Spare Indent..."
             className="form-control w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search Material Requests"
+            aria-label="Search Spare Indent"
           />
         </div>
 
@@ -471,11 +471,10 @@ export default function MaterialRequestPage() {
                   {SORT_OPTIONS.map((option) => (
                     <button
                       key={option.key}
-                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                        sortConfig.key === option.key
-                          ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
-                          : "text-gray-700 dark:text-gray-200"
-                      }`}
+                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${sortConfig.key === option.key
+                        ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
+                        : "text-gray-700 dark:text-gray-200"
+                        }`}
                       onClick={() => {
                         setSortConfig((prev) => ({ ...prev, key: option.key }));
                         setIsSortMenuOpen(false);

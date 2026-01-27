@@ -8,252 +8,311 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { UseFormReturn } from "react-hook-form";
+import axios from "axios";
+import { fetchAssetsFromLisAndStage } from "../services";
 
+// 🟢 CONFIGURATION
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const DOCTYPE_NAME = "Material Request";
 
 export default function NewSpareIndentPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { apiKey, apiSecret } = useAuth();
   const [isSaving, setIsSaving] = React.useState(false);
+  const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
 
-  // The actual DocType name is "Material Request"
-  const doctypeName = "Material Request";
-
-  // Parse duplicate data from URL parameters
-  const duplicateData = React.useMemo(() => {
-    const duplicateParam = searchParams.get('duplicate');
-    if (!duplicateParam) return null;
-    
-    try {
-      const decodedData = JSON.parse(atob(decodeURIComponent(duplicateParam)));
-      console.log("Parsed duplicate data:", decodedData);
-      return decodedData;
-    } catch (error) {
-      console.error("Error parsing duplicate data:", error);
-      toast.error("Failed to parse duplicate data", { duration: Infinity });
-      return null;
-    }
-  }, [searchParams]);
-
-  // Show notification if we have duplicate data (only once)
-  const notificationShown = React.useRef(false);
-  React.useEffect(() => {
-    if (duplicateData && !notificationShown.current) {
-      toast.success("Form populated with duplicate data. Modify as needed and save.");
-      notificationShown.current = true;
-    }
-  }, [duplicateData]);
-
-  /* -------------------------------------------------
-     1. Define the form structure
-     ------------------------------------------------- */
   const formTabs: TabbedLayout[] = React.useMemo(() => {
-    // Helper function to get value from duplicate data or fallback to default
-    const getValue = (fieldName: string, defaultValue: any = undefined) => {
-      return duplicateData?.[fieldName] ?? defaultValue;
-    };
-
     return [
       {
         name: "Details",
         fields: [
           {
-            name: "title",
-            label: "Title",
-            type: "Data",
-            defaultValue: getValue("title"),
-          },
-          {
             name: "material_request_type",
             label: "Purpose",
             type: "Select",
-            options: "Purchase\nMaterial Transfer\nMaterial Issue\nManufacture\nCustomer Provided",
+            options: [
+              { label: "Material Issue", value: "Material Issue" },
+              { label: "Material Transfer", value: "Material Transfer" },
+            ],
+            defaultValue: "Material Issue",
             required: true,
-            defaultValue: getValue("material_request_type", "Purchase"),
-          },
-          {
-            name: "customer",
-            label: "Customer",
-            type: "Link",
-            linkTarget: "Customer",
-            defaultValue: getValue("customer"),
-          },
-          {
-            name: "company",
-            label: "Company",
-            type: "Link",
-            linkTarget: "Company",
-            required: true,
-            defaultValue: getValue("company"),
+            inStandardFilter: true,
           },
           {
             name: "transaction_date",
-            label: "Transaction Date",
+            label: "Date",
             type: "Date",
-            // 🟢 FIXED: Use valid ISO date string
-            defaultValue: getValue("transaction_date", new Date().toISOString().split('T')[0]),
+            defaultValue: new Date().toISOString().split("T")[0],
             required: true,
+            bold: true,
+            width: "100px"
           },
           {
             name: "schedule_date",
             label: "Required By",
             type: "Date",
-            defaultValue: getValue("schedule_date"),
+            required: true,
+          },
+
+          {
+            name: "custom_prepared_by",
+            label: "Prepared By",
+            type: "Link",
+            linkTarget: "Employee",
+          },
+
+          {
+            name: "custom_designation",
+            label: "Designation",
+            type: "Data",
+            readOnly: true, // Fetched via useEffect
           },
           {
             name: "buying_price_list",
             label: "Price List",
             type: "Link",
             linkTarget: "Price List",
-            defaultValue: getValue("buying_price_list"),
+          },
+          { name: "custom_section_break_9pzmb", label: "LIS Details", type: "Section Break" },
+          {
+            name: "custom_lis_name",
+            label: "LIS Name",
+            type: "Link",
+            linkTarget: "Lift Irrigation Scheme",
+            filterMapping: [{ sourceField: "custom_lis_name", targetField: "lis_name" }]
+          },
+          {
+            name: "custom_stage",
+            label: "Stage",
+            type: "Link",
+            linkTarget: "Stage No",
+            filterMapping: [{ sourceField: "custom_lis_name", targetField: "lis_name" }]
           },
 
-          // Warehouse & Scan
-          { name: "warehouse_section", label: "Warehouse", type: "Section Break" },
           {
-            name: "set_from_warehouse",
-            label: "Set Source Warehouse",
+            name: "custom_asset_category",
+            label: "Asset category",
             type: "Link",
-            linkTarget: "Warehouse",
-            defaultValue: getValue("set_from_warehouse"),
+            linkTarget: "Asset Category",
+          },
+          {
+            name: "custom_assets",
+            label: "Assets",
+            type: "Table MultiSelect",
+            linkTarget: "Asset",
+          },
+
+          { name: "warehouse_section", label: "Items", type: "Section Break" },
+          {
+            name: "scan_barcode",
+            label: "Scan Barcode",
+            type: "Data",
+            placeholder: "Barcode",
           },
           {
             name: "set_warehouse",
             label: "Set Target Warehouse",
             type: "Link",
-            linkTarget: "Warehouse",
-            defaultValue: getValue("set_warehouse"),
+            linkTarget: "Warehouse"
           },
-
-          // Items Table
-          { name: "items_section", label: "Items", type: "Section Break" },
+          {
+            name: "set_from_warehouse",
+            label: "Set Source Warehouse",
+            type: "Link",
+            linkTarget: "Warehouse",
+            displayDependsOn: "material_request_type == 'Material Transfer'",
+          },
           {
             name: "items",
             label: "Items",
             type: "Table",
-            defaultValue: getValue("items", []),
+            required: true,
             columns: [
-              { name: "item_code", label: "Item Code", type: "Link", linkTarget: "Item" },
-              { name: "item_name", label: "Item Name", type: "Data" },
-              { name: "description", label: "Description", type: "Small Text" },
-              { name: "qty", label: "Qty", type: "Float" },
+              { name: "item_code", label: "Item Code", type: "Link", linkTarget: "Item", required: true },
+              { name: "item_name", label: "Item Name", type: "Data", readOnly: true, fetchFrom: { sourceField: "item_code", targetDoctype: "Item", targetField: "item_name" } },
+              { name: "schedule_date", label: "Required By", type: "Date", required: true },
+              { name: "item_group", label: "Item Group", type: "Link", linkTarget: "Item Group" },
+
+              { name: "description", label: "Description", type: "Text", fetchFrom: { sourceField: "item_code", targetDoctype: "Item", targetField: "description" } },
+              { name: "qty", label: "Quantity Required", type: "Float", required: true },
               { name: "uom", label: "UOM", type: "Link", linkTarget: "UOM" },
-              { name: "warehouse", label: "Warehouse", type: "Link", linkTarget: "Warehouse" },
-              { name: "rate", label: "Rate", type: "Currency" },
-              { name: "amount", label: "Amount", type: "Currency" },
+              { name: "warehouse", label: "Target Warehouse", type: "Link", linkTarget: "Warehouse" },
+              { name: "conversion_factor", label: "Units Conversion Factor", type: "Float" },
+              { name: "rate", label: "Rate", type: "Currency", precision: 2 },
+              { name: "amount", label: "Amount", type: "Currency", readOnly: true, precision: 2 },
+              {
+                name: "custom_purpose_of_use",
+                label: "Purpose of Use",
+                type: "Select",
+                options: [
+                  { label: "Repair", value: "Repair" },
+                  { label: "Overhaul", value: "Overhaul" },
+                  { label: "Consumable", value: "Consumable" },
+                ],
+                defaultValue: "Repair",
+              },
+              {
+                name: "custom_remarks",
+                label: "Remarks",
+                type: "Text",
+              },
             ],
+          },
+
+
+          { name: "custom_approval_section", label: "Approval Section", type: "Section Break" },
+          {
+            name: "custom_recommended_by",
+            label: "Recommended By (Incharge/JE)",
+            type: "Link",
+            linkTarget: "User",
+          },
+          {
+            name: "custom_verified_by",
+            label: "Verified By (DE)",
+            type: "Link",
+            linkTarget: "Employee",
+          },
+          {
+            name: "custom_approved_by",
+            label: "Approved By (EE)",
+            type: "Link",
+            linkTarget: "Employee",
+          },
+
+          {
+            name: "custom_name1",
+            label: "Name",
+            type: "Data",
+            readOnly: true, // Fetched via useEffect
+          },
+          {
+            name: "custom_name2",
+            label: "Name",
+            type: "Data",
+            readOnly: true, // Fetched via useEffect
+          },
+          {
+            name: "custom_name3",
+            label: "Name",
+            type: "Data",
+            readOnly: true, // Fetched via useEffect
+          },
+          { name: "custom_date1", label: "Date", type: "Date" },
+          { name: "custom_date2", label: "Date", type: "Date" },
+          { name: "custom_date3", label: "Date", type: "Date" },
+        ],
+      },
+
+      {
+        name: "Terms",
+        fields: [
+          {
+            name: "tc_name",
+            label: "Terms",
+            type: "Link",
+            linkTarget: "Terms and Conditions",
+          },
+          {
+            name: "terms",
+            label: "Terms and Conditions Content",
+            type: "Markdown Editor",
           },
         ],
       },
-    ];
-  }, [duplicateData]);
+      {
+        name: "More Info",
+        fields: [
 
-  /* -------------------------------------------------
-     2. SUBMIT (Create)
-     ------------------------------------------------- */
-  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-    // Check if we have valid data to submit
-    const hasValidData = isDirty || (duplicateData && data.company);
-    
-    if (!hasValidData) {
-      toast.info("Please fill out the form.");
+          {
+            name: "letter_head",
+            label: "Letter Head",
+            type: "Link",
+            linkTarget: "Letter Head",
+          },
+
+          {
+            name: "select_print_heading",
+            label: "Print Heading",
+            type: "Link",
+            linkTarget: "Print Heading",
+          },
+        ],
+      },
+
+    ];
+  }, []);
+  const handleSubmit = async (data: Record<string, any>) => {
+    // Basic Validation
+    if (!data.material_request_type) {
+      toast.error("Purpose is required");
       return;
     }
-    
+    if (!data.items || data.items.length === 0) {
+      toast.error("Please add at least one item.");
+      return;
+    }
+
     setIsSaving(true);
-    
     try {
-      const payload: Record<string, any> = { ...data };
-      
-      // Remove layout/break fields
-      const nonDataFields = new Set([
-        "warehouse_section", "items_section",
-      ]);
+      const payload: Record<string, any> = { ...data, doctype: DOCTYPE_NAME };
 
-      const finalPayload: Record<string, any> = {
-        doctype: doctypeName,
-      };
-
-      for (const key in payload) {
-        if (!nonDataFields.has(key)) {
-          finalPayload[key] = payload[key];
-        }
-      }
-
-      // Ensure numeric values in child table
-      if (finalPayload.items) {
-        finalPayload.items = finalPayload.items.map((row: any) => ({
-          ...row,
-          qty: Number(row.qty) || 0,
-          rate: Number(row.rate) || 0,
-          amount: Number(row.amount) || 0,
-        }));
-      }
-
-      console.log("Sending NEW Material Request payload:", finalPayload);
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        'Authorization': `token ${apiKey}:${apiSecret}`,
-      };
-
-      const storedCsrfToken = localStorage.getItem('csrfToken');
-      if (storedCsrfToken) {
-        headers['X-Frappe-CSRF-Token'] = storedCsrfToken;
-      }
-
-      const resp = await fetch(`${API_BASE_URL}/${doctypeName}`, {
-        method: 'POST',
-        headers: headers,
-        credentials: 'include', 
-        body: JSON.stringify(finalPayload), 
+      const response = await axios.post(`${API_BASE_URL}/${DOCTYPE_NAME}`, payload, {
+        headers: { Authorization: `token ${apiKey}:${apiSecret}` }
       });
 
-      const responseData = await resp.json();
-
-      if (!resp.ok) {
-        console.log("Full server error:", responseData);
-        throw new Error(responseData.exception || responseData._server_messages || "Failed to create document");
-      }
-      
-      toast.success("Material Request created successfully!");
-      
-      router.push(`/operations/doctype/spare-indent`);
-
+      toast.success("Spare Indent created successfully!");
+      router.push(`/operations/doctype/spare-indent/${encodeURIComponent(response.data.data.name)}`);
     } catch (err: any) {
-      console.error("Save error:", err);
-      
-      if (err.response?.data?.exc_type === "DuplicateEntryError") {
-        toast.error("Duplicate Entry Error", {
-          description: "This record may already exist.",
-          duration: Infinity
-        });
-      } else {
-        toast.error("Failed to create record", {
-          description: err.message || "Check console for details.",
-          duration: Infinity
-        });
-      }
+      const errorMsg = err.response?.data?.exception || err.message || "Failed to save";
+      toast.error(errorMsg, { duration: Infinity });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancel = () => router.back();
+  React.useEffect(() => {
+    if (!formMethods || !apiKey || !apiSecret) return;
 
-  /* -------------------------------------------------
-     3. RENDER FORM
-     ------------------------------------------------- */
+    const subscription = formMethods.watch(async (values, { name }) => {
+      if (name !== "custom_asset_category") return;
+
+      const customLisName = values.custom_lis_name;
+      const customStage = values.custom_stage;
+      const customAssetCategory = values.custom_asset_category;
+
+      if (!customLisName || !customStage || !customAssetCategory) return;
+
+      try {
+        const assets = await fetchAssetsFromLisAndStage(
+          {
+            custom_lis_name: customLisName,
+            custom_stage: customStage,
+            custom_asset_category: customAssetCategory,
+          },
+          apiKey,
+          apiSecret
+        );
+
+        formMethods.setValue("custom_assets", assets, { shouldDirty: true });
+      } catch (error) {
+        console.error("Failed to fetch assets:", error);
+        toast.error("Failed to load assets", { duration: Infinity });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [apiKey, apiSecret, formMethods]);
+
   return (
     <DynamicForm
       tabs={formTabs}
       onSubmit={handleSubmit}
-      onCancel={handleCancel}
-      title="New Material Request"
-      description="Create a new Material Request (Spare Indent)"
+      title="New Spare Indent"
+      description="Create a new Material Request for spares"
       submitLabel={isSaving ? "Saving..." : "Create"}
-      cancelLabel="Cancel"
+      onFormInit={setFormMethods}
     />
   );
 }
