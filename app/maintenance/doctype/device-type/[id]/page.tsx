@@ -10,6 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { renameDocument } from "@/lib/services";
 
 // API base URL
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
@@ -74,8 +75,8 @@ export default function DeviceTypeDetailPage() {
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-            ? "Unauthorized"
-            : `Failed to load ${doctypeName}`
+              ? "Unauthorized"
+              : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -116,77 +117,119 @@ export default function DeviceTypeDetailPage() {
   // ----------------------
   // Submit handler
   // ----------------------
-  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-    if (!isDirty) {
-      toast.info("No changes to save.");
-      return;
-    }
+ const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+  if (!isDirty) {
+    toast.info("No changes to save.");
+    return;
+  }
 
-    if (!record) {
-      toast.error("Record not loaded. Cannot save.", { duration: Infinity });
-      return;
-    }
+  if (!record) {
+    toast.error("Record not loaded. Cannot save.", { duration: Infinity });
+    return;
+  }
 
-    setIsSaving(true);
-    try {
-      const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
+  if (!apiKey || !apiSecret) {
+    toast.error("Missing API credentials.");
+    return;
+  }
 
-      const allFields = formTabs.flatMap((tab) => tab.fields);
-      const nonDataFields = new Set<string>();
-      allFields.forEach((field) => {
-        if (
-          field.type === "Section Break" ||
-          field.type === "Column Break" ||
-          field.type === "Button" ||
-          field.type === "Read Only"
-        ) {
-          nonDataFields.add(field.name);
-        }
-      });
+  setIsSaving(true);
 
-      const finalPayload: Record<string, any> = {};
-      for (const key in payload) {
-        if (!nonDataFields.has(key)) {
-          finalPayload[key] = payload[key];
-        }
+  try {
+    let currentDocname = docname;
+
+    /* ---------------- RENAME LOGIC ---------------- */
+    const newDeviceTypeName = data.device_type; // ✅ CORRECT FIELD
+
+    if (
+      newDeviceTypeName &&
+      newDeviceTypeName !== record.device_type &&
+      newDeviceTypeName !== record.name
+    ) {
+      try {
+        await renameDocument(
+          apiKey,
+          apiSecret,
+          doctypeName,
+          record.name,
+          newDeviceTypeName
+        );
+
+        currentDocname = newDeviceTypeName; // ✅ VERY IMPORTANT
+
+        setRecord((prev) =>
+          prev ? { ...prev, name: newDeviceTypeName, device_type: newDeviceTypeName } : null
+        );
+
+        router.replace(`/maintenance/doctype/device-type/${newDeviceTypeName}`);
+      } catch (renameError: any) {
+        console.error("Rename error:", renameError);
+        toast.error("Failed to rename document", {
+          description: renameError.response?.data?.message || renameError.message,
+        });
+        setIsSaving(false);
+        return;
       }
-
-      // Preserve metadata
-      finalPayload.modified = record.modified;
-      finalPayload.docstatus = record.docstatus;
-
-      const resp = await axios.put(
-        `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
-        finalPayload,
-        {
-          headers: {
-            Authorization: `token ${apiKey}:${apiSecret}`,
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-        }
-      );
-
-      toast.success("Changes saved!");
-
-      if (resp.data && resp.data.data) {
-        setRecord(resp.data.data as DeviceTypeData);
-      }
-
-      router.push(`/maintenance/doctype/device-type/${docname}`);
-    } catch (err: any) {
-      console.error("Save error:", err);
-      console.log("Full server error:", err.response?.data);
-      toast.error("Failed to save", {
-        description: err.message || "Check console for full server error.",
-        duration: Infinity,
-      });
-    } finally {
-      setIsSaving(false);
     }
-  };
+
+    /* ---------------- CLEAN PAYLOAD ---------------- */
+    const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
+
+    const allFields = formTabs.flatMap((tab) => tab.fields);
+    const nonDataFields = new Set<string>();
+
+    allFields.forEach((field) => {
+      if (
+        field.type === "Section Break" ||
+        field.type === "Column Break" ||
+        field.type === "Button" ||
+        field.type === "Read Only"
+      ) {
+        nonDataFields.add(field.name);
+      }
+    });
+
+    const finalPayload: Record<string, any> = {};
+    for (const key in payload) {
+      if (!nonDataFields.has(key)) {
+        finalPayload[key] = payload[key];
+      }
+    }
+
+    finalPayload.modified = record.modified;
+    finalPayload.docstatus = record.docstatus;
+
+    /* ---------------- UPDATE ---------------- */
+    const resp = await axios.put(
+      `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(currentDocname)}`, // ✅ FIXED
+      finalPayload,
+      {
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      }
+    );
+
+    toast.success("Changes saved!");
+
+    if (resp.data?.data) {
+      setRecord(resp.data.data);
+    }
+
+    router.push(`/maintenance/doctype/device-type/${currentDocname}`); // ✅ FIXED
+  } catch (err: any) {
+    console.error("Save error:", err);
+    console.log("Full server error:", err.response?.data);
+    toast.error("Failed to save", {
+      description: err.response?.data?.message || err.message,
+      duration: Infinity,
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const handleCancel = () => router.back();
 

@@ -10,6 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { renameDocument } from "@/lib/services";
 
 // API base URL
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
@@ -127,12 +128,64 @@ export default function ParameterTypeDetailPage() {
             return;
         }
 
+        if (!apiKey || !apiSecret) {
+            toast.error("Missing API credentials.");
+            return;
+        }
+
         setIsSaving(true);
+
         try {
+            let currentDocname = docname;
+            const newParameterTypeName = data.parameter_type;
+
+            /* ------------ RENAME ------------ */
+            if (
+                newParameterTypeName &&
+                newParameterTypeName !== record.parameter_type &&
+                newParameterTypeName !== record.name
+            ) {
+                try {
+                    await renameDocument(
+                        apiKey,
+                        apiSecret,
+                        doctypeName,
+                        record.name,
+                        newParameterTypeName
+                    );
+
+                    currentDocname = newParameterTypeName; // ✅ CRITICAL
+
+                    setRecord((prev) =>
+                        prev
+                            ? {
+                                ...prev,
+                                name: newParameterTypeName,
+                                parameter_type: newParameterTypeName,
+                            }
+                            : null
+                    );
+
+                    router.replace(
+                        `/maintenance/doctype/parameter-type/${newParameterTypeName}`
+                    );
+                } catch (renameError: any) {
+                    console.error("Rename error:", renameError);
+                    toast.error("Failed to rename document", {
+                        description:
+                            renameError.response?.data?.message || renameError.message,
+                    });
+                    setIsSaving(false);
+                    return;
+                }
+            }
+
+            /* ------------ CLEAN PAYLOAD ------------ */
             const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
 
             const allFields = formTabs.flatMap((tab) => tab.fields);
             const nonDataFields = new Set<string>();
+
             allFields.forEach((field) => {
                 if (
                     field.type === "Section Break" ||
@@ -151,12 +204,12 @@ export default function ParameterTypeDetailPage() {
                 }
             }
 
-            // Preserve metadata
             finalPayload.modified = record.modified;
             finalPayload.docstatus = record.docstatus;
 
+            /* ------------ UPDATE ------------ */
             const resp = await axios.put(
-                `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
+                `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(currentDocname)}`, // ✅ FIXED
                 finalPayload,
                 {
                     headers: {
@@ -164,23 +217,21 @@ export default function ParameterTypeDetailPage() {
                         "Content-Type": "application/json",
                     },
                     withCredentials: true,
-                    maxBodyLength: Infinity,
-                    maxContentLength: Infinity,
                 }
             );
 
             toast.success("Changes saved!");
 
-            if (resp.data && resp.data.data) {
+            if (resp.data?.data) {
                 setRecord(resp.data.data as ParameterTypeData);
             }
 
-            router.push(`/maintenance/doctype/parameter-type/${docname}`);
+            router.push(`/maintenance/doctype/parameter-type/${currentDocname}`); // ✅ FIXED
         } catch (err: any) {
             console.error("Save error:", err);
             console.log("Full server error:", err.response?.data);
             toast.error("Failed to save", {
-                description: err.message || "Check console for full server error.",
+                description: err.response?.data?.message || err.message,
                 duration: Infinity,
             });
         } finally {

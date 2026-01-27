@@ -17,11 +17,21 @@ const maintenanceDoctypes: Doctype[] = [
   { name: "device-type", title: "Device Type", icon: FileText },
 ];
 
+const transactionDoctypes: Doctype[] = [
+  { name: "maintenance-checklist", title: "Maintenance Checklist", icon: ListChecks },
+  { name: "maintenance-schedule", title: "Maintenance Schedule", icon: CalendarCheck },
+  { name: "maintenance-log", title: "Maintenance Log", icon: FileText },
+];
+
 const maintenanceDoctypeGroups: DoctypeGroup[] = [
   {
-    title: "Maintenance",
+    title: "Master",
     doctypes: maintenanceDoctypes
-  }
+  },
+  {
+    title: "Transactions",
+    doctypes: transactionDoctypes
+  },
 ];
 
 export default function MaintenancePage() {

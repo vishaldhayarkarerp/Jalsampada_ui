@@ -18,9 +18,10 @@ const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 // ----------------------
 // 1. Types
 // ----------------------
-interface ParameterData {
+interface MaintenanceChecklist {
   name: string;
-  parameter?: string;
+  lis_name?: string;
+  stage?: string;
   monitoring_type?: "Daily" | "Weekly" | "Monthly";
   asset_category?: string;
   docstatus: 0 | 1 | 2;
@@ -30,15 +31,15 @@ interface ParameterData {
 // ----------------------
 // 2. Component
 // ----------------------
-export default function ParameterDataDetailPage() {
+export default function MaintenanceChecklistDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
   const docname = params.id as string;
-  const doctypeName = "Parameter Checklist";
+  const doctypeName = "Maintenance Checklist";
 
-  const [record, setRecord] = React.useState<ParameterData | null>(null);
+  const [record, setRecord] = React.useState<MaintenanceChecklist | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -65,20 +66,18 @@ export default function ParameterDataDetailPage() {
               "Content-Type": "application/json",
             },
             withCredentials: true,
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
           }
         );
 
-        setRecord(resp.data.data as ParameterData);
+        setRecord(resp.data.data as MaintenanceChecklist);
       } catch (err: any) {
         console.error("API Error:", err);
         setError(
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-              ? "Unauthorized"
-              : `Failed to load ${doctypeName}`
+            ? "Unauthorized"
+            : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -98,7 +97,7 @@ export default function ParameterDataDetailPage() {
       list.map((f) => ({
         ...f,
         // @ts-ignore
-        defaultValue: f.name in record ? record[f.name as keyof ParameterData] : f.defaultValue,
+        defaultValue: f.name in record ? record[f.name as keyof MaintenanceChecklist] : f.defaultValue,
       }));
 
     return [
@@ -106,8 +105,14 @@ export default function ParameterDataDetailPage() {
         name: "Details",
         fields: fields([
           {
-            name: "parameter",
-            label: "Parameter",
+            name: "lis_name",
+            label: "LIS Name",
+            type: "Text",
+            required: true,
+          },
+          {
+            name: "stage",
+            label: "Stage",
             type: "Text",
             required: true,
           },
@@ -133,8 +138,6 @@ export default function ParameterDataDetailPage() {
   // ----------------------
   // Submit handler
   // ----------------------
-
-
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
   if (!isDirty) {
     toast.info("No changes to save.");
@@ -156,35 +159,21 @@ export default function ParameterDataDetailPage() {
   try {
     let currentDocname = docname;
 
-    /* -------------------------------------------
-       🔁 RENAME LOGIC (ONLY IF NAME FIELD CHANGED)
-       Replace `parameter_data` below IF your
-       doctype uses another field as the name
-    --------------------------------------------*/
-    const newName = data.parameter; // primary field
+    /* 🔁 RENAME USING LIS NAME */
+    const newName = data.lis_name;
 
     if (newName && newName !== record.name) {
       try {
-        await renameDocument(
-          apiKey,
-          apiSecret,
-          doctypeName,
-          record.name,
-          newName
-        );
+        await renameDocument(apiKey, apiSecret, doctypeName, record.name, newName);
 
         currentDocname = newName;
 
-        // Update local state
         setRecord(prev =>
-          prev ? { ...prev, name: newName, parameter_data: newName } : null
+          prev ? { ...prev, name: newName, lis_name: newName } : null
         );
 
-        // Update URL
-        router.replace(`/maintenance/doctype/parameter-checklist/${newName}`);
-
+        router.replace(`/maintenance/doctype/maintenance-checklist/${newName}`);
       } catch (renameError: any) {
-        console.error("Rename error:", renameError);
         toast.error("Failed to rename document", {
           description: renameError.response?.data?.message || renameError.message,
         });
@@ -193,9 +182,7 @@ export default function ParameterDataDetailPage() {
       }
     }
 
-    /* -------------------------------------------
-       🧹 CLEAN PAYLOAD
-    --------------------------------------------*/
+    /* 🧹 CLEAN PAYLOAD (THIS WAS MISSING ❌) */
     const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
 
     const allFields = formTabs.flatMap((tab) => tab.fields);
@@ -219,13 +206,11 @@ export default function ParameterDataDetailPage() {
       }
     }
 
-    // Preserve metadata
+    // Required by Frappe
     finalPayload.modified = record.modified;
     finalPayload.docstatus = record.docstatus;
 
-    /* -------------------------------------------
-       💾 UPDATE DOCUMENT
-    --------------------------------------------*/
+    /* 💾 UPDATE */
     const resp = await axios.put(
       `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(currentDocname)}`,
       finalPayload,
@@ -235,22 +220,17 @@ export default function ParameterDataDetailPage() {
           "Content-Type": "application/json",
         },
         withCredentials: true,
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
       }
     );
 
     toast.success("Changes saved!");
 
-    if (resp.data?.data) {
-      setRecord(resp.data.data);
-    }
+    if (resp.data?.data) setRecord(resp.data.data);
 
-    router.push(`/maintenance/doctype/parameter-checklist/${currentDocname}`);
-
+    router.push(`/maintenance/doctype/maintenance-checklist/${currentDocname}`);
   } catch (err: any) {
     console.error("Save error:", err);
-    console.log("Full server error:", err.response?.data);
+    console.log("SERVER SAYS:", err.response?.data);
     toast.error("Failed to save", {
       description: err.response?.data?.message || err.message,
       duration: Infinity,
@@ -266,30 +246,15 @@ export default function ParameterDataDetailPage() {
   // UI States
   // ----------------------
   if (loading) {
-    return (
-      <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
-        <p>Loading {doctypeName} details...</p>
-      </div>
-    );
+    return <div className="module active" style={{ padding: "2rem" }}>Loading {doctypeName} details...</div>;
   }
 
   if (error) {
-    return (
-      <div className="module active" style={{ padding: "2rem" }}>
-        <p style={{ color: "var(--color-error)" }}>{error}</p>
-        <button className="btn btn--primary" onClick={() => window.location.reload()}>
-          Retry
-        </button>
-      </div>
-    );
+    return <div className="module active" style={{ padding: "2rem", color: "red" }}>{error}</div>;
   }
 
   if (!record) {
-    return (
-      <div className="module active" style={{ padding: "2rem" }}>
-        <p>{doctypeName} not found.</p>
-      </div>
-    );
+    return <div className="module active" style={{ padding: "2rem" }}>{doctypeName} not found.</div>;
   }
 
   // ----------------------
@@ -307,7 +272,7 @@ export default function ParameterDataDetailPage() {
       deleteConfig={{
         doctypeName: doctypeName,
         docName: docname,
-        redirectUrl: "/maintenance/doctype/parameter-checklist",
+        redirectUrl: "/maintenance/doctype/maintenance-checklist",
       }}
     />
   );
