@@ -10,7 +10,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
-import { fetchAssetsFromLisAndStage } from "../services";
+import { fetchAssetsFromLisAndStage, fetchItemDetails } from "../services";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 // Backend DocType name
@@ -25,6 +25,7 @@ export default function SpareIndentDetailPage() {
     const [loading, setLoading] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
     const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
+    const lastFetchedItemCodesRef = React.useRef<Record<number, string>>({});
 
     // 🟢 1. FETCH RECORD
     const fetchRecord = async () => {
@@ -332,6 +333,68 @@ export default function SpareIndentDetailPage() {
             } catch (error) {
                 console.error("Failed to fetch assets:", error);
                 toast.error("Failed to load assets", { duration: Infinity });
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, [apiKey, apiSecret, formMethods]);
+
+    // 🟢 ITEM DETAILS FETCHING EFFECT
+    React.useEffect(() => {
+        if (!formMethods || !apiKey || !apiSecret) return;
+
+        const subscription = formMethods.watch(async (values, { name }) => {
+            if (!name || !name.startsWith("items") || !name.endsWith("item_code")) return;
+
+            const match = name.match(/^items\.(\d+)\.item_code$/);
+            if (!match) return;
+
+            const rowIndex = Number(match[1]);
+            const currentItems = values.items || [];
+            const itemCode = currentItems[rowIndex]?.item_code?.trim();
+
+            const lastFetchedCodes = lastFetchedItemCodesRef.current;
+
+            if (!itemCode) {
+                delete lastFetchedCodes[rowIndex];
+                return;
+            }
+
+            if (lastFetchedCodes[rowIndex] === itemCode) {
+                return;
+            }
+
+            lastFetchedCodes[rowIndex] = itemCode;
+
+            try {
+                const message = await fetchItemDetails(
+                    {
+                        item_code: itemCode,
+                        material_request_type: values.material_request_type || "Material Issue"
+                    },
+                    apiKey,
+                    apiSecret
+                );
+
+                if (!message) return;
+
+                const fieldUpdates: Record<string, any> = {
+                    item_name: message.item_name ?? "",
+                    description: message.description ?? "",
+                    qty: message.qty ?? 1,
+                    uom: message.uom ?? "",
+                    warehouse: message.warehouse ?? "",
+                    rate: message.rate ?? 0,
+                    amount: message.amount ?? 0,
+                };
+
+                Object.entries(fieldUpdates).forEach(([fieldName, fieldValue]) => {
+                    formMethods.setValue(`items.${rowIndex}.${fieldName}`, fieldValue, { shouldDirty: true });
+                });
+            } catch (error: any) {
+                console.error("Failed to fetch item details", error);
+                toast.error(error.response?.data?.message || "Failed to fetch item details", { duration: 5000 });
+                delete lastFetchedCodes[rowIndex];
             }
         });
 
