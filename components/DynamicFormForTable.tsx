@@ -139,7 +139,7 @@ export function DynamicFormForTable({
         let initialData: Record<string, any>;
 
         if (editingRowIndex !== null) {
-            const currentRowData = getRowData(editingRowIndex);
+            const currentRowData = data ?? getRowData(editingRowIndex);
             console.log('DynamicFormForTable: Initializing with data from context:', currentRowData);
             initialData = currentRowData;
         } else if (data) {
@@ -161,7 +161,7 @@ export function DynamicFormForTable({
         });
 
         setFormData(formattedData);
-    }, [editingRowIndex, fields]);
+    }, [data, editingRowIndex, fields, getRowData]);
 
     // Debounced update to context - prevents excessive updates during typing
     const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -361,16 +361,16 @@ export function DynamicFormForTable({
 
     const renderInput = (field: FormField, type: string = "text") => {
         const value = formData[field.name] ?? "";
-        
+
         const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-            if ((field.type === "Currency" || field.type === "Float")&& field.precision) {
+            if ((field.type === "Currency" || field.type === "Float") && field.precision) {
                 const val = parseFloat(e.target.value);
                 if (!isNaN(val)) {
                     handleInputChange(field.name, val.toFixed(field.precision));
                 }
             }
         };
-        
+
         return (
             <div className="form-group">
                 <label htmlFor={field.name} className="form-label">
