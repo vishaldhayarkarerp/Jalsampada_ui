@@ -49,7 +49,7 @@ export default function MaintenanceScheduleDetailPage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
-  const docname = params.id as string;
+  const docname = decodeURIComponent(params.id as string);
   const doctypeName = "Asset Maintenance";
 
   const [record, setRecord] = React.useState<AssetMaintenanceRecord | null>(null);
@@ -72,7 +72,7 @@ export default function MaintenanceScheduleDetailPage() {
         setError(null);
 
         const resp = await axios.get(
-          `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
+          `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${docname}`,
           {
             headers: {
               Authorization: `token ${apiKey}:${apiSecret}`,
@@ -169,7 +169,7 @@ export default function MaintenanceScheduleDetailPage() {
       };
 
       const resp = await axios.put(
-        `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
+        `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${docname}`,
         finalPayload,
         {
           headers: {

@@ -35,7 +35,7 @@ export default function ParameterDataDetailPage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
-  const docname = params.id as string;
+  const docname = decodeURIComponent(params.id as string);
   const doctypeName = "Parameter Checklist";
 
   const [record, setRecord] = React.useState<ParameterData | null>(null);
@@ -58,7 +58,7 @@ export default function ParameterDataDetailPage() {
         setError(null);
 
         const resp = await axios.get(
-          `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
+          `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${docname}`,
           {
             headers: {
               Authorization: `token ${apiKey}:${apiSecret}`,
@@ -227,7 +227,7 @@ export default function ParameterDataDetailPage() {
        💾 UPDATE DOCUMENT
     --------------------------------------------*/
     const resp = await axios.put(
-      `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(currentDocname)}`,
+      `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${currentDocname}`,
       finalPayload,
       {
         headers: {
