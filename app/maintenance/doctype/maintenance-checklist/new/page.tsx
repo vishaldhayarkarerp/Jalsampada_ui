@@ -6,66 +6,39 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
     DynamicForm,
     TabbedLayout,
-    FormField,
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { MaintenanceChecklistMatrix } from "@/app/maintenance/doctype/maintenance-checklist/components/MaintenanceChecklistMatrix"; // Import the new component
 
-const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
+const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
-/* -------------------------------------------------
- 1. Maintenance Checklist type – mirrors the API
- ------------------------------------------------- */
-interface AssetCategoryData {
-    name?: string;
-    asset_category_name?: string;
-    custom_specifications?: Array<{
-        specification_type: string;
-        details: string;
-    }>;
-}
-
-/* -------------------------------------------------
- 2. Page component
- ------------------------------------------------- */
 export default function NewMaintenanceChecklistPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-
     const doctypeName = "Maintenance Checklist";
     const [isSaving, setIsSaving] = React.useState(false);
 
-    // Parse duplicate data from URL parameters
+    // Parse duplicate data
     const duplicateData = React.useMemo(() => {
         const duplicateParam = searchParams.get('duplicate');
         if (!duplicateParam) return null;
-
         try {
-            const decodedData = JSON.parse(atob(decodeURIComponent(duplicateParam)));
-            console.log("Parsed duplicate data:", decodedData);
-            return decodedData;
+            return JSON.parse(atob(decodeURIComponent(duplicateParam)));
         } catch (error) {
             console.error("Error parsing duplicate data:", error);
-            toast.error("Failed to parse duplicate data", { duration: Infinity });
             return null;
         }
     }, [searchParams]);
 
-    // Show notification if we have duplicate data (only once)
-    const notificationShown = React.useRef(false);
     React.useEffect(() => {
-        if (duplicateData && !notificationShown.current) {
-            toast.success("Form populated with duplicate data. Modify as needed and save.");
-            notificationShown.current = true;
+        if (duplicateData) {
+            toast.success("Form populated with duplicate data.");
         }
     }, [duplicateData]);
 
-    /* -------------------------------------------------
-    3. Form tabs configuration with duplicate data support
-    ------------------------------------------------- */
     const formTabs: TabbedLayout[] = React.useMemo(() => {
-        // Helper function to get value from duplicate data or fallback to default
         const getValue = (fieldName: string, defaultValue: any = undefined) => {
             return duplicateData?.[fieldName] ?? defaultValue;
         };
@@ -74,8 +47,7 @@ export default function NewMaintenanceChecklistPage() {
             {
                 name: "Details",
                 fields: [
-                    { name: "posting_datetime", label: "Posting Datetime", type: "DateTime", defaultValue: getValue("asset_category_name") },
-
+                    { name: "posting_datetime", label: "Posting Datetime", type: "DateTime", defaultValue: getValue("posting_datetime") },
                     {
                         name: "lis_name",
                         label: "LIS Name",
@@ -84,71 +56,86 @@ export default function NewMaintenanceChecklistPage() {
                         required: true,
                         defaultValue: getValue("lis_name"),
                     },
-
-                    { name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No", defaultValue: getValue("asset_category_name") },
-
+                    { 
+                        name: "stage", 
+                        label: "Stage", 
+                        type: "Link", 
+                        linkTarget: "Stage No", // Or handle dynamic filtering via props if needed later
+                        defaultValue: getValue("stage"),
+                        // Note: You mentioned filtering stage by LIS. 
+                        // The LinkField component handles basic filters if configured, 
+                        // but for advanced dependency, we rely on the Matrix component to react to changes.
+                        filters: (getValues) => {
+                            const lis = getValues("lis_name");
+                            return lis ? { "lis_name": lis } : {};
+                        }
+                    },
                     {
                         name: "asset_category",
                         label: "Asset Category",
                         type: "Link",
                         linkTarget: "Asset Category",
+                        required: true,
+                        defaultValue: getValue("asset_category"),
                     },
-
                     {
                         name: "monitoring_type",
                         label: "Monitoring Type",
                         type: "Select",
-                        options: [{ label: "Daily", value: "Daily" }, { label: "Weekly", value: "Weekly" }, { label: "Monthly", value: "Monthly" }, { label: 'Quarterly', value: "Quarterly" }, { label: 'Half-Yearly', value: 'Half-Yearly' }, { label: "Yearly", value: "Yearly" }],
-
+                        options: [
+                            { label: "Daily", value: "Daily" },
+                            { label: "Weekly", value: "Weekly" },
+                            { label: "Monthly", value: "Monthly" },
+                            { label: "Quarterly", value: "Quarterly" },
+                            { label: "Half-Yearly", value: "Half-Yearly" },
+                            { label: "Yearly", value: "Yearly" }
+                        ],
+                        required: true,
+                        defaultValue: getValue("monitoring_type"),
+                    },
+                    // 🟢 HERE IS THE REPLACEMENT
+                    {
+                        name: "checklist_matrix_section",
+                        label: "Checklist Matrix",
+                        type: "Section Break",
                     },
                     {
-                        name: "checklist_table",
-                        label: "Checklist Table",
-                        type: "Table",
-                        columns: [
-                            { name: "specification_type", label: "Specification Type", type: "Link", linkTarget: "Specifications" },
-                            { name: "details", label: "Details", type: "Text" },
-                        ],
-                        defaultValue: getValue("custom_specifications", []),
+                        name: "checklist_ui", // Dummy name for the custom field
+                        label: "",
+                        type: "Custom",
+                        customElement: <MaintenanceChecklistMatrix />
                     },
-                    // {
-                    //     name: "checklist",
-                    //     label: "Checklist",
-                    //     type: "Small Text",
-                    //     defaultValue: getValue("checklist"),
-                        
-                    // },
+                    // We also need a hidden field to actually hold the data if DynamicForm 
+                    // doesn't automatically pick up values set via setValue that aren't in the fields list.
+                    // However, DynamicFormComponent usually submits all data in `methods.getValues()`.
+                    // The Matrix component calls setValue("checklist_data", ...).
                 ],
             }
         ];
     }, [duplicateData]);
 
-    /* -------------------------------------------------
-    4. SUBMIT
-    ------------------------------------------------- */
     const handleSubmit = async (data: Record<string, any>) => {
         if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-            toast.error("Authentication required. Please log in.", { duration: Infinity });
-            return;
-        }
-
-        // Check if we have valid data to submit (either dirty changes or duplicate data)
-        const hasValidData = (duplicateData && data.asset_category_name) || !duplicateData;
-
-        if (!hasValidData) {
-            toast.info("Please fill out the form.");
+            toast.error("Authentication required.");
             return;
         }
 
         setIsSaving(true);
         try {
+            // 1. Prepare Payload
             const payload = { ...data };
+            
+            // Remove the UI placeholder field
+            delete payload.checklist_ui;
+            delete payload.checklist_matrix_section;
 
-            // Remove auto-generated name field if present
-            if (payload.name === "Will be auto-generated") {
-                delete payload.name;
-            }
+            // Ensure checklist_data is present (it might be in 'data' because setValue was called)
+            // If not, we might need to grab it from the form state manually, 
+            // but `data` passed here usually contains all registered values.
 
+            if (payload.name === "Will be auto-generated") delete payload.name;
+
+            // 2. Submit
             const response = await axios.post(`${API_BASE_URL}/${doctypeName}`, payload, {
                 headers: {
                     Authorization: `token ${apiKey}:${apiSecret}`,
@@ -158,51 +145,27 @@ export default function NewMaintenanceChecklistPage() {
             });
 
             toast.success("Maintenance Checklist created successfully!");
-
-            // Navigate to the newly created record using asset_category_name
-            const newCategoryName = response.data.data.asset_category_name || response.data.data.name;
-            router.push(`/maintenance/doctype/maintenance-checklist/${newCategoryName}`);
+            const newName = response.data.data.name;
+            router.push(`/maintenance/doctype/maintenance-checklist/${newName}`);
 
         } catch (err: any) {
             console.error("Create error:", err);
-
-            // Handle duplicate entry error specifically
-            if (err.response?.data?.exc_type === "DuplicateEntryError") {
-                const errorMessage = err.response?.data?._server_messages ||
-                    "An maintenance checklist with this name already exists. Please use a different name.";
-                toast.error("Duplicate Entry Error", {
-                    description: "Maintenance Checklist with this name already exists. Please change the category name and try again.",
-                    duration: Infinity
-                });
-            } else {
-                const errorMessage = err.response?.data?.message ||
-                    err.response?.data?.error ||
-                    "Failed to create Maintenance Checklist. Check console for details.";
-                toast.error(`Error: ${errorMessage}`, { duration: Infinity });
-            }
+            const msg = err.response?.data?.message || err.message;
+            toast.error(`Error: ${msg}`);
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleCancel = () => router.back();
-
-    /* -------------------------------------------------
-    5. RENDER FORM
-    ------------------------------------------------- */
     return (
         <DynamicForm
             tabs={formTabs}
             onSubmit={handleSubmit}
-            onCancel={handleCancel}
-            title={`New ${doctypeName}`}
-            description="Create a new maintenance checklist with specifications"
-            submitLabel={isSaving ? "Saving..." : "New Maintenance Checklist"}
+            onCancel={() => router.back()}
+            title="New Maintenance Checklist"
+            description="Fill in details to generate the checklist matrix"
+            submitLabel={isSaving ? "Saving..." : "Create"}
             cancelLabel="Cancel"
         />
     );
 }
-
-
-
-

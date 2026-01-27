@@ -11,6 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { renameDocument } from "@/lib/services";
+import { MaintenanceChecklistMatrix } from "@/app/maintenance/doctype/maintenance-checklist/components/MaintenanceChecklistMatrix"; // 🟢 Import Matrix
 
 // API base URL
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
@@ -22,10 +23,11 @@ interface MaintenanceChecklist {
   name: string;
   lis_name?: string;
   stage?: string;
-  monitoring_type?: "Daily" | "Weekly" | "Monthly";
+  monitoring_type?: "Daily" | "Weekly" | "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly";
   asset_category?: string;
-  docstatus: 0 | 1 | 2;
+  checklist_data?: any[];
   modified: string;
+  owner?: string;
 }
 
 // ----------------------
@@ -36,7 +38,7 @@ export default function MaintenanceChecklistDetailPage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
-  const docname = params.id as string;
+  const docname = decodeURIComponent(params.id as string);
   const doctypeName = "Maintenance Checklist";
 
   const [record, setRecord] = React.useState<MaintenanceChecklist | null>(null);
@@ -69,7 +71,7 @@ export default function MaintenanceChecklistDetailPage() {
           }
         );
 
-        setRecord(resp.data.data as MaintenanceChecklist);
+        setRecord(resp.data.data as Omit<MaintenanceChecklist, 'docstatus'>);
       } catch (err: any) {
         console.error("API Error:", err);
         setError(
@@ -93,6 +95,7 @@ export default function MaintenanceChecklistDetailPage() {
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!record) return [];
 
+    // Helper to map record values to fields
     const fields = (list: FormField[]): FormField[] =>
       list.map((f) => ({
         ...f,
@@ -104,24 +107,25 @@ export default function MaintenanceChecklistDetailPage() {
       {
         name: "Details",
         fields: fields([
+            { name: "posting_datetime", label: "Posting Datetime", type: "DateTime" },
           {
             name: "lis_name",
             label: "LIS Name",
-            type: "Text",
+            type: "Link",
+            linkTarget: "Lift Irrigation Scheme",
             required: true,
           },
           {
             name: "stage",
             label: "Stage",
-            type: "Text",
+            type: "Link",
+            linkTarget: "Stage No",
             required: true,
-          },
-          {
-            name: "monitoring_type",
-            label: "Monitoring Type",
-            type: "Select",
-            options: "Daily\nWeekly\nMonthly",
-            required: true,
+            // Dynamic filter for stage based on LIS Name
+            filters: (getValues) => {
+                const lis = getValues("lis_name");
+                return lis ? { "lis_name": lis } : {};
+            }
           },
           {
             name: "asset_category",
@@ -129,6 +133,33 @@ export default function MaintenanceChecklistDetailPage() {
             type: "Link",
             linkTarget: "Asset Category",
             required: true,
+          },
+          {
+            name: "monitoring_type",
+            label: "Monitoring Type",
+            type: "Select",
+            options: [
+                            { label: "Daily", value: "Daily" },
+                            { label: "Weekly", value: "Weekly" },
+                            { label: "Monthly", value: "Monthly" },
+                            { label: "Quarterly", value: "Quarterly" },
+                            { label: "Half-Yearly", value: "Half-Yearly" },
+                            { label: "Yearly", value: "Yearly" }
+                        ],
+            required: true,
+          },
+          // 🟢 MATRIX UI SECTION
+          {
+            name: "checklist_matrix_section",
+            label: "Checklist Matrix",
+            type: "Section Break",
+          },
+          {
+            name: "checklist_ui",
+            label: "",
+            type: "Custom",
+            // The Matrix component will auto-read 'checklist_data' from the form state
+            customElement: <MaintenanceChecklistMatrix />
           },
         ]),
       },
@@ -139,106 +170,79 @@ export default function MaintenanceChecklistDetailPage() {
   // Submit handler
   // ----------------------
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-  if (!isDirty) {
-    toast.info("No changes to save.");
-    return;
-  }
-
-  if (!record) {
-    toast.error("Record not loaded. Cannot save.", { duration: Infinity });
-    return;
-  }
-
-  if (!apiKey || !apiSecret) {
-    toast.error("Missing API credentials.");
-    return;
-  }
-
-  setIsSaving(true);
-
-  try {
-    let currentDocname = docname;
-
-    /* 🔁 RENAME USING LIS NAME */
-    const newName = data.lis_name;
-
-    if (newName && newName !== record.name) {
-      try {
-        await renameDocument(apiKey, apiSecret, doctypeName, record.name, newName);
-
-        currentDocname = newName;
-
-        setRecord(prev =>
-          prev ? { ...prev, name: newName, lis_name: newName } : null
-        );
-
-        router.replace(`/maintenance/doctype/maintenance-checklist/${newName}`);
-      } catch (renameError: any) {
-        toast.error("Failed to rename document", {
-          description: renameError.response?.data?.message || renameError.message,
-        });
-        setIsSaving(false);
-        return;
-      }
+    if (!record) return;
+    if (!apiKey || !apiSecret) {
+      toast.error("Missing API credentials.");
+      return;
     }
 
-    /* 🧹 CLEAN PAYLOAD (THIS WAS MISSING ❌) */
-    const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
+    setIsSaving(true);
 
-    const allFields = formTabs.flatMap((tab) => tab.fields);
-    const nonDataFields = new Set<string>();
+    try {
+      let currentDocname = record.name;
 
-    allFields.forEach((field) => {
-      if (
-        field.type === "Section Break" ||
-        field.type === "Column Break" ||
-        field.type === "Button" ||
-        field.type === "Read Only"
-      ) {
-        nonDataFields.add(field.name);
+      /* 🔁 1. RENAME LOGIC (If LIS Name changed) */
+      // Note: In Frappe, usually specific naming series controls the name. 
+      // If your logic relies on renaming, keep this. Otherwise, standard update is safer.
+      /* const newName = data.lis_name; 
+      if (newName && newName !== record.lis_name) {
+          // Rename logic here if strictly required by your business logic
       }
-    });
+      */
 
-    const finalPayload: Record<string, any> = {};
-    for (const key in payload) {
-      if (!nonDataFields.has(key)) {
-        finalPayload[key] = payload[key];
+      /* 🧹 2. CLEAN PAYLOAD */
+      const payload: Record<string, any> = { ...data };
+
+      // Remove UI-only fields
+      delete payload.checklist_ui;
+      delete payload.checklist_matrix_section;
+      
+      // Remove standard non-editable fields if they exist in data
+      delete payload.modified;
+      delete payload.creation;
+      delete payload.owner;
+      delete payload.idx;
+
+      // Ensure checklist_data is passed (it should be in 'data' from useForm)
+      // If the matrix hasn't been touched, it might not be in 'data' depending on dirty state.
+      // safely fallback to record.checklist_data if not present in data
+      if (!payload.checklist_data && record.checklist_data) {
+        payload.checklist_data = record.checklist_data;
       }
+
+      /* 💾 3. UPDATE */
+      const resp = await axios.put(
+        `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(currentDocname)}`,
+        payload,
+        {
+          headers: {
+            Authorization: `token ${apiKey}:${apiSecret}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        }
+      );
+
+      toast.success("Checklist saved successfully!");
+
+      if (resp.data?.data) {
+        setRecord(resp.data.data);
+        // If name changed via backend (rare for PUT), handle redirect
+        if (resp.data.data.name !== currentDocname) {
+            router.push(`/maintenance/doctype/maintenance-checklist/${resp.data.data.name}`);
+        }
+      }
+
+    } catch (err: any) {
+      console.error("Save error:", err);
+      toast.error("Failed to save", {
+        description: err.response?.data?.message || err.message,
+        duration: Infinity,
+      });
+    } finally {
+      setIsSaving(false);
     }
-
-    // Required by Frappe
-    finalPayload.modified = record.modified;
-    finalPayload.docstatus = record.docstatus;
-
-    /* 💾 UPDATE */
-    const resp = await axios.put(
-      `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(currentDocname)}`,
-      finalPayload,
-      {
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: true,
-      }
-    );
-
-    toast.success("Changes saved!");
-
-    if (resp.data?.data) setRecord(resp.data.data);
-
-    router.push(`/maintenance/doctype/maintenance-checklist/${currentDocname}`);
-  } catch (err: any) {
-    console.error("Save error:", err);
-    console.log("SERVER SAYS:", err.response?.data);
-    toast.error("Failed to save", {
-      description: err.response?.data?.message || err.message,
-      duration: Infinity,
-    });
-  } finally {
-    setIsSaving(false);
-  }
-};
+  };
 
   const handleCancel = () => router.back();
 
@@ -246,15 +250,22 @@ export default function MaintenanceChecklistDetailPage() {
   // UI States
   // ----------------------
   if (loading) {
-    return <div className="module active" style={{ padding: "2rem" }}>Loading {doctypeName} details...</div>;
+    return (
+        <div className="flex h-[50vh] items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <p className="text-muted-foreground">Loading Checklist...</p>
+            </div>
+        </div>
+    );
   }
 
   if (error) {
-    return <div className="module active" style={{ padding: "2rem", color: "red" }}>{error}</div>;
+    return <div className="p-8 text-red-500">{error}</div>;
   }
 
   if (!record) {
-    return <div className="module active" style={{ padding: "2rem" }}>{doctypeName} not found.</div>;
+    return <div className="p-8">Document not found.</div>;
   }
 
   // ----------------------
@@ -266,9 +277,12 @@ export default function MaintenanceChecklistDetailPage() {
       onSubmit={handleSubmit}
       onCancel={handleCancel}
       title={`${doctypeName}: ${record.name}`}
-      description={`Update details for record ID: ${docname}`}
+      description="Update checklist details and matrix"
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
+      initialStatus="Draft"
+      docstatus={0}
+      isSubmittable={false}
       deleteConfig={{
         doctypeName: doctypeName,
         docName: docname,
