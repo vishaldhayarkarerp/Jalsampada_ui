@@ -148,13 +148,13 @@ export default function MaintenanceChecklistDetailPage() {
             required: true,
           },
           
-          // // 🔴 CRITICAL FIX: Add the hidden field so React Hook Form loads the data!
-          // {
-          //    name: "checklist_data",
-          //    label: "Checklist Data",
-          //    type: "Read Only", // Or "Table" if you want to see the raw table below
-          //    defaultValue: record.checklist_data || [] 
-          // },
+          // 🔴 CRITICAL FIX: Add the hidden field so React Hook Form loads the data!
+          {
+             name: "checklist_data",
+             label: "Checklist Data",
+             type: "Read Only", // Or "Table" if you want to see the raw table below
+             defaultValue: record.checklist_data || [] 
+          },
 
           // 🟢 MATRIX UI SECTION
           {
