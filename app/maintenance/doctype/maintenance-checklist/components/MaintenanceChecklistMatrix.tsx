@@ -40,20 +40,20 @@ function TriStateToggle({ value, onChange }: TriStateToggleProps) {
         <div
           className={cn(
             "absolute top-1 bottom-1 w-8 rounded-full shadow-sm transition-all duration-300 ease-out",
-            value === 0 ? "left-1 bg-red-500" : 
-            value === 1 ? "right-1 bg-green-500" : 
+            value === 1 ? "left-1 bg-green-500" : 
+            value === 0 ? "right-1 bg-red-500" : 
             "left-1/2 -translate-x-1/2 bg-gray-400"
           )}
         />
 
-        {/* Option: Closed (Fail) */}
+        {/* Option: Opened (Pass) */}
         <button
           type="button"
-          onClick={() => onChange(0)}
+          onClick={() => onChange(1)}
           className="flex-1 z-10 flex justify-center items-center text-xs font-bold transition-colors focus:outline-none"
-          title="Closed / Fail"
+          title="Opened / Pass"
         >
-          <X className={cn("w-4 h-4", value === 0 ? "text-white" : "text-gray-500 hover:text-red-600")} />
+          <Check className={cn("w-4 h-4", value === 1 ? "text-white" : "text-gray-500 hover:text-green-600")} />
         </button>
 
         {/* Option: Neutral */}
@@ -66,14 +66,14 @@ function TriStateToggle({ value, onChange }: TriStateToggleProps) {
           <Minus className={cn("w-4 h-4", value === null ? "text-white" : "text-gray-500")} />
         </button>
 
-        {/* Option: Opened (Pass) */}
+        {/* Option: Closed (Fail) */}
         <button
           type="button"
-          onClick={() => onChange(1)}
+          onClick={() => onChange(0)}
           className="flex-1 z-10 flex justify-center items-center text-xs font-bold transition-colors focus:outline-none"
-          title="Opened / Pass"
+          title="Closed / Fail"
         >
-          <Check className={cn("w-4 h-4", value === 1 ? "text-white" : "text-gray-500 hover:text-green-600")} />
+          <X className={cn("w-4 h-4", value === 0 ? "text-white" : "text-gray-500 hover:text-red-600")} />
         </button>
       </div>
     </div>
@@ -242,16 +242,16 @@ export function MaintenanceChecklistMatrix() {
 
                                             {/* Labels for clarity (optional) */}
                                             <div className="text-[10px] text-gray-400 font-medium">
-                                                {statusValue === 1 && <span className="text-green-600">Opened (OK)</span>}
-                                                {statusValue === 0 && <span className="text-red-600">Closed (Issue)</span>}
-                                                {statusValue === null && <span>Neutral</span>}
+                                                {statusValue === 1 && <span className="text-green-600">OK</span>}
+                                                {statusValue === 0 && <span className="text-red-600">Not OK</span>}
+                                                {statusValue === null && <span>Please Select</span>}
                                             </div>
 
                                             {/* Description Box - Slides down only when "Closed" (0) */}
                                             {isClosed && (
                                                 <div className="w-full animate-in fade-in zoom-in-95 duration-200">
                                                   <div className="flex items-start gap-1.5 p-2 bg-red-50 border border-red-100 rounded-md">
-                                                    <AlertCircle className="w-3 h-3 text-red-500 mt-0.5 shrink-0" />
+                                                    {/* <AlertCircle className="w-3 h-3 text-red-500 mt-0.5 shrink-0" /> */}
                                                     <textarea 
                                                         placeholder="Describe the issue..."
                                                         className="w-full text-xs bg-transparent border-none focus:ring-0 resize-none p-0 text-gray-700 placeholder:text-red-300"
