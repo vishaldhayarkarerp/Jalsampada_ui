@@ -96,6 +96,7 @@ export default function SpareIndentDetailPage() {
                         label: "Prepared By",
                         type: "Link",
                         linkTarget: "Employee",
+                        searchField: "employee_name",
                         defaultValue: getVal("custom_prepared_by"),
                     },
                     {
@@ -103,6 +104,11 @@ export default function SpareIndentDetailPage() {
                         label: "Designation",
                         type: "Data",
                         readOnly: true,
+                        fetchFrom: {
+                            sourceField: "custom_prepared_by",
+                            targetDoctype: "Employee",
+                            targetField: "designation"
+                        },
                         defaultValue: getVal("custom_designation"),
                     },
                     {
@@ -185,6 +191,22 @@ export default function SpareIndentDetailPage() {
                             { name: "warehouse", label: "Target Warehouse", type: "Link", linkTarget: "Warehouse" },
                             { name: "rate", label: "Rate", type: "Currency", precision: 2 },
                             { name: "amount", label: "Amount", type: "Currency", readOnly: true, precision: 2 },
+                            {
+                                name: "custom_purpose_of_use",
+                                label: "Purpose of Use",
+                                type: "Select",
+                                options: [
+                                    { label: "Repair", value: "Repair" },
+                                    { label: "Overhaul", value: "Overhaul" },
+                                    { label: "Consumable", value: "Consumable" },
+                                ],
+                                defaultValue: "Repair",
+                            },
+                            {
+                                name: "custom_remarks",
+                                label: "Remarks",
+                                type: "Text",
+                            },
                         ],
                     },
                     // ── Approval Section ────────────────────────────────────────────
@@ -292,6 +314,21 @@ export default function SpareIndentDetailPage() {
                 modified: record?.modified,
                 docstatus: record?.docstatus
             };
+            if (Array.isArray(payload.custom_assets)) {
+                payload.custom_assets = payload.custom_assets.map((assetItem: any) => {
+                    if (typeof assetItem === 'string') {
+                        return { asset: assetItem };
+                    }
+                    return assetItem;
+                });
+            }
+            //Sanitize 'items' Child Table
+            if (Array.isArray(payload.items)) {
+                payload.items = payload.items.map((item: any) => {
+                    const { id, ...rest } = item;
+                    return rest;
+                });
+            }
 
             await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, payload, {
                 headers: { Authorization: `token ${apiKey}:${apiSecret}` },
@@ -299,7 +336,9 @@ export default function SpareIndentDetailPage() {
             toast.success("Spare Indent updated successfully!");
             fetchRecord();
         } catch (err: any) {
-            toast.error("Failed to update record", { duration: Infinity });
+            console.error("Save Error:", err);
+            const errorMsg = err.response?.data?.exception || err.message || "Failed to update record";
+            toast.error(errorMsg, { duration: Infinity });
         } finally {
             setIsSaving(false);
         }

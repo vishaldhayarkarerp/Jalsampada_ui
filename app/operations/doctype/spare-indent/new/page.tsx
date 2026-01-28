@@ -60,6 +60,7 @@ export default function NewSpareIndentPage() {
             name: "custom_prepared_by",
             label: "Prepared By",
             type: "Link",
+            searchField: "employee_name",
             linkTarget: "Employee",
           },
 
@@ -67,6 +68,11 @@ export default function NewSpareIndentPage() {
             name: "custom_designation",
             label: "Designation",
             type: "Data",
+            fetchFrom: {
+              sourceField: "custom_prepared_by",
+              targetDoctype: "Employee",
+              targetField: "designation"
+            },
             readOnly: true, // Fetched via useEffect
           },
           {
@@ -258,6 +264,23 @@ export default function NewSpareIndentPage() {
     setIsSaving(true);
     try {
       const payload: Record<string, any> = { ...data, doctype: DOCTYPE_NAME };
+      if (Array.isArray(payload.custom_assets)) {
+        payload.custom_assets = payload.custom_assets.map((assetItem: any) => {
+          // If it's just a string ID, wrap it in an object.
+          // We assume the field name in the child table is 'asset' based on LinkTarget 'Asset'.
+          if (typeof assetItem === 'string') {
+            return { asset: assetItem };
+          }
+          return assetItem;
+        });
+      }
+      // FIX 2: Sanitize 'items' Child Table     
+      if (Array.isArray(payload.items)) {
+        payload.items = payload.items.map((item: any) => {
+          const { id, ...rest } = item; // Remove 'id' if present
+          return rest;
+        });
+      }
 
       const response = await axios.post(`${API_BASE_URL}/${DOCTYPE_NAME}`, payload, {
         headers: { Authorization: `token ${apiKey}:${apiSecret}` }
@@ -266,6 +289,7 @@ export default function NewSpareIndentPage() {
       toast.success("Spare Indent created successfully!");
       router.push(`/operations/doctype/spare-indent/${encodeURIComponent(response.data.data.name)}`);
     } catch (err: any) {
+      console.error("Save Error:", err);
       const errorMsg = err.response?.data?.exception || err.message || "Failed to save";
       toast.error(errorMsg, { duration: Infinity });
     } finally {
@@ -295,7 +319,7 @@ export default function NewSpareIndentPage() {
           apiKey,
           apiSecret
         );
-
+        // We set the value as string[] for the UI component to display chips correctly.The transformation to object[] happens in handleSubmit.
         formMethods.setValue("custom_assets", assets, { shouldDirty: true });
       } catch (error) {
         console.error("Failed to fetch assets:", error);
