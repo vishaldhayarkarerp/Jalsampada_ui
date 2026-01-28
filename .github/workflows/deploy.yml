@@ -1,0 +1,30 @@
+name: Deployment of Jalsampada UI
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: erpadmin
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd ~/bench-Jalsampada/apps/Jalsampada_ui
+
+            echo "📥 Pulling latest code"
+            git pull origin develop
+
+            echo "🏗️ Building app"
+            npm run build
+
+            echo "♻️ Restarting PM2"
+            pm2 restart jalsampada-frontend
