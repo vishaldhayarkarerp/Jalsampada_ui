@@ -68,7 +68,8 @@ const operationsDoctypeGroups: DoctypeGroup[] = [
   },
   {
     title: "Reports",
-    doctypes: reportsDoctypes
+    doctypes: reportsDoctypes,
+    basePath: "/operations/reports"
   }
 ];
 

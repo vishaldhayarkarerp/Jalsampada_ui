@@ -15,6 +15,7 @@ export interface Doctype {
 export interface DoctypeGroup {
   title: string;
   doctypes: Doctype[];
+  basePath?: string;
 }
 
 interface WorkspaceProps {
@@ -73,7 +74,7 @@ export function Workspace({
                       variant="ghost"
                       className="group relative w-full justify-start h-auto p-4 rounded-xl transition-all duration-300 hover:bg-[#FEF9EC] overflow-hidden"
                     >
-                      <Link href={`${basePath}/${doc.name}`} className="flex items-center justify-between w-full">
+                      <Link href={`${group.basePath || basePath}/${doc.name}`} className="flex items-center justify-between w-full">
                         {/* Hover Left Indicator Bar */}
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-400 opacity-0 group-hover:opacity-100 transition-all" />
 
