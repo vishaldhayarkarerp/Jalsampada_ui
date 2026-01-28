@@ -11,32 +11,20 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-// API
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
 /* --------------------------------------------------
   TYPES
 -------------------------------------------------- */
-interface MaintenanceTaskRow {
-  name?: string;
-  maintenance_task?: string;
-  maintenance_status?: string;
-  periodicity?: string;
-  assign_to?: string;
-  next_due_date?: string;
-  last_completion_date?: string;
-  description?: string;
-}
-
-interface AssetMaintenanceRecord {
+interface MaintenanceLogData {
   name: string;
-  custom_lis?: string;
-  custom_stage?: string;
-  asset_name?: string;
-  company?: string;
-  maintenance_team?: string;
-  custom_contact_no?: string;
-  maintenance_tasks?: MaintenanceTaskRow[];
+  naming_series?: string;
+  task?: string;
+  maintenance_status?: string;
+  has_certificate?: number;
+  completion_date?: string;
+  log?: string;
+  maintenance_schedule?: string;
   docstatus: 0 | 1 | 2;
   modified: string;
 }
@@ -44,15 +32,15 @@ interface AssetMaintenanceRecord {
 /* --------------------------------------------------
   COMPONENT
 -------------------------------------------------- */
-export default function MaintenanceScheduleDetailPage() {
+export default function MaintenanceLogDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
   const docname = decodeURIComponent(params.id as string);
-  const doctypeName = "Asset Maintenance";
+  const doctypeName = "Asset Maintenance Log";
 
-  const [record, setRecord] = React.useState<AssetMaintenanceRecord | null>(null);
+  const [record, setRecord] = React.useState<MaintenanceLogData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -82,14 +70,14 @@ export default function MaintenanceScheduleDetailPage() {
           }
         );
 
-        setRecord(resp.data.data as AssetMaintenanceRecord);
+        setRecord(resp.data.data as MaintenanceLogData);
       } catch (err: any) {
         setError(
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-              ? "Unauthorized"
-              : `Failed to load ${doctypeName}`
+            ? "Unauthorized"
+            : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -100,79 +88,115 @@ export default function MaintenanceScheduleDetailPage() {
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
   /* --------------------------------------------------
-    BUILD FORM
+    BUILD FORM (FIELDS SAME AS NEW FORM)
   -------------------------------------------------- */
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!record) return [];
 
-    const fields = (list: FormField[]): FormField[] =>
-      list.map((f) => ({
-        ...f,
-        // @ts-ignore
-        defaultValue: f.name in record ? record[f.name as keyof AssetMaintenanceRecord] : f.defaultValue,
-      }));
+    const getValue = (fieldName: keyof MaintenanceLogData, defaultValue: any = undefined) =>
+      record?.[fieldName] ?? defaultValue;
 
     return [
       {
         name: "Details",
-        fields: fields([
-          { name: "custom_lis", label: "LIS Name", type: "Link", linkTarget: "Lift Irrigation Scheme",},
-          { name: "custom_stage", label: "Stage", type: "Link", linkTarget: "Stage No" },
-          { name: "asset_name", label: "Asset Name", type: "Link", linkTarget: "Asset" },
-          // { name: "company", label: "Company", type: "Link", linkTarget: "Company" },
-          { name: "maintenance_team", label: "Maintenance Team", type: "Link", linkTarget: "Asset Maintenance Team" },
-          { name: "custom_contact_no", label: "Contact No", type: "Text" },
+        fields: [
+          {
+            name: "maintenance_schedule",
+            label: "Maintenance Schedule",
+            type: "Link",
+            linkTarget: "Asset Maintenance",
+            defaultValue: getValue("maintenance_schedule"),
+          },
+          {
+            name: "naming_series",
+            label: "Series",
+            type: "Select",
+            options: [{ label: "ACC-AML-.YYYY.-", value: "ACC-AML-.YYYY.-" }],
+            defaultValue: getValue("naming_series"),
+          },
+          {
+            name: "item_code",
+            label: "Item Code",
+            type: "Read Only",
+            linkTarget: "Item",
+            displayDependsOn: "maintenance_schedule",
+            fetchFrom: {
+              sourceField: "maintenance_schedule",
+              targetDoctype: "Asset Maintenance",
+              targetField: "item_code",
+            },
+          },
+          {
+            name: "asset_name",
+            label: "Asset Name",
+            type: "Read Only",
+            linkTarget: "Asset",
+            displayDependsOn: "maintenance_schedule",
+            fetchFrom: {
+              sourceField: "maintenance_schedule",
+              targetDoctype: "Asset Maintenance",
+              targetField: "asset_name",
+            },
+          },
+
+          { name: "section_break_1", type: "Section Break", label: "Maintenance Details" },
 
           {
-            name: "asset_maintenance_tasks",
-            label: "Maintenance Tasks",
-            type: "Table",
-            defaultValue: record.maintenance_tasks || [],
-            columns: [
-              { name: "maintenance_task", label: "Maintenance Task", type: "Text" },
-              { name: "maintenance_status", label: "Maintenance Status", type: "Select", options: "Planned\nOverdue\nCancelled" },
-              {
-                name: "maintenance_type",
-                label: "Maintenance Type",
-                type: "Select",
-                options: "Preventive Maintenance\nCorrective Maintenance\nPredictive Maintenance",
-              },
-
-              {
-                name: "start_date",
-                label: "Start Date",
-                type: "Date",
-              },
-              {
-                name: "end_date",
-                label: "End Date",
-                type: "Date",
-              },
-              { name: "periodicity", label: "Periodicity", type: "Select", options: "Daily\nWeekly\nMonthly\nQuarterly\nYearly" },
-              {
-                name: "certificate_required",
-                label: "Certificate Required",
-                type: "Check",
-              },
-              {
-                name: "certificate_upload",
-                label: "Upload Certificate",
-                type: "Attach",
-                displayDependsOn: "certificate_required", // simpler dependency
-              },
-              { name: "assign_to", label: "Assign To", type: "Link", linkTarget: "User" },
-              { name: "next_due_date", label: "Next Due Date", type: "Date" },
-              { name: "last_completion_date", label: "Last Completion Date", type: "Date" },
-              { name: "description", label: "Description", type: "Text" },
-            ],
+            name: "task",
+            label: "Task",
+            type: "Link",
+            linkTarget: "Asset Maintenance Task",
+            defaultValue: getValue("task"),
           },
-        ]),
+          {
+            name: "maintenance_status",
+            label: "Status",
+            type: "Select",
+            options: [
+              { label: "Planned", value: "Planned" },
+              { label: "In Progress", value: "In Progress" },
+              { label: "Cancelled", value: "Cancelled" },
+              { label: "Overdue", value: "Overdue" },
+            ],
+            defaultValue: getValue("maintenance_status", "Planned"),
+          },
+          {
+            name: "completion_date",
+            label: "Completion Date",
+            type: "Date",
+            defaultValue: getValue("completion_date"),
+          },
+
+          { name: "section_break_2", type: "Section Break", label: "Certificate" },
+
+          {
+            name: "has_certificate",
+            label: "Has Certificate?",
+            type: "Check",
+            defaultValue: getValue("has_certificate"),
+          },
+          {
+            name: "resume",
+            label: "Upload Certificate",
+            type: "Attach",
+            displayDependsOn: "has_certificate==1",
+          },
+
+          { name: "section_break_3", type: "Section Break", label: "Log Notes" },
+
+          {
+            name: "log",
+            label: "Log Notes",
+            type: "Small Text",
+            defaultValue: getValue("log"),
+          },
+        ],
       },
     ];
   }, [record]);
 
   /* --------------------------------------------------
-    SAVE
+    SAVE (UPDATE)
   -------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) {
@@ -238,13 +262,13 @@ export default function MaintenanceScheduleDetailPage() {
       onSubmit={handleSubmit}
       onCancel={handleCancel}
       title={`${doctypeName}: ${record.name}`}
-      description="Update Maintenance Schedule"
+      description="Update Maintenance Log"
       submitLabel={isSaving ? "Saving..." : "Save"}
       cancelLabel="Cancel"
       deleteConfig={{
         doctypeName: doctypeName,
         docName: docname,
-        redirectUrl: "/maintenance/doctype/maintenance-schedule",
+        redirectUrl: "/maintenance/doctype/maintenance-log",
       }}
     />
   );

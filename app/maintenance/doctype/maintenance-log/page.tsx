@@ -31,10 +31,8 @@ function useDebounce<T>(value: T, delay: number): T {
 /* ── Types ────────────────────────────────────── */
 interface MaintenanceLog {
   name: string;
-  series?: string;
-  task?: string;
   maintenance_status?: string;
-  has_certificate?: 0 | 1;
+  // next_due_date?: string;   // ⛔ BACKEND DOES NOT ALLOW YET
   completion_date?: string;
 }
 
@@ -43,7 +41,7 @@ type ViewMode = "grid" | "list";
 export default function MaintenanceLogListPage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-  const doctypeName = "Maintenance Log";
+  const doctypeName = "Asset Maintenance Log";
 
   const [records, setRecords] = React.useState<MaintenanceLog[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
@@ -59,8 +57,7 @@ export default function MaintenanceLogListPage() {
   const filteredRecords = React.useMemo(() => {
     if (!debouncedSearch) return records;
     return records.filter((r) =>
-      r.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      r.task?.toLowerCase().includes(debouncedSearch.toLowerCase())
+      r.name.toLowerCase().includes(debouncedSearch.toLowerCase())
     );
   }, [records, debouncedSearch]);
 
@@ -93,10 +90,8 @@ export default function MaintenanceLogListPage() {
           params: {
             fields: JSON.stringify([
               "name",
-              "series",
-              "task",
               "maintenance_status",
-              "has_certificate",
+              // "next_due_date",  // ⛔ COMMENTED — causing 417 error
               "completion_date",
             ]),
             limit_page_length: 20,
@@ -112,10 +107,8 @@ export default function MaintenanceLogListPage() {
       const raw = resp.data?.data ?? [];
       const mapped: MaintenanceLog[] = raw.map((r: any) => ({
         name: r.name,
-        series: r.series ?? "",
-        task: r.task ?? "",
         maintenance_status: r.maintenance_status ?? "",
-        has_certificate: r.has_certificate ?? 0,
+        // next_due_date: r.next_due_date ?? "",  // ⛔ DISABLED
         completion_date: r.completion_date ?? "",
       }));
 
@@ -186,20 +179,16 @@ export default function MaintenanceLogListPage() {
 
   /* ── Helpers ─────────────────────────────────── */
   const handleCardClick = (id: string) => {
-    router.push(
-      `/maintenance/doctype/maintenance-log/${encodeURIComponent(id)}`
-    );
+    router.push(`/maintenance/doctype/maintenance-log/${encodeURIComponent(id)}`);
   };
 
   const getFieldsForRecord = (record: MaintenanceLog): RecordCardField[] => [
-    { label: "Series", value: record.series || "-" },
-    { label: "Task", value: record.task || "-" },
     { label: "Status", value: record.maintenance_status || "-" },
-    { label: "Has Certificate", value: record.has_certificate ? "Yes" : "No" },
+    // { label: "Due Date", value: record.next_due_date || "-" }, // ⛔ WAITING FOR BACKEND
     { label: "Completion Date", value: record.completion_date || "-" },
   ];
 
-  /* ── Views ───────────────────────────────────── */
+  /* ── List View ───────────────────────────────── */
   const renderListView = () => (
     <div className="stock-table-container">
       <table className="stock-table">
@@ -209,10 +198,8 @@ export default function MaintenanceLogListPage() {
               <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} />
             </th>
             <th>ID</th>
-            <th>Series</th>
-            <th>Task</th>
             <th>Status</th>
-            <th>Has Certificate</th>
+            {/* <th>Due Date</th> ⛔ DISABLED */}
             <th>Completion Date</th>
           </tr>
         </thead>
@@ -233,17 +220,15 @@ export default function MaintenanceLogListPage() {
                     <input type="checkbox" checked={isSelected} onChange={() => handleSelectOne(r.name)} />
                   </td>
                   <td>{r.name}</td>
-                  <td>{r.series}</td>
-                  <td>{r.task}</td>
                   <td>{r.maintenance_status}</td>
-                  <td>{r.has_certificate ? "Yes" : "No"}</td>
+                  {/* <td>{r.next_due_date}</td> ⛔ DISABLED */}
                   <td>{r.completion_date}</td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={7} style={{ textAlign: "center", padding: 32 }}>
+              <td colSpan={4} style={{ textAlign: "center", padding: 32 }}>
                 No records found
               </td>
             </tr>
@@ -253,6 +238,7 @@ export default function MaintenanceLogListPage() {
     </div>
   );
 
+  /* ── Grid View ───────────────────────────────── */
   const renderGridView = () => (
     <div className="equipment-grid">
       {filteredRecords.length ? (
@@ -322,7 +308,3 @@ export default function MaintenanceLogListPage() {
     </div>
   );
 }
-
-
-
-
