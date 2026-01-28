@@ -10,6 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
 
 const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
 
@@ -75,119 +76,150 @@ export default function NewMaintenanceSchedulePage() {
                 name: "Details",
                 fields: [
                     {
-                        name: "lis_name",
+                        name: "custom_lis",
                         label: "LIS Name",
                         type: "Link",
                         linkTarget: "Lift Irrigation Scheme",
-                        defaultValue: getValue("lis_name"),
+                        defaultValue: getValue("custom_lis"),
                     },
 
-                    { name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No", defaultValue: getValue("asset_category_name") },
+                    {
+                        name: "custom_stage",
+                        label: "Stage",
+                        type: "Link",
+                        linkTarget: "Stage No",
+                        required: true,
+                        defaultValue: getValue("custom_stage"),
+                        filterMapping: [
+                            {
+                                sourceField: "custom_lis",
 
-                    { name: "asset_name", label: "Asset Name", type: "Link", linkTarget: "Asset" },
+                                targetField: "lis_name"
+                            }
+                        ],
+                    },
 
-                    { name: "company", label: "Company", type: "Link", linkTarget: "Company", },
+                    {
+                        name: "asset_name", label: "Asset Name", type: "Link", linkTarget: "Asset",
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        filters: (getValue) => ({
+                            custom_stage_no: getValue("custom_stage"),
+                            custom_lis_name: getValue("custom_lis")
+                        }),
+                        referenceDoctype: "Asset Maintenance",
+                        doctype: "Asset",
+                        defaultValue: getValue("asset"),
+                    },
+
+                    {
+                        name: "asset_category", label: "Asset Category", type: "Read Only",
+                        displayDependsOn: "asset_name",
+
+                        fetchFrom: { sourceField: "asset_name", targetDoctype: "Asset", targetField: "asset_category" }
+                    },
+
+                    // { name: "company", label: "Company", type: "Link", linkTarget: "Company", },
                     {
                         name: "maintenance_team", label: "Maintenance Team", type: "Link",
                         linkTarget: "Asset Maintenance Team"
                     },
 
-                    { name: "contact_no", label: "Contact No", type: "Text", },
+                    { name: "custom_contact_no", label: "Contact No", type: "Text", },
 
-                   {
-  name: "asset_maintenance_tasks",
-  label: "Maintenance Tasks",
-  type: "Table",
-  columns: [
-    {
-      name: "maintenance_task",
-      label: "Maintenance Task",
-      type: "Text",
-      inListView: true,
-      required: true,
-    },
-    {
-      name: "maintenance_status",
-      label: "Maintenance Status",
-      type: "Select",
-      options: "Planned\nIn Progress\nOverdue\nCancelled",
-      inListView: true,
-      defaultValue: "Planned",
-      required: true,
-    },
-    {
-      name: "maintenance_type",
-      label: "Maintenance Type",
-      type: "Select",
-      options: "Preventive Maintenance\nCorrective Maintenance\nPredictive Maintenance",
-      inListView: true,
-    },
-    {
-      name: "start_date",
-      label: "Start Date",
-      type: "Date",
-      inListView: true,
-      required: true,
-    },
-    {
-      name: "end_date",
-      label: "End Date",
-      type: "Date",
-      inListView: true,
-    },
-    {
-      name: "periodicity",
-      label: "Periodicity",
-      type: "Select",
-      options: "Daily\nWeekly\nMonthly\nQuarterly\nYearly",
-      inListView: true,
-      required: true,
-    },
+                    {
+                        name: "asset_maintenance_tasks",
+                        label: "Maintenance Tasks",
+                        type: "Table",
+                        columns: [
+                            {
+                                name: "maintenance_task",
+                                label: "Maintenance Task",
+                                type: "Text",
+                                inListView: true,
+                                required: true,
+                            },
+                            {
+                                name: "maintenance_status",
+                                label: "Maintenance Status",
+                                type: "Select",
+                                options: "Planned\nIn Progress\nOverdue\nCancelled",
+                                inListView: true,
+                                defaultValue: "Planned",
+                                required: true,
+                            },
+                            {
+                                name: "maintenance_type",
+                                label: "Maintenance Type",
+                                type: "Select",
+                                options: "Preventive Maintenance\nCorrective Maintenance\nPredictive Maintenance",
+                                inListView: true,
+                            },
+                            {
+                                name: "start_date",
+                                label: "Start Date",
+                                type: "Date",
+                                inListView: true,
+                                required: true,
+                            },
+                            {
+                                name: "periodicity",
+                                label: "Periodicity",
+                                type: "Select",
+                                options: "Daily\nWeekly\nMonthly\nQuarterly\nYearly",
+                                inListView: true,
+                                required: true,
+                            },
+                            {
+                                name: "end_date",
+                                label: "End Date",
+                                type: "Date",
+                                readOnly: true,
+                            },
 
-    // Certificate Required toggle
- {
-  name: "certificate_required",
-  label: "Certificate Required",
-  type: "Check",
-  inListView: true,
-},
-{
-  name: "certificate_upload",
-  label: "Upload Certificate",
-  type: "Attach",
-  displayDependsOn: "certificate_required", // simpler dependency
-  requiredDependsOn: "certificate_required", // makes upload required if checked
-},
+                            // Certificate Required toggle
+                            {
+                                name: "certificate_required",
+                                label: "Certificate Required",
+                                type: "Check",
+                                inListView: true,
+                            },
+                            {
+                                name: "certificate_upload",
+                                label: "Upload Certificate",
+                                type: "Attach",
+                                displayDependsOn: "certificate_required", // simpler dependency
+                                requiredDependsOn: "certificate_required", // makes upload required if checked
+                            },
 
 
-    {
-      name: "assign_to",
-      label: "Assign To",
-      type: "Link",
-      linkTarget: "User",
-      inListView: true,
-    },
-    {
-      name: "next_due_date",
-      label: "Next Due Date",
-      type: "Date",
-      inListView: true,
-    },
-    {
-      name: "last_completion_date",
-      label: "Last Completion Date",
-      type: "Date",
-      inListView: true,
-      readOnly: true,
-    },
-    {
-      name: "description",
-      label: "Description",
-      type: "Text", // simple text instead of rich text
-      inListView: false,
-    },
-  ],
-}
+                            {
+                                name: "assign_to",
+                                label: "Assign To",
+                                type: "Link",
+                                linkTarget: "User",
+                                inListView: true,
+                            },
+                            {
+                                name: "next_due_date",
+                                label: "Next Due Date",
+                                type: "Date",
+                                inListView: true,
+                            },
+                            {
+                                name: "last_completion_date",
+                                label: "Last Completion Date",
+                                type: "Date",
+                                inListView: true,
+                                readOnly: true,
+                            },
+                            {
+                                name: "description",
+                                label: "Description",
+                                type: "Text", // simple text instead of rich text
+                                inListView: false,
+                            },
+                        ],
+                    }
 
 
 
@@ -218,9 +250,9 @@ export default function NewMaintenanceSchedulePage() {
             const payload = { ...data };
 
             // Remove name if it's the placeholder
-            if (payload.name === "Will be auto-generated") {
-                delete payload.name;
-            }
+            // if (payload.name === "Will be auto-generated") {
+            //     delete payload.name;
+            // }
 
             const response = await axios.post(`${API_BASE_URL}/${doctypeName}`, payload, {
                 headers: {
@@ -228,13 +260,23 @@ export default function NewMaintenanceSchedulePage() {
                     "Content-Type": "application/json",
                 },
                 withCredentials: true,
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
             });
 
-            toast.success("Maintenance Schedule created successfully!");
+            const messages = getApiMessages(response, null, "Maintenance Schedule created successfully!", "Failed to create Maintenance Schedule");
 
-            // Navigate to the newly created record using asset_category_name
-            const newCategoryName = response.data.data.asset_category_name || response.data.data.name;
-            router.push(`/maintenance/doctype/maintenance-schedule/${newCategoryName}`);
+            if (messages.success) {
+                toast.success(messages.message, { description: messages.description });
+            }
+
+
+            const docName = response.data.data.name;
+            if (docName) {
+                router.push(`/maintenance/doctype/maintenance-schedule/${encodeURIComponent(docName)}`);
+            } else {
+                router.push(`/maintenance/doctype/maintenance-schedule`);
+            }
 
         } catch (err: any) {
             console.error("Create error:", err);

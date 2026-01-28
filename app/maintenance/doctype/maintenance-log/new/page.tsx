@@ -35,7 +35,7 @@ export default function NewMaintenanceLogPage() {
   const searchParams = useSearchParams();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
-  const doctypeName = "Maintenance Log";
+  const doctypeName = "Asset Maintenance Log";
   const [isSaving, setIsSaving] = React.useState(false);
 
   /* -------------------------------------------------
@@ -78,12 +78,11 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
       fields: [
         // Top identifiers row
         {
-          name: "maintenance_schedule",
+          name: "asset_maintenance",
           label: "Maintenance Schedule",
           type: "Link",
-          linkTarget: "Maintenance Schedule",
+          linkTarget: "Asset Maintenance",
           defaultValue: getValue("maintenance_schedule"),
-          colSpan: 6,
         },
         {
           name: "naming_series",
@@ -91,27 +90,23 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           type: "Select",
           options: [{ label: "ACC-AML-.YYYY.-", value: "ACC-AML-.YYYY.-" }],
           defaultValue: getValue("naming_series"),
-          colSpan: 6,
         },
 
         // Conditional fields: only show when maintenance_schedule is filled
         {
           name: "item_code",
           label: "Item Code",
-          type: "Link",
+          type: "Read Only",
           linkTarget: "Item",
-          displayDependsOn: "maintenance_schedule", // visible only if filled
-        //   defaultValue: getValue("item_code"),
-          colSpan: 6,
+          displayDependsOn: "maintenance_schedule", fetchFrom: { sourceField: "asset_maintenance", targetDoctype: "Asset Maintenance", targetField: "item_code" }
         },
         {
-          name: "asset_name",
+          name: "asset_maintenance",
           label: "Asset Name",
-          type: "Link",
+          type: "Read Only",
           linkTarget: "Asset",
-          displayDependsOn: "maintenance_schedule", // visible only if filled
-        //   defaultValue: getValue("asset_name"),
-          colSpan: 6,
+          displayDependsOn: "maintenance_schedule", 
+          fetchFrom: { sourceField: "maintenance_schedule", targetDoctype: "Asset", targetField: "asset_name" }
         },
 
         { name: "section_break_1", type: "Section Break", label: "Maintenance Details" },
@@ -119,9 +114,9 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
         {
           name: "task",
           label: "Task",
-          type: "Text",
+          type: "Link",
+          linkTarget: "Asset Maintenance Task",
           defaultValue: getValue("task"),
-          colSpan: 12,
         },
         {
           name: "maintenance_status",
@@ -134,14 +129,12 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
             { label: "Overdue", value: "Overdue" },
           ],
           defaultValue: getValue("maintenance_status", "Planned"),
-          colSpan: 6,
         },
         {
           name: "completion_date",
           label: "Completion Date",
           type: "Date",
           defaultValue: getValue("completion_date"),
-          colSpan: 6,
         },
 
         { name: "section_break_2", type: "Section Break", label: "Certificate" },
@@ -151,14 +144,12 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           label: "Has Certificate?",
           type: "Check",
           defaultValue: getValue("has_certificate"),
-          colSpan: 6,
         },
         {
           name: "resume",
           label: "Upload Certificate",
           type: "Attach",
           displayDependsOn: "has_certificate==1",
-          colSpan: 6,
         },
 
         { name: "section_break_3", type: "Section Break", label: "Log Notes" },
@@ -168,7 +159,6 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           label: "Log Notes",
           type: "Small Text",
           defaultValue: getValue("log"),
-          colSpan: 12,
         },
       ],
     },
