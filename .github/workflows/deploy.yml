@@ -17,6 +17,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -e
+            source ~/.bashrc
             cd ~/bench-Jalsampada/apps/Jalsampada_ui
 
             echo "📥 Pulling latest code"
