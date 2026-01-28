@@ -26,6 +26,47 @@ interface AssetCategoryData {
     }>;
 }
 
+const handleFormInit = (methods: any) => {
+    const { watch, setValue } = methods;
+
+    watch((formValues: any, { name }: any) => {
+        if (!name) return;
+        
+        if (!name.startsWith("asset_maintenance_tasks")) return;
+
+        const rows = formValues.asset_maintenance_tasks;
+        if (!Array.isArray(rows)) return;
+
+        rows.forEach((row: any, index: number) => {
+            const { start_date, periodicity } = row;
+            if (!start_date || !periodicity) return;
+
+            const start = new Date(start_date);
+
+            // Convert periodicity to days
+            const map: Record<string, number> = {
+                Daily: 1,
+                Weekly: 7,
+                Monthly: 30,
+                Quarterly: 90,
+                Yearly: 365,
+            };
+
+            const days = map[periodicity];
+            if (!days) return;
+
+            start.setDate(start.getDate() + days);
+            const endDate = start.toISOString().split("T")[0];
+
+            const path = `asset_maintenance_tasks.${index}.end_date`;
+
+            if (row.end_date !== endDate) {
+                setValue(path, endDate, { shouldDirty: true });
+            }
+        });
+    });
+};
+
 /* -------------------------------------------------
  2. Page component
  ------------------------------------------------- */
@@ -308,6 +349,7 @@ export default function NewMaintenanceSchedulePage() {
     return (
         <DynamicForm
             tabs={formTabs}
+            onFormInit={handleFormInit}   
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             title={`New ${doctypeName}`}
