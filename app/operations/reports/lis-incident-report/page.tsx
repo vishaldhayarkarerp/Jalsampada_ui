@@ -116,7 +116,7 @@ export default function LISIncidentReportPage() {
   }
 
   // --- Actions ---
-  
+
   // Memoized fetch function
   const fetchReportData = useCallback(async (currentFilters: Filters) => {
     if (!isInitialized) return;
@@ -160,11 +160,11 @@ export default function LISIncidentReportPage() {
       }
 
       const result = await response.json();
-      
+
       if (!result.message) {
-         setReportData([]);
-         setFilteredData([]);
-         setApiFields([]);
+        setReportData([]);
+        setFilteredData([]);
+        setApiFields([]);
       } else {
         const columns = result.message.columns || [];
         const data = result.message.result || [];
@@ -206,7 +206,7 @@ export default function LISIncidentReportPage() {
     const rows = filteredData.map(row => {
       return columnConfig.map(col => {
         let val = row[col.fieldname];
-        
+
         // Strip HTML tags for CSV export cleanliness
         if (col.isHtml && typeof val === 'string') {
           val = val.replace(/<[^>]*>?/gm, '');
@@ -215,7 +215,7 @@ export default function LISIncidentReportPage() {
         val = val === null || val === undefined ? "" : String(val);
         // CSV Escaping
         if (val.includes(",") || val.includes("\n") || val.includes('"')) {
-             val = `"${val.replace(/"/g, '""')}"`;
+          val = `"${val.replace(/"/g, '""')}"`;
         }
         return val;
       }).join(",");
@@ -255,15 +255,15 @@ export default function LISIncidentReportPage() {
     // Render HTML content safely
     if (col.isHtml) {
       return (
-        <div 
+        <div
           className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300"
-          dangerouslySetInnerHTML={{ __html: String(value) }} 
-          style={{ 
-            whiteSpace: 'normal', 
+          dangerouslySetInnerHTML={{ __html: String(value) }}
+          style={{
+            whiteSpace: 'normal',
             minWidth: '250px',
             wordBreak: 'break-word',
             fontSize: '0.875rem'
-          }} 
+          }}
         />
       );
     }
@@ -281,20 +281,20 @@ export default function LISIncidentReportPage() {
           <h2>LIS Incident Report</h2>
           <p>Track issues, maintenance requests, and incidents.</p>
         </div>
-        
+
         <div className="flex gap-2">
-            <button
-                className="btn btn--primary"
-                onClick={() => fetchReportData(filters)}
-                disabled={loading}
-            >
-                <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
+          <button
+            className="btn btn--primary"
+            onClick={() => fetchReportData(filters)}
+            disabled={loading}
+          >
+            <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
+          </button>
+          <div className="export-buttons flex gap-2 ml-2">
+            <button className="btn btn--outline" onClick={handleExportCSV}>
+              <i className="fas fa-file-csv"></i> CSV
             </button>
-            <div className="export-buttons flex gap-2 ml-2">
-                <button className="btn btn--outline" onClick={handleExportCSV}>
-                    <i className="fas fa-file-csv"></i> CSV
-                </button>
-            </div>
+          </div>
         </div>
       </div>
 
@@ -316,72 +316,76 @@ export default function LISIncidentReportPage() {
             to ensure LinkInput dropdowns appear ABOVE the sticky table header below.
         */}
         <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">From Date</label>
-                <input 
-                    type="date" 
-                    className="form-control w-full" 
-                    value={filters.from_date}
-                    onChange={(e) => handleFilterChange("from_date", e.target.value)}
-                />
-            </div>
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">To Date</label>
-                <input 
-                    type="date" 
-                    className="form-control w-full" 
-                    value={filters.to_date}
-                    onChange={(e) => handleFilterChange("to_date", e.target.value)}
-                />
-            </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">From Date</label>
+            <input
+              type="date"
+              className="form-control w-full"
+              value={filters.from_date}
+              onChange={(e) => handleFilterChange("from_date", e.target.value)}
+            />
+          </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">To Date</label>
+            <input
+              type="date"
+              className="form-control w-full"
+              value={filters.to_date}
+              onChange={(e) => handleFilterChange("to_date", e.target.value)}
+            />
+          </div>
 
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">LIS Name</label>
-                <LinkInput
-                    value={filters.custom_lis}
-                    onChange={(value) => handleFilterChange("custom_lis", value)}
-                    placeholder="Select LIS..."
-                    linkTarget="Lift Irrigation Scheme"
-                    className="w-full relative"
-                />
-            </div>
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">Stage No</label>
-                <LinkInput
-                    value={filters.custom_stage}
-                    onChange={(value) => handleFilterChange("custom_stage", value)}
-                    placeholder="Select Stage..."
-                    linkTarget="Stage No"
-                    className="w-full relative"
-                    
-                />
-            </div>
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">Asset</label>
-                <LinkInput
-                    value={filters.asset}
-                    onChange={(value) => handleFilterChange("asset", value)}
-                    placeholder="Select Asset..."
-                    linkTarget="Asset"
-                    className="w-full relative"
-                />
-            </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">LIS Name</label>
+            <LinkInput
+              value={filters.custom_lis}
+              onChange={(value) => handleFilterChange("custom_lis", value)}
+              placeholder="Select LIS..."
+              linkTarget="Lift Irrigation Scheme"
+              className="w-full relative"
+            />
+          </div>
 
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">Status</label>
-                <select 
-                    className="form-control w-full"
-                    value={filters.status}
-                    onChange={(e) => handleFilterChange("status", e.target.value)}
-                >
-                    <option value="">All Statuses</option>
-                    <option value="Open">Open</option>
-                    <option value="Closed">Closed</option>
-                    <option value="Replied">Replied</option>
-                    <option value="On Hold">On Hold</option>
-                    <option value="Resolved">Resolved</option>
-                </select>
-            </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">Stage No</label>
+            <LinkInput
+              value={filters.custom_stage}
+              onChange={(value) => handleFilterChange("custom_stage", value)}
+              placeholder="Select Stage..."
+              linkTarget="Stage No"
+              className="w-full relative"
+              filters={{
+                lis_name: filters.custom_lis || undefined
+              }}
+
+            />
+          </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">Asset</label>
+            <LinkInput
+              value={filters.asset}
+              onChange={(value) => handleFilterChange("asset", value)}
+              placeholder="Select Asset..."
+              linkTarget="Asset"
+              className="w-full relative"
+            />
+          </div>
+
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">Status</label>
+            <select
+              className="form-control w-full"
+              value={filters.status}
+              onChange={(e) => handleFilterChange("status", e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="Open">Open</option>
+              <option value="Closed">Closed</option>
+              <option value="Replied">Replied</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </div>
         </div>
 
         {/* Table Section */}

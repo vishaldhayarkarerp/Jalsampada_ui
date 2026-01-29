@@ -1,12 +1,408 @@
 "use client";
 
 import * as React from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { LinkInput } from "@/components/LinkInput";
+import { useAuth } from "@/context/AuthContext";
 
-export default function LogbookReportPage() {
+// --- API Configuration ---
+const API_BASE_URL = "http://103.219.1.138:4412/";
+const REPORT_API_PATH = "api/method/frappe.desk.query_report.run";
+const REPORT_NAME = "LogBook Report";
+
+// --- Type Definitions ---
+type ReportField = {
+  label: string;
+  fieldname: string;
+  fieldtype: string;
+  options?: string;
+  width?: number;
+};
+
+type ReportData = Record<string, any>;
+
+type Filters = {
+  from_date: string;
+  to_date: string;
+  custom_lis: string;
+  custom_stage: string;
+  asset_name: string;
+  status: string;
+};
+
+type ColumnConfig = {
+  fieldname: string;
+  label: string;
+  width: string;
+  isHtml?: boolean; // Flag to identify HTML content
+  formatter?: (value: any) => string;
+};
+
+// --- Helper Functions ---
+const formatDate = (dateString: string | null): string => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-GB");
+};
+
+const formatDateTime = (dateString: string | null): string => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleString("en-GB");
+};
+
+// --- Configuration ---
+// Static column configuration (kept as in original Logbook code, with added formatters where needed)
+const columnConfig: ColumnConfig[] = [
+  { fieldname: "name", label: "Logbook", width: "150px" },
+  { fieldname: "asset", label: "Asset Name", width: "150px" },
+  { fieldname: "asset_no", label: "Asset No.", width: "120px" },
+  { fieldname: "previous_hours", label: "Previous Hours", width: "120px" },
+  { fieldname: "start_datetime", label: "Ledger Start", width: "160px", formatter: formatDateTime },
+  { fieldname: "end_datetime", label: "Ledger Stop", width: "160px", formatter: formatDateTime },
+  { fieldname: "current_hours", label: "Running", width: "120px" },
+  { fieldname: "status", label: "Status", width: "120px" },
+  { fieldname: "operator_name", label: "Operator", width: "150px" },
+  { fieldname: "cancelled", label: "Cancelled", width: "100px" },
+  { fieldname: "pump_stop_reason", label: "Pump Stop Reason", width: "220px" },
+];
+
+export default function LogBookSheetReportPage() {
+  const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
+
+  // --- State ---
+  const [reportData, setReportData] = useState<ReportData[]>([]);
+  const [filteredData, setFilteredData] = useState<ReportData[]>([]);
+  const [apiFields, setApiFields] = useState<ReportField[]>([]);
+
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [filters, setFilters] = useState<Filters>({
+    from_date: "",
+    to_date: "",
+    custom_lis: "",
+    custom_stage: "",
+    asset_name: "",
+    status: "",
+  });
+
+  // --- Actions ---
+
+  // Memoized fetch function
+  const fetchReportData = useCallback(async (currentFilters: Filters) => {
+    if (!isInitialized) return;
+    if (!isAuthenticated || !apiKey || !apiSecret) {
+      setError("Please log in to view this report.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 1. Clean filters (remove empty strings)
+      const cleanedFilters: Record<string, string> = {};
+      Object.entries(currentFilters).forEach(([key, value]) => {
+        if (value && value.trim() !== "") {
+          cleanedFilters[key] = value;
+        }
+      });
+
+      // 2. Prepare URL Params
+      const params = new URLSearchParams({
+        report_name: REPORT_NAME,
+        filters: JSON.stringify(cleanedFilters)
+      });
+
+      // 3. Call Standard Report API
+      const response = await fetch(
+        `${API_BASE_URL}${REPORT_API_PATH}?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `token ${apiKey}:${apiSecret}`
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.message) {
+        setReportData([]);
+        setFilteredData([]);
+        setApiFields([]);
+      } else {
+        const columns = result.message.columns || [];
+        const data = result.message.result || [];
+
+        setApiFields(columns);
+        setReportData(data);
+        setFilteredData(data);
+      }
+
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to fetch data");
+    } finally {
+      setLoading(false);
+    }
+  }, [apiKey, apiSecret, isAuthenticated, isInitialized]);
+
+
+  // --- Effects ---
+
+  // Auto-refresh when filters change (Debounced 500ms)
+  useEffect(() => {
+    if (!isInitialized || !isAuthenticated) return;
+
+    const timer = setTimeout(() => {
+      fetchReportData(filters);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [filters, fetchReportData, isInitialized, isAuthenticated]);
+
+
+  // --- Event Handlers ---
+
+  const handleExportCSV = () => {
+    if (filteredData.length === 0) return;
+
+    const headers = columnConfig.map(c => c.label).join(",");
+    const rows = filteredData.map(row => {
+      return columnConfig.map(col => {
+        let val = row[col.fieldname];
+
+        // Strip HTML tags for CSV export cleanliness (though none here, kept for consistency)
+        if (col.isHtml && typeof val === 'string') {
+          val = val.replace(/<[^>]*>?/gm, '');
+        }
+
+        val = val === null || val === undefined ? "" : String(val);
+        // CSV Escaping
+        if (val.includes(",") || val.includes("\n") || val.includes('"')) {
+          val = `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      }).join(",");
+    }).join("\n");
+
+    const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "logbook_sheet_report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleFilterChange = (field: keyof Filters, value: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const totalTableWidth = useMemo(() => {
+    return columnConfig.reduce((total, col) => {
+      const width = parseInt(col.width.replace("px", ""));
+      return total + (isNaN(width) ? 150 : width);
+    }, 0);
+  }, []);
+
+  const renderCellValue = (row: ReportData, col: ColumnConfig) => {
+    const value = row[col.fieldname];
+
+    if (value === null || value === undefined || value === "") {
+      return "-";
+    }
+
+    // Render HTML content safely (none here, but kept for consistency)
+    if (col.isHtml) {
+      return (
+        <div
+          className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300"
+          dangerouslySetInnerHTML={{ __html: String(value) }}
+          style={{
+            whiteSpace: 'normal',
+            minWidth: '250px',
+            wordBreak: 'break-word',
+            fontSize: '0.875rem'
+          }}
+        />
+      );
+    }
+
+    if (col.formatter) {
+      return col.formatter(value);
+    }
+    return String(value);
+  };
+
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Logbook Report</h1>
-      <p>Logbook Report content goes here</p>
+    <div className="module active">
+      <div className="module-header">
+        <div>
+          <h2>Logbook Ledger</h2>
+          <p>Track pump running hours and operator entries.</p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            className="btn btn--primary"
+            onClick={() => fetchReportData(filters)}
+            disabled={loading}
+          >
+            <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
+          </button>
+          <div className="export-buttons flex gap-2 ml-2">
+            <button className="btn btn--outline" onClick={handleExportCSV}>
+              <i className="fas fa-file-csv"></i> CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="tab-content active relative">
+        {error && (
+          <div className="alert alert--danger" style={{ marginBottom: "20px" }}>
+            <i className="fas fa-exclamation-triangle"></i> {error}
+          </div>
+        )}
+
+        {loading && !reportData.length && (
+          <div className="alert alert--info" style={{ marginBottom: "20px" }}>
+            <i className="fas fa-spinner fa-spin"></i> Loading data...
+          </div>
+        )}
+
+        {/* Z-Index Fix: 
+            Added relative and z-[60] to the parent grid, and high z-index to individual form groups 
+            to ensure LinkInput dropdowns appear ABOVE the sticky table header below.
+        */}
+        <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">From Date</label>
+            <input
+              type="date"
+              className="form-control w-full"
+              value={filters.from_date}
+              onChange={(e) => handleFilterChange("from_date", e.target.value)}
+            />
+          </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">To Date</label>
+            <input
+              type="date"
+              className="form-control w-full"
+              value={filters.to_date}
+              onChange={(e) => handleFilterChange("to_date", e.target.value)}
+            />
+          </div>
+
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">LIS</label>
+            <LinkInput
+              value={filters.custom_lis}
+              onChange={(value) => handleFilterChange("custom_lis", value)}
+              placeholder="Select LIS..."
+              linkTarget="Lift Irrigation Scheme"
+              className="w-full relative"
+            />
+          </div>
+          <div className="form-group relative z-[110]">
+            <label className="text-sm font-medium mb-1 block">Stage</label>
+            <LinkInput
+              value={filters.custom_stage}
+              onChange={(value) => handleFilterChange("custom_stage", value)}
+              placeholder="Select Stage..."
+              linkTarget="Stage No"
+              className="w-full"
+              filters={{
+                lis_name: filters.custom_lis || undefined
+              }}
+            />
+          </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">Asset Name</label>
+            <LinkInput
+              value={filters.asset_name}
+              onChange={(value) => handleFilterChange("asset_name", value)}
+              placeholder="Select Asset..."
+              linkTarget="Asset"
+              className="w-full relative"
+            />
+          </div>
+
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">Status</label>
+            <select
+              className="form-control w-full"
+              value={filters.status}
+              onChange={(e) => handleFilterChange("status", e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="Running">Running</option>
+              <option value="Stopped">Stopped</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Table Section */}
+        <div
+          className="stock-table-container border rounded-md relative z-10"
+          style={{
+            overflowX: "auto",
+            overflowY: "auto",
+            maxHeight: "70vh",
+          }}
+        >
+          <table
+            className="stock-table sticky-header-table"
+            style={{ minWidth: `${totalTableWidth}px` }}
+          >
+            <thead style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "white" }}>
+              <tr>
+                {columnConfig.map((column) => (
+                  <th key={column.fieldname} style={{ width: column.width }}>
+                    {column.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={Math.max(columnConfig.length, 1)}
+                    style={{ textAlign: "center", padding: "40px" }}
+                  >
+                    {loading ? "Fetching records..." : "No records found matching criteria"}
+                  </td>
+                </tr>
+              ) : (
+                filteredData.map((row, index) => (
+                  <tr key={index}>
+                    {columnConfig.map((column) => (
+                      <td key={`${index}-${column.fieldname}`}>
+                        {renderCellValue(row, column)}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
