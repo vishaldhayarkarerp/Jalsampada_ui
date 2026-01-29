@@ -146,6 +146,7 @@ export default function MaintenanceLogDetailPage() {
             label: "Task",
             type: "Link",
             linkTarget: "Asset Maintenance Task",
+            searchField: "maintenance_task",
             defaultValue: getValue("task"),
           },
           {
