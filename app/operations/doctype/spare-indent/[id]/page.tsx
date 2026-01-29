@@ -320,16 +320,48 @@ export default function SpareIndentDetailPage() {
                 docstatus: record?.docstatus
             };
 
+            // Sanitize and format 'custom_assets' Child Table
             if (Array.isArray(payload.custom_assets)) {
-                payload.custom_assets = payload.custom_assets.map((assetItem: any) =>
-                    typeof assetItem === 'string' ? { asset: assetItem } : assetItem
-                );
+                payload.custom_assets = payload.custom_assets.map((assetItem: any, index: number) => {
+                    // Create a clean object with only Frappe child table fields
+                    const sanitized: any = {
+                        docstatus: 0,
+                        doctype: "Asset Table Multiselect", // Adjust doctype name based on your custom child table
+                        __islocal: 1,
+                        __unsaved: 1,
+                        parentfield: "custom_assets",
+                        parenttype: DOCTYPE_NAME,
+                        idx: index + 1,
+                    };
+
+                    // Handle both string asset IDs and objects
+                    if (typeof assetItem === 'string') {
+                        sanitized.asset = assetItem;
+                    } else if (assetItem && typeof assetItem === 'object') {
+                        // If it has 'stage' field, use it as 'asset', otherwise use 'name' or 'asset' field
+                        sanitized.asset = assetItem.asset || assetItem.stage || assetItem.name || assetItem;
+                    }
+
+                    return sanitized;
+                });
             }
 
+            // Sanitize 'items' Child Table
             if (Array.isArray(payload.items)) {
-                payload.items = payload.items.map((item: any) => {
-                    const { id, ...rest } = item;
-                    return rest;
+                payload.items = payload.items.map((item: any, index: number) => {
+                    // Remove temporary UI fields
+                    const { id, stage, name: tempName, ...rest } = item;
+                    
+                    // Add proper child table fields
+                    return {
+                        ...rest,
+                        docstatus: 0,
+                        __islocal: 1,
+                        __unsaved: 1,
+                        parentfield: "items",
+                        parenttype: DOCTYPE_NAME,
+                        idx: index + 1,
+                    };
                 });
             }
 
