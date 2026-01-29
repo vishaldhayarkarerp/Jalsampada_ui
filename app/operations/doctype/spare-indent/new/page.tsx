@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   DynamicForm,
   TabbedLayout,
@@ -44,7 +44,6 @@ export default function NewSpareIndentPage() {
             name: "transaction_date",
             label: "Date",
             type: "Date",
-            defaultValue: new Date().toISOString().split("T")[0],
             required: true,
             bold: true,
             width: "100px"
@@ -55,7 +54,6 @@ export default function NewSpareIndentPage() {
             type: "Date",
             required: true,
           },
-
           {
             name: "custom_prepared_by",
             label: "Prepared By",
@@ -63,7 +61,6 @@ export default function NewSpareIndentPage() {
             searchField: "employee_name",
             linkTarget: "Employee",
           },
-
           {
             name: "custom_designation",
             label: "Designation",
@@ -73,7 +70,7 @@ export default function NewSpareIndentPage() {
               targetDoctype: "Employee",
               targetField: "designation"
             },
-            readOnly: true, // Fetched via useEffect
+            readOnly: true,
           },
           {
             name: "buying_price_list",
@@ -96,7 +93,6 @@ export default function NewSpareIndentPage() {
             linkTarget: "Stage No",
             filterMapping: [{ sourceField: "custom_lis_name", targetField: "lis_name" }]
           },
-
           {
             name: "custom_asset_category",
             label: "Asset category",
@@ -109,7 +105,6 @@ export default function NewSpareIndentPage() {
             type: "Table MultiSelect",
             linkTarget: "Asset",
           },
-
           { name: "warehouse_section", label: "Items", type: "Section Break" },
           {
             name: "scan_barcode",
@@ -165,52 +160,66 @@ export default function NewSpareIndentPage() {
               },
             ],
           },
-
-
           { name: "custom_approval_section", label: "Approval Section", type: "Section Break" },
           {
             name: "custom_recommended_by",
             label: "Recommended By (Incharge/JE)",
             type: "Link",
+            searchField: "full_name",
             linkTarget: "User",
           },
           {
             name: "custom_verified_by",
             label: "Verified By (DE)",
             type: "Link",
+            searchField: "employee_name",
             linkTarget: "Employee",
           },
           {
             name: "custom_approved_by",
             label: "Approved By (EE)",
             type: "Link",
+            searchField: "employee_name",
             linkTarget: "Employee",
           },
-
           {
             name: "custom_name1",
             label: "Name",
             type: "Data",
-            readOnly: true, // Fetched via useEffect
+            fetchFrom: {
+                            sourceField: "custom_recommended_by",
+                            targetDoctype: "User",
+                            targetField: "full_name"
+                        },
+            readOnly: true,
           },
           {
             name: "custom_name2",
             label: "Name",
             type: "Data",
-            readOnly: true, // Fetched via useEffect
+             fetchFrom: {
+                            sourceField: "custom_verified_by",
+                            targetDoctype: "Employee",
+                            targetField: "employee_name"
+                        },
+            readOnly: true,
           },
           {
             name: "custom_name3",
             label: "Name",
             type: "Data",
-            readOnly: true, // Fetched via useEffect
+            fetchFrom: {
+                            sourceField: "custom_approved_by",
+                            targetDoctype: "Employee",
+                            targetField: "employee_name"
+                        },
+            readOnly: true,
           },
           { name: "custom_date1", label: "Date", type: "Date" },
           { name: "custom_date2", label: "Date", type: "Date" },
           { name: "custom_date3", label: "Date", type: "Date" },
         ],
       },
-
       {
         name: "Terms",
         fields: [
@@ -230,14 +239,12 @@ export default function NewSpareIndentPage() {
       {
         name: "More Info",
         fields: [
-
           {
             name: "letter_head",
             label: "Letter Head",
             type: "Link",
             linkTarget: "Letter Head",
           },
-
           {
             name: "select_print_heading",
             label: "Print Heading",
@@ -246,12 +253,10 @@ export default function NewSpareIndentPage() {
           },
         ],
       },
-
     ];
   }, []);
 
   const handleSubmit = async (data: Record<string, any>) => {
-    // Basic Validation
     if (!data.material_request_type) {
       toast.error("Purpose is required");
       return;
@@ -264,21 +269,49 @@ export default function NewSpareIndentPage() {
     setIsSaving(true);
     try {
       const payload: Record<string, any> = { ...data, doctype: DOCTYPE_NAME };
+      
+      // Sanitize and format 'custom_assets' Child Table
       if (Array.isArray(payload.custom_assets)) {
-        payload.custom_assets = payload.custom_assets.map((assetItem: any) => {
-          // If it's just a string ID, wrap it in an object.
-          // We assume the field name in the child table is 'asset' based on LinkTarget 'Asset'.
+        payload.custom_assets = payload.custom_assets.map((assetItem: any, index: number) => {
+          // Create a clean object with only Frappe child table fields
+          const sanitized: any = {
+            docstatus: 0,
+            doctype: "Asset Table Multiselect", // Adjust doctype name based on your custom child table
+            __islocal: 1,
+            __unsaved: 1,
+            parentfield: "custom_assets",
+            parenttype: DOCTYPE_NAME,
+            idx: index + 1,
+          };
+
+          // Handle both string asset IDs and objects
           if (typeof assetItem === 'string') {
-            return { asset: assetItem };
+            sanitized.asset = assetItem;
+          } else if (assetItem && typeof assetItem === 'object') {
+            // If it has 'stage' field, use it as 'asset', otherwise use 'name' or 'asset' field
+            sanitized.asset = assetItem.asset || assetItem.stage || assetItem.name || assetItem;
           }
-          return assetItem;
+
+          return sanitized;
         });
       }
-      // FIX 2: Sanitize 'items' Child Table     
+
+      // Sanitize 'items' Child Table
       if (Array.isArray(payload.items)) {
-        payload.items = payload.items.map((item: any) => {
-          const { id, ...rest } = item; // Remove 'id' if present
-          return rest;
+        payload.items = payload.items.map((item: any, index: number) => {
+          // Remove temporary UI fields
+          const { id, stage, name: tempName, ...rest } = item;
+          
+          // Add proper child table fields
+          return {
+            ...rest,
+            docstatus: 0,
+            __islocal: 1,
+            __unsaved: 1,
+            parentfield: "items",
+            parenttype: DOCTYPE_NAME,
+            idx: index + 1,
+          };
         });
       }
 
@@ -296,6 +329,38 @@ export default function NewSpareIndentPage() {
       setIsSaving(false);
     }
   };
+  React.useEffect(() => {
+    if (!formMethods) return;
+
+    const subscription = formMethods.watch((values, { name }) => {
+      // If the main Required By date changes, update all items
+      if (name === "schedule_date") {
+        const newParentDate = values.schedule_date;
+        const currentItems = values.items || [];
+
+        currentItems.forEach((_: any, index: number) => {
+          formMethods.setValue(`items.${index}.schedule_date`, newParentDate, {
+            shouldDirty: true,
+          });
+        });
+      }
+
+      // Sync for new rows: If items table changes, check if the new row needs the parent date
+      if (name?.startsWith("items") && !name.includes("schedule_date")) {
+        const parentDate = formMethods.getValues("schedule_date");
+        const currentItems = values.items || [];
+
+        currentItems.forEach((item: any, index: number) => {
+          if (!item.schedule_date && parentDate) {
+            formMethods.setValue(`items.${index}.schedule_date`, parentDate, {
+              shouldDirty: true,
+            });
+          }
+        });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [formMethods]);
 
   React.useEffect(() => {
     if (!formMethods || !apiKey || !apiSecret) return;
@@ -319,7 +384,6 @@ export default function NewSpareIndentPage() {
           apiKey,
           apiSecret
         );
-        // We set the value as string[] for the UI component to display chips correctly.The transformation to object[] happens in handleSubmit.
         formMethods.setValue("custom_assets", assets, { shouldDirty: true });
       } catch (error) {
         console.error("Failed to fetch assets:", error);
@@ -398,7 +462,7 @@ export default function NewSpareIndentPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       title="New Spare Indent"
-      description="Create a new Material Request for spares"
+      description="Create a new Spare Indent"
       submitLabel={isSaving ? "Saving..." : "Create"}
       onFormInit={setFormMethods}
     />

@@ -13,7 +13,6 @@ import { UseFormReturn } from "react-hook-form";
 import { fetchAssetsFromLisAndStage, fetchItemDetails } from "../services";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
-// Backend DocType name
 const DOCTYPE_NAME = "Material Request";
 
 export default function SpareIndentDetailPage() {
@@ -27,7 +26,6 @@ export default function SpareIndentDetailPage() {
     const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
     const lastFetchedItemCodesRef = React.useRef<Record<number, string>>({});
 
-    // 🟢 1. FETCH RECORD
     const fetchRecord = async () => {
         if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
         try {
@@ -56,7 +54,6 @@ export default function SpareIndentDetailPage() {
         return record.workflow_state || record.status || "Draft";
     };
 
-    // 🟢 FORM DEFINITION
     const formTabs: TabbedLayout[] = React.useMemo(() => {
         if (!record) return [];
         const getVal = (key: string, def?: any) => record[key] ?? def;
@@ -76,7 +73,6 @@ export default function SpareIndentDetailPage() {
                         defaultValue: getVal("material_request_type"),
                         required: true,
                     },
-
                     {
                         name: "transaction_date",
                         label: "Date",
@@ -141,16 +137,16 @@ export default function SpareIndentDetailPage() {
                         linkTarget: "Asset Category",
                         defaultValue: getVal("custom_asset_category"),
                     },
-
                     {
                         name: "custom_assets",
                         label: "Assets",
                         type: "Table MultiSelect",
                         linkTarget: "Asset",
-                        defaultValue: getVal("custom_assets"),
+                        // 🟢 FIX: Extract only the 'asset' string from the database object
+                        defaultValue: getVal("custom_assets", []).map((row: any) =>
+                            typeof row === 'object' ? row.asset : row
+                        ),
                     },
-
-                    // ── Items / Warehouse Section ───────────────────────────────────
                     { name: "warehouse_section", label: "Items", type: "Section Break" },
                     {
                         name: "scan_barcode",
@@ -159,7 +155,6 @@ export default function SpareIndentDetailPage() {
                         placeholder: "Barcode",
                         defaultValue: getVal("scan_barcode"),
                     },
-
                     {
                         name: "set_warehouse",
                         label: "Set Target Warehouse",
@@ -175,7 +170,6 @@ export default function SpareIndentDetailPage() {
                         defaultValue: getVal("set_from_warehouse"),
                         displayDependsOn: "material_request_type == 'Material Transfer'",
                     },
-
                     {
                         name: "items",
                         label: "Items",
@@ -185,6 +179,7 @@ export default function SpareIndentDetailPage() {
                         columns: [
                             { name: "item_code", label: "Item Code", type: "Link", linkTarget: "Item", required: true },
                             { name: "item_name", label: "Item Name", type: "Data", readOnly: true },
+                            { name: "schedule_date", label: "Required By", type: "Date", required: true },
                             { name: "description", label: "Description", type: "Text" },
                             { name: "qty", label: "Quantity", type: "Float", required: true },
                             { name: "uom", label: "UOM", type: "Link", linkTarget: "UOM" },
@@ -216,6 +211,7 @@ export default function SpareIndentDetailPage() {
                         label: "Recommended By (Incharge/JE)",
                         type: "Link",
                         linkTarget: "User",
+                        searchField: "full_name",
                         defaultValue: getVal("custom_recommended_by"),
                     },
                     {
@@ -223,6 +219,7 @@ export default function SpareIndentDetailPage() {
                         label: "Verified By (DE)",
                         type: "Link",
                         linkTarget: "Employee",
+                        searchField: "employee_name",
                         defaultValue: getVal("custom_verified_by"),
                     },
                     {
@@ -230,6 +227,7 @@ export default function SpareIndentDetailPage() {
                         label: "Approved By (EE)",
                         type: "Link",
                         linkTarget: "Employee",
+                        searchField: "employee_name",
                         defaultValue: getVal("custom_approved_by"),
                     },
                     {
@@ -237,6 +235,11 @@ export default function SpareIndentDetailPage() {
                         label: "Name",
                         type: "Data",
                         readOnly: true,
+                        fetchFrom: {
+                            sourceField: "custom_recommended_by",
+                            targetDoctype: "User",
+                            targetField: "full_name"
+                        },
                         defaultValue: getVal("custom_name1"),
                     },
                     {
@@ -244,6 +247,11 @@ export default function SpareIndentDetailPage() {
                         label: "Name",
                         type: "Data",
                         readOnly: true,
+                        fetchFrom: {
+                            sourceField: "custom_verified_by",
+                            targetDoctype: "Employee",
+                            targetField: "employee_name"
+                        },
                         defaultValue: getVal("custom_name2"),
                     },
                     {
@@ -251,6 +259,11 @@ export default function SpareIndentDetailPage() {
                         label: "Name",
                         type: "Data",
                         readOnly: true,
+                        fetchFrom: {
+                            sourceField: "custom_approved_by",
+                            targetDoctype: "Employee",
+                            targetField: "employee_name"
+                        },
                         defaultValue: getVal("custom_name3"),
                     },
                     { name: "custom_date1", label: "Date", type: "Date", defaultValue: getVal("custom_date1") },
@@ -258,8 +271,6 @@ export default function SpareIndentDetailPage() {
                     { name: "custom_date3", label: "Date", type: "Date", defaultValue: getVal("custom_date3") },
                 ],
             },
-
-            // ── Terms Tab ───────────────────────────────────────────────────────
             {
                 name: "Terms",
                 fields: [
@@ -278,8 +289,6 @@ export default function SpareIndentDetailPage() {
                     },
                 ],
             },
-
-            // ── More Info / Status Tab ──────────────────────────────────────────
             {
                 name: "More Info",
                 fields: [
@@ -301,32 +310,58 @@ export default function SpareIndentDetailPage() {
             },
         ];
     }, [record]);
-
-    // 🟢 UPDATE (SAVE) HANDLER
     const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
         if (!isDirty) { toast.info("No changes to save."); return; }
-
         setIsSaving(true);
         try {
-            // Preserve docstatus and modified timestamp
             const payload: Record<string, any> = {
                 ...data,
                 modified: record?.modified,
                 docstatus: record?.docstatus
             };
+
+            // Sanitize and format 'custom_assets' Child Table
             if (Array.isArray(payload.custom_assets)) {
-                payload.custom_assets = payload.custom_assets.map((assetItem: any) => {
+                payload.custom_assets = payload.custom_assets.map((assetItem: any, index: number) => {
+                    // Create a clean object with only Frappe child table fields
+                    const sanitized: any = {
+                        docstatus: 0,
+                        doctype: "Asset Table Multiselect", // Adjust doctype name based on your custom child table
+                        __islocal: 1,
+                        __unsaved: 1,
+                        parentfield: "custom_assets",
+                        parenttype: DOCTYPE_NAME,
+                        idx: index + 1,
+                    };
+
+                    // Handle both string asset IDs and objects
                     if (typeof assetItem === 'string') {
-                        return { asset: assetItem };
+                        sanitized.asset = assetItem;
+                    } else if (assetItem && typeof assetItem === 'object') {
+                        // If it has 'stage' field, use it as 'asset', otherwise use 'name' or 'asset' field
+                        sanitized.asset = assetItem.asset || assetItem.stage || assetItem.name || assetItem;
                     }
-                    return assetItem;
+
+                    return sanitized;
                 });
             }
-            //Sanitize 'items' Child Table
+
+            // Sanitize 'items' Child Table
             if (Array.isArray(payload.items)) {
-                payload.items = payload.items.map((item: any) => {
-                    const { id, ...rest } = item;
-                    return rest;
+                payload.items = payload.items.map((item: any, index: number) => {
+                    // Remove temporary UI fields
+                    const { id, stage, name: tempName, ...rest } = item;
+                    
+                    // Add proper child table fields
+                    return {
+                        ...rest,
+                        docstatus: 0,
+                        __islocal: 1,
+                        __unsaved: 1,
+                        parentfield: "items",
+                        parenttype: DOCTYPE_NAME,
+                        idx: index + 1,
+                    };
                 });
             }
 
@@ -344,79 +379,69 @@ export default function SpareIndentDetailPage() {
         }
     };
 
-    // 🟢 ASSET FETCHING EFFECT
+    // 🟢 SYNC Required By Date logic
+    React.useEffect(() => {
+        if (!formMethods) return;
+        const subscription = formMethods.watch((values, { name }) => {
+            if (name === "schedule_date") {
+                const newParentDate = values.schedule_date;
+                const currentItems = values.items || [];
+                currentItems.forEach((_: any, index: number) => {
+                    formMethods.setValue(`items.${index}.schedule_date`, newParentDate, { shouldDirty: true });
+                });
+            }
+            if (name?.startsWith("items") && !name.includes("schedule_date")) {
+                const parentDate = formMethods.getValues("schedule_date");
+                const currentItems = values.items || [];
+                currentItems.forEach((item: any, index: number) => {
+                    if (!item.schedule_date && parentDate) {
+                        formMethods.setValue(`items.${index}.schedule_date`, parentDate, { shouldDirty: true });
+                    }
+                });
+            }
+        });
+        return () => subscription.unsubscribe();
+    }, [formMethods]);
+
     React.useEffect(() => {
         if (!formMethods || !apiKey || !apiSecret) return;
-
         const subscription = formMethods.watch(async (values, { name }) => {
             if (name !== "custom_asset_category") return;
-
             const customLisName = values.custom_lis_name;
             const customStage = values.custom_stage;
             const customAssetCategory = values.custom_asset_category;
-
             if (!customLisName || !customStage || !customAssetCategory) return;
-
             try {
                 const assets = await fetchAssetsFromLisAndStage(
-                    {
-                        custom_lis_name: customLisName,
-                        custom_stage: customStage,
-                        custom_asset_category: customAssetCategory,
-                    },
-                    apiKey,
-                    apiSecret
+                    { custom_lis_name: customLisName, custom_stage: customStage, custom_asset_category: customAssetCategory },
+                    apiKey, apiSecret
                 );
-
                 formMethods.setValue("custom_assets", assets, { shouldDirty: true });
             } catch (error) {
                 console.error("Failed to fetch assets:", error);
                 toast.error("Failed to load assets", { duration: Infinity });
             }
         });
-
         return () => subscription.unsubscribe();
     }, [apiKey, apiSecret, formMethods]);
 
-    // 🟢 ITEM DETAILS FETCHING EFFECT
     React.useEffect(() => {
         if (!formMethods || !apiKey || !apiSecret) return;
-
         const subscription = formMethods.watch(async (values, { name }) => {
             if (!name || !name.startsWith("items") || !name.endsWith("item_code")) return;
-
             const match = name.match(/^items\.(\d+)\.item_code$/);
             if (!match) return;
-
             const rowIndex = Number(match[1]);
             const currentItems = values.items || [];
             const itemCode = currentItems[rowIndex]?.item_code?.trim();
-
-            const lastFetchedCodes = lastFetchedItemCodesRef.current;
-
-            if (!itemCode) {
-                delete lastFetchedCodes[rowIndex];
-                return;
-            }
-
-            if (lastFetchedCodes[rowIndex] === itemCode) {
-                return;
-            }
-
-            lastFetchedCodes[rowIndex] = itemCode;
-
+            if (!itemCode || lastFetchedItemCodesRef.current[rowIndex] === itemCode) return;
+            lastFetchedItemCodesRef.current[rowIndex] = itemCode;
             try {
                 const message = await fetchItemDetails(
-                    {
-                        item_code: itemCode,
-                        material_request_type: values.material_request_type || "Material Issue"
-                    },
-                    apiKey,
-                    apiSecret
+                    { item_code: itemCode, material_request_type: values.material_request_type || "Material Issue" },
+                    apiKey, apiSecret
                 );
-
                 if (!message) return;
-
                 const fieldUpdates: Record<string, any> = {
                     item_name: message.item_name ?? "",
                     description: message.description ?? "",
@@ -426,17 +451,14 @@ export default function SpareIndentDetailPage() {
                     rate: message.rate ?? 0,
                     amount: message.amount ?? 0,
                 };
-
                 Object.entries(fieldUpdates).forEach(([fieldName, fieldValue]) => {
                     formMethods.setValue(`items.${rowIndex}.${fieldName}`, fieldValue, { shouldDirty: true });
                 });
             } catch (error: any) {
                 console.error("Failed to fetch item details", error);
                 toast.error(error.response?.data?.message || "Failed to fetch item details", { duration: 5000 });
-                delete lastFetchedCodes[rowIndex];
             }
         });
-
         return () => subscription.unsubscribe();
     }, [apiKey, apiSecret, formMethods]);
 

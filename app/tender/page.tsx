@@ -9,6 +9,7 @@ import {
   IndianRupee,
   Settings,
   Users,
+  BarChart3,
 } from "lucide-react";
 
 const masterDoctypes: Doctype[] = [
@@ -29,6 +30,18 @@ const transactionDoctypes: Doctype[] = [
   { name: "expenditure", title: "Expenditure", icon: IndianRupee },
 ];
 
+const reportsDoctypes: Doctype[] = [
+  // Reports
+  { name: "expenditure_details_report", title: "Expenditure Details Report", icon: BarChart3 },
+  { name: "tender_level_report", title: "Tender Level Report", icon: BarChart3 },
+];
+
+const reportsGroup: DoctypeGroup = {
+  title: "Reports",
+  doctypes: reportsDoctypes,
+  basePath: "/tender/reports"
+};
+
 const tenderDoctypeGroups: DoctypeGroup[] = [
   {
     title: "Transactions",
@@ -38,6 +51,7 @@ const tenderDoctypeGroups: DoctypeGroup[] = [
     title: "Master",
     doctypes: masterDoctypes
   },
+  reportsGroup,
 ];
 
 export default function TenderPage() {
