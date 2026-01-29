@@ -4,6 +4,8 @@ import * as React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { LinkInput } from "@/components/LinkInput";
 import { useAuth } from "@/context/AuthContext";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 // --- API Configuration ---
 const API_BASE_URL = "http://103.219.1.138:4412/";
@@ -231,6 +233,222 @@ export default function LISIncidentReportPage() {
     document.body.removeChild(link);
   };
 
+  const handleExportPDF = async () => {
+    if (filteredData.length === 0) return;
+
+    try {
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      const usableWidth = pageWidth - (margin * 2);
+      const usableHeight = pageHeight - (margin * 2);
+
+      // Set font
+      pdf.setFont('helvetica');
+
+      // Title
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('LIS Incident Report', pageWidth / 2, 20, { align: 'center' });
+
+      // Summary information
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const summaryY = 30;
+      pdf.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB')}`, margin, summaryY);
+      pdf.text(`Total Records: ${filteredData.length}`, margin, summaryY + 7);
+      
+      const filtersApplied = Object.values(filters).filter(v => v).length > 0 
+        ? Object.entries(filters).filter(([_, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ')
+        : 'None';
+      pdf.text(`Filters Applied: ${filtersApplied}`, margin, summaryY + 14);
+
+      // Calculate column widths based on content
+      const columnWidths: number[] = [];
+      const minColumnWidth = 20;
+      const maxColumnWidth = usableWidth / 4;
+
+      columnConfig.forEach(col => {
+        let maxWidth = pdf.getStringUnitWidth(col.label) * pdf.getFontSize();
+        filteredData.forEach(row => {
+          const value = row[col.fieldname];
+          let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
+          
+          // Strip HTML tags for PDF width calculation
+          if (col.isHtml && typeof displayValue === 'string') {
+            displayValue = displayValue.replace(/<[^>]*>?/gm, '');
+          }
+          
+          const textWidth = pdf.getStringUnitWidth(displayValue) * pdf.getFontSize();
+          if (textWidth > maxWidth) {
+            maxWidth = textWidth;
+          }
+        });
+        let colWidth = maxWidth / pdf.internal.scaleFactor; 
+        colWidth = Math.max(minColumnWidth, Math.min(maxColumnWidth, colWidth));
+        columnWidths.push(colWidth);
+      });
+
+      // Normalize column widths to fit usableWidth
+      const totalCalculatedWidth = columnWidths.reduce((sum, width) => sum + width, 0);
+      const scaleFactor = usableWidth / totalCalculatedWidth;
+      const finalColumnWidths = columnWidths.map(width => width * scaleFactor);
+
+      // Table headers
+      let currentY = summaryY + 25;
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      
+      // Calculate header heights first
+      let headerMaxHeight = 0;
+      columnConfig.forEach((col, index) => {
+        const text = col.label;
+        const textLines = pdf.splitTextToSize(text, finalColumnWidths[index] - 4);
+        const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
+        if (textHeight > headerMaxHeight) {
+          headerMaxHeight = textHeight;
+        }
+      });
+
+      // Draw header background
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(margin, currentY - 5, usableWidth, headerMaxHeight + 5, 'F');
+
+      // Draw headers with text wrapping
+      pdf.setTextColor(0, 0, 0);
+      columnConfig.forEach((col, index) => {
+        const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
+        const text = col.label;
+        const textLines = pdf.splitTextToSize(text, finalColumnWidths[index] - 4);
+        const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
+        const yOffset = (headerMaxHeight + 5 - textHeight) / 2;
+        pdf.text(textLines, x + 2, currentY - 5 + yOffset);
+      });
+
+      // Draw horizontal line after headers
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, currentY + headerMaxHeight + 3, pageWidth - margin, currentY + headerMaxHeight + 3);
+
+      // Table data
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+      currentY += headerMaxHeight + 8;
+
+      let rowsOnPage = 0;
+      const maxRowsPerPage = Math.floor((usableHeight - currentY) / 10);
+
+      filteredData.forEach((row, rowIndex) => {
+        // Check if we need a new page
+        if (rowsOnPage >= maxRowsPerPage) {
+          pdf.addPage();
+          currentY = margin + 10;
+          rowsOnPage = 0;
+
+          // Redraw headers on new page
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFillColor(240, 240, 240);
+          pdf.rect(margin, currentY - 5, usableWidth, headerMaxHeight + 5, 'F');
+          
+          pdf.setTextColor(0, 0, 0);
+          columnConfig.forEach((col, index) => {
+            const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
+            const text = col.label;
+            const textLines = pdf.splitTextToSize(text, finalColumnWidths[index] - 4);
+            const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
+            const yOffset = (headerMaxHeight + 5 - textHeight) / 2;
+            pdf.text(textLines, x + 2, currentY - 5 + yOffset);
+          });
+
+          pdf.setDrawColor(200, 200, 200);
+          pdf.line(margin, currentY + headerMaxHeight + 3, pageWidth - margin, currentY + headerMaxHeight + 3);
+          
+          pdf.setFontSize(7);
+          pdf.setFont('helvetica', 'normal');
+          currentY += headerMaxHeight + 8;
+        }
+
+        // Alternating row background
+        if (rowIndex % 2 === 1) {
+          pdf.setFillColor(249, 249, 249);
+          pdf.rect(margin, currentY - 4, usableWidth, 8, 'F');
+        }
+
+        // Draw row data with text wrapping
+        let rowMaxHeight = 0;
+
+        columnConfig.forEach((col, index) => {
+          const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
+          const value = row[col.fieldname];
+          let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
+          
+          // Strip HTML tags for PDF
+          if (col.isHtml && typeof displayValue === 'string') {
+            displayValue = displayValue.replace(/<[^>]*>?/gm, '');
+          }
+          
+          // Apply formatter if available
+          if (col.formatter) {
+            displayValue = col.formatter(value);
+          }
+          
+          const textLines = pdf.splitTextToSize(displayValue, finalColumnWidths[index] - 4);
+          const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
+          
+          if (textHeight > rowMaxHeight) {
+            rowMaxHeight = textHeight;
+          }
+        });
+
+        // Draw all cells with proper height
+        pdf.setTextColor(0, 0, 0);
+        columnConfig.forEach((col, index) => {
+          const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
+          const value = row[col.fieldname];
+          let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
+          
+          // Strip HTML tags for PDF
+          if (col.isHtml && typeof displayValue === 'string') {
+            displayValue = displayValue.replace(/<[^>]*>?/gm, '');
+          }
+          
+          // Apply formatter if available
+          if (col.formatter) {
+            displayValue = col.formatter(value);
+          }
+          
+          const textLines = pdf.splitTextToSize(displayValue, finalColumnWidths[index] - 4);
+          pdf.text(textLines, x + 2, currentY);
+        });
+
+        // Draw cell borders
+        pdf.setDrawColor(200, 200, 200);
+        let xPos = margin;
+        finalColumnWidths.forEach((width, index) => {
+          pdf.line(xPos, currentY - 4, xPos, currentY + rowMaxHeight);
+          xPos += width;
+        });
+        pdf.line(pageWidth - margin, currentY - 4, pageWidth - margin, currentY + rowMaxHeight);
+        pdf.line(margin, currentY + rowMaxHeight, pageWidth - margin, currentY + rowMaxHeight);
+
+        currentY += rowMaxHeight + 2;
+        rowsOnPage++;
+      });
+
+      pdf.save(`lis_incident_report_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
+  };
+
   const handleFilterChange = (field: keyof Filters, value: string) => {
     setFilters((prev) => ({
       ...prev,
@@ -293,6 +511,9 @@ export default function LISIncidentReportPage() {
             <div className="export-buttons flex gap-2 ml-2">
                 <button className="btn btn--outline" onClick={handleExportCSV}>
                     <i className="fas fa-file-csv"></i> CSV
+                </button>
+                <button className="btn btn--danger" onClick={handleExportPDF}>
+                    <i className="fas fa-file-pdf"></i> PDF
                 </button>
             </div>
         </div>
