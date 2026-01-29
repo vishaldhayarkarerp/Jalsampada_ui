@@ -249,7 +249,6 @@ export default function TPReportsPage() {
         document.body.removeChild(link);
     };
 
-    // Export to PDF function
     const exportToPDF = async () => {
         if (filteredData.length === 0) return;
 
@@ -266,186 +265,127 @@ export default function TPReportsPage() {
             const usableWidth = pageWidth - (margin * 2);
             const usableHeight = pageHeight - (margin * 2);
 
-            // Set font
-            pdf.setFont('helvetica');
-
-            // Title
-            pdf.setFontSize(16);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Asset Register Report', pageWidth / 2, 20, { align: 'center' });
-
-            // Summary information
-            pdf.setFontSize(10);
-            pdf.setFont('helvetica', 'normal');
-            const summaryY = 30;
-            pdf.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB')}`, margin, summaryY);
-            pdf.text(`Total Records: ${filteredData.length}`, margin, summaryY + 7);
-            
-            const filtersApplied = Object.values(filters).filter(v => v).length > 0 
-                ? Object.entries(filters).filter(([_, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ')
-                : 'None';
-            pdf.text(`Filters Applied: ${filtersApplied}`, margin, summaryY + 14);
-
-            // Calculate column widths based on content
+            // 1. Pre-calculate Column Widths
             const columnWidths: number[] = [];
-            const minColumnWidth = 20; // Minimum width for any column
-            const maxColumnWidth = usableWidth / 4; // Maximum width for any column (e.g., 1/4 of usable width)
-
-            // Calculate column widths based on content length
             columnConfig.forEach(col => {
+                pdf.setFontSize(8);
                 let maxWidth = pdf.getStringUnitWidth(col.label) * pdf.getFontSize();
-                filteredData.forEach(asset => {
-                    const value = asset[col.fieldname];
-                    const displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
-                    const textWidth = pdf.getStringUnitWidth(displayValue) * pdf.getFontSize();
-                    if (textWidth > maxWidth) {
-                        maxWidth = textWidth;
-                    }
+                filteredData.slice(0, 20).forEach(asset => { // Sample 20 rows for speed
+                    const val = String(asset[col.fieldname] || '-');
+                    const textWidth = pdf.getStringUnitWidth(val) * pdf.getFontSize();
+                    if (textWidth > maxWidth) maxWidth = textWidth;
                 });
-                // Convert to mm and apply min/max constraints
-                let colWidth = maxWidth / pdf.internal.scaleFactor; 
-                colWidth = Math.max(minColumnWidth, Math.min(maxColumnWidth, colWidth));
-                columnWidths.push(colWidth);
+                columnWidths.push(Math.max(20, Math.min(usableWidth / 4, maxWidth / pdf.internal.scaleFactor)));
             });
 
-            // Normalize column widths to fit usableWidth
-            const totalCalculatedWidth = columnWidths.reduce((sum, width) => sum + width, 0);
-            const scaleFactor = usableWidth / totalCalculatedWidth;
-            const finalColumnWidths = columnWidths.map(width => width * scaleFactor);
+            const scaleFactor = usableWidth / columnWidths.reduce((sum, w) => sum + w, 0);
+            const finalColumnWidths = columnWidths.map(w => w * scaleFactor);
 
-            // Table headers
-            let currentY = summaryY + 25;
-            pdf.setFontSize(8);
-            pdf.setFont('helvetica', 'bold');
-            
-            // Calculate header heights first
-            let headerMaxHeight = 0;
-            columnConfig.forEach((col, index) => {
-                const text = col.label;
-                const textLines = pdf.splitTextToSize(text, finalColumnWidths[index] - 4); // Use actual column width
-                const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
-                if (textHeight > headerMaxHeight) {
-                    headerMaxHeight = textHeight;
-                }
-            });
+            // 2. Define the Complete Header Function (Title + Filters + Table Header)
+            const drawPageHeader = (isFirstPage = false) => {
+                let y = 20;
 
-            // Draw header background
-            pdf.setFillColor(240, 240, 240);
-            pdf.rect(margin, currentY - 5, usableWidth, headerMaxHeight + 5, 'F');
+                // Report Title
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(16);
+                pdf.text('Asset Register Report', pageWidth / 2, y, { align: 'center' });
 
-            // Draw headers with text wrapping
-            pdf.setTextColor(0, 0, 0); // Ensure text is black
-            columnConfig.forEach((col, index) => {
-                const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
-                const text = col.label;
-                const textLines = pdf.splitTextToSize(text, finalColumnWidths[index] - 4); // 4 for padding
-                const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
-                const yOffset = (headerMaxHeight + 5 - textHeight) / 2; // Calculate offset to center text vertically
-                pdf.text(textLines, x + 2, currentY - 5 + yOffset);
-            });
+                // Metadata (Date & Filters)
+                y += 10;
+                pdf.setFontSize(9);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(`Generated on: ${new Date().toLocaleString('en-GB')}`, margin, y);
 
-            // Draw horizontal line after headers
-            pdf.setDrawColor(200, 200, 200);
-            pdf.line(margin, currentY + headerMaxHeight + 3, pageWidth - margin, currentY + headerMaxHeight + 3);
+                const filtersApplied = Object.entries(filters)
+                    .filter(([_, v]) => v)
+                    .map(([k, v]) => `${FILTER_FIELDS.find(f => f.key === k)?.label || k}: ${v}`)
+                    .join(', ') || 'None';
+                y += 5;
+                pdf.text(`Filters Applied: ${filtersApplied}`, margin, y);
 
-            // Table data
-            pdf.setFontSize(7);
-            pdf.setFont('helvetica', 'normal');
-            currentY += headerMaxHeight + 8;
+                // Table Header Row
+                y += 10;
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'bold');
 
-            let rowsOnPage = 0;
-            const maxRowsPerPage = Math.floor((usableHeight - currentY) / 10); // Increased for wrapped text
-
-            filteredData.forEach((asset, rowIndex) => {
-                // Check if we need a new page
-                if (rowsOnPage >= maxRowsPerPage) {
-                    pdf.addPage();
-                    currentY = margin + 10;
-                    rowsOnPage = 0;
-
-                    // Redraw headers on new page
-                    pdf.setFontSize(8);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.setFillColor(240, 240, 240);
-                    pdf.rect(margin, currentY - 5, usableWidth, headerMaxHeight + 5, 'F');
-                    
-                    pdf.setTextColor(0, 0, 0); // Ensure header text is black on new page
-                    columnConfig.forEach((col, index) => {
-                        const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
-                        const text = col.label;
-                        const textLines = pdf.splitTextToSize(text, finalColumnWidths[index] - 4);
-                        const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
-                        const yOffset = (headerMaxHeight + 5 - textHeight) / 2;
-                        pdf.text(textLines, x + 2, currentY - 5 + yOffset);
-                    });
-
-                    pdf.setDrawColor(200, 200, 200);
-                    pdf.line(margin, currentY + headerMaxHeight + 3, pageWidth - margin, currentY + headerMaxHeight + 3);
-                    
-                    pdf.setFontSize(7);
-                    pdf.setFont('helvetica', 'normal');
-                    currentY += headerMaxHeight + 8;
-                }
-
-                // Alternating row background
-                if (rowIndex % 2 === 1) {
-                    pdf.setFillColor(249, 249, 249);
-                    pdf.rect(margin, currentY - 4, usableWidth, 8, 'F');
-                }
-
-                // Draw row data with text wrapping
-                let rowMaxHeight = 0;
-                const cellHeights: number[] = [];
-
-                columnConfig.forEach((col, index) => {
-                    const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
-                    const value = asset[col.fieldname];
-                    let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
-                    
-                    // Split text to fit column width
-                    const textLines = pdf.splitTextToSize(displayValue, finalColumnWidths[index] - 4);
-                    const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
-                    cellHeights.push(textHeight);
-                    
-                    if (textHeight > rowMaxHeight) {
-                        rowMaxHeight = textHeight;
-                    }
+                // Calculate height for headers (allowing 2 lines)
+                let headerMaxHeight = 0;
+                const headerPadding = 3;
+                columnConfig.forEach((col, i) => {
+                    const lines = pdf.splitTextToSize(col.label, finalColumnWidths[i] - 4).slice(0, 2);
+                    const h = (lines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
+                    if (h > headerMaxHeight) headerMaxHeight = h;
                 });
 
-                // Draw all cells with proper height
-                pdf.setTextColor(0, 0, 0); // Ensure data text is black
-                columnConfig.forEach((col, index) => {
-                    const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
-                    const value = asset[col.fieldname];
-                    let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
-                    
-                    const textLines = pdf.splitTextToSize(displayValue, finalColumnWidths[index] - 4);
-                    pdf.text(textLines, x + 2, currentY);
+                const totalHeaderHeight = headerMaxHeight + headerPadding;
+
+                // Draw Header Background
+                pdf.setFillColor(240, 240, 240);
+                pdf.rect(margin, y, usableWidth, totalHeaderHeight, 'F');
+
+                // Draw Header Text
+                columnConfig.forEach((col, i) => {
+                    const x = margin + finalColumnWidths.slice(0, i).reduce((sum, w) => sum + w, 0);
+                    const lines = pdf.splitTextToSize(col.label, finalColumnWidths[i] - 4).slice(0, 2);
+                    const h = (lines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
+                    // Center text vertically in the header box
+                    const yOffset = (totalHeaderHeight - h) / 2;
+                    pdf.text(lines, x + 2, y + yOffset, { baseline: 'top' });
                 });
 
-                // Draw cell borders
                 pdf.setDrawColor(200, 200, 200);
+                pdf.line(margin, y + totalHeaderHeight, pageWidth - margin, y + totalHeaderHeight);
+
+                return y + totalHeaderHeight; // Return the new Y position
+            };
+
+            // 3. Start Rendering Rows
+            let currentY = drawPageHeader(true);
+
+            filteredData.forEach((asset) => {
+                pdf.setFont('helvetica', 'normal'); // FORCE RESET TO NORMAL
+                pdf.setFontSize(7);
+
+                // Calculate row height
+                let rowMaxHeight = 0;
+                columnConfig.forEach((col, i) => {
+                    const textLines = pdf.splitTextToSize(String(asset[col.fieldname] ?? '-'), finalColumnWidths[i] - 4);
+                    const h = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
+                    if (h > rowMaxHeight) rowMaxHeight = h;
+                });
+
+                const rowPadding = 4;
+                // Check if page break is needed
+                if (currentY + rowMaxHeight + rowPadding > usableHeight) {
+                    pdf.addPage();
+                    currentY = drawPageHeader();
+                    pdf.setFont('helvetica', 'normal'); // RESET AFTER HEADER ON NEW PAGE
+                    pdf.setFontSize(7);
+                }
+
+                // Draw Data
+                columnConfig.forEach((col, i) => {
+                    const x = margin + finalColumnWidths.slice(0, i).reduce((sum, w) => sum + w, 0);
+                    const textLines = pdf.splitTextToSize(String(asset[col.fieldname] ?? '-'), finalColumnWidths[i] - 4);
+                    pdf.text(textLines, x + 2, currentY + 2, { baseline: 'top' });
+                });
+
+                // Draw Borders
+                pdf.setDrawColor(230, 230, 230); // Light grey lines
                 let xPos = margin;
-                finalColumnWidths.forEach((width, index) => {
-                    // Vertical lines
-                    pdf.line(xPos, currentY - 4, xPos, currentY + rowMaxHeight);
+                finalColumnWidths.forEach((width) => {
+                    pdf.line(xPos, currentY, xPos, currentY + rowMaxHeight + rowPadding);
                     xPos += width;
                 });
-                // Right border
-                pdf.line(pageWidth - margin, currentY - 4, pageWidth - margin, currentY + rowMaxHeight);
-                // Bottom border
-                pdf.line(margin, currentY + rowMaxHeight, pageWidth - margin, currentY + rowMaxHeight);
+                pdf.line(pageWidth - margin, currentY, pageWidth - margin, currentY + rowMaxHeight + rowPadding);
+                pdf.line(margin, currentY + rowMaxHeight + rowPadding, pageWidth - margin, currentY + rowMaxHeight + rowPadding);
 
-                currentY += rowMaxHeight + 2;
-                rowsOnPage++;
+                currentY += rowMaxHeight + rowPadding;
             });
 
-            // Save PDF
-            pdf.save(`asset_register_report_${new Date().toISOString().split('T')[0]}.pdf`);
-
+            pdf.save(`Asset_Report_${new Date().toISOString().split('T')[0]}.pdf`);
         } catch (error) {
-            console.error('Error generating PDF:', error);
-            alert('Failed to generate PDF. Please try again.');
+            console.error('PDF Error:', error);
         }
     };
 
