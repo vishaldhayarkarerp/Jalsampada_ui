@@ -508,11 +508,7 @@ export default function LISIncidentReportPage() {
           >
             <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
           </button>
-          <div className="export-buttons flex gap-2 ml-2">
-            <button className="btn btn--outline" onClick={handleExportCSV}>
-              <i className="fas fa-file-csv"></i> CSV
-            </button>
-          </div>
+          
             <div className="export-buttons flex gap-2 ml-2">
                 <button className="btn btn--outline" onClick={handleExportCSV}>
                     <i className="fas fa-file-csv"></i> CSV
