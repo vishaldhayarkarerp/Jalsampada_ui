@@ -165,36 +165,54 @@ export default function NewSpareIndentPage() {
             name: "custom_recommended_by",
             label: "Recommended By (Incharge/JE)",
             type: "Link",
+            searchField: "full_name",
             linkTarget: "User",
           },
           {
             name: "custom_verified_by",
             label: "Verified By (DE)",
             type: "Link",
+            searchField: "employee_name",
             linkTarget: "Employee",
           },
           {
             name: "custom_approved_by",
             label: "Approved By (EE)",
             type: "Link",
+            searchField: "employee_name",
             linkTarget: "Employee",
           },
           {
             name: "custom_name1",
             label: "Name",
             type: "Data",
+            fetchFrom: {
+                            sourceField: "custom_recommended_by",
+                            targetDoctype: "User",
+                            targetField: "full_name"
+                        },
             readOnly: true,
           },
           {
             name: "custom_name2",
             label: "Name",
             type: "Data",
+             fetchFrom: {
+                            sourceField: "custom_verified_by",
+                            targetDoctype: "Employee",
+                            targetField: "employee_name"
+                        },
             readOnly: true,
           },
           {
             name: "custom_name3",
             label: "Name",
             type: "Data",
+            fetchFrom: {
+                            sourceField: "custom_approved_by",
+                            targetDoctype: "Employee",
+                            targetField: "employee_name"
+                        },
             readOnly: true,
           },
           { name: "custom_date1", label: "Date", type: "Date" },
