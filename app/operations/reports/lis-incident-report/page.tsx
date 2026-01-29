@@ -118,7 +118,7 @@ export default function LISIncidentReportPage() {
   }
 
   // --- Actions ---
-  
+
   // Memoized fetch function
   const fetchReportData = useCallback(async (currentFilters: Filters) => {
     if (!isInitialized) return;
@@ -162,11 +162,11 @@ export default function LISIncidentReportPage() {
       }
 
       const result = await response.json();
-      
+
       if (!result.message) {
-         setReportData([]);
-         setFilteredData([]);
-         setApiFields([]);
+        setReportData([]);
+        setFilteredData([]);
+        setApiFields([]);
       } else {
         const columns = result.message.columns || [];
         const data = result.message.result || [];
@@ -208,7 +208,7 @@ export default function LISIncidentReportPage() {
     const rows = filteredData.map(row => {
       return columnConfig.map(col => {
         let val = row[col.fieldname];
-        
+
         // Strip HTML tags for CSV export cleanliness
         if (col.isHtml && typeof val === 'string') {
           val = val.replace(/<[^>]*>?/gm, '');
@@ -217,7 +217,7 @@ export default function LISIncidentReportPage() {
         val = val === null || val === undefined ? "" : String(val);
         // CSV Escaping
         if (val.includes(",") || val.includes("\n") || val.includes('"')) {
-             val = `"${val.replace(/"/g, '""')}"`;
+          val = `"${val.replace(/"/g, '""')}"`;
         }
         return val;
       }).join(",");
@@ -473,15 +473,15 @@ export default function LISIncidentReportPage() {
     // Render HTML content safely
     if (col.isHtml) {
       return (
-        <div 
+        <div
           className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300"
-          dangerouslySetInnerHTML={{ __html: String(value) }} 
-          style={{ 
-            whiteSpace: 'normal', 
+          dangerouslySetInnerHTML={{ __html: String(value) }}
+          style={{
+            whiteSpace: 'normal',
             minWidth: '250px',
             wordBreak: 'break-word',
             fontSize: '0.875rem'
-          }} 
+          }}
         />
       );
     }
@@ -499,15 +499,20 @@ export default function LISIncidentReportPage() {
           <h2>LIS Incident Report</h2>
           <p>Track issues, maintenance requests, and incidents.</p>
         </div>
-        
+
         <div className="flex gap-2">
-            <button
-                className="btn btn--primary"
-                onClick={() => fetchReportData(filters)}
-                disabled={loading}
-            >
-                <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
+          <button
+            className="btn btn--primary"
+            onClick={() => fetchReportData(filters)}
+            disabled={loading}
+          >
+            <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
+          </button>
+          <div className="export-buttons flex gap-2 ml-2">
+            <button className="btn btn--outline" onClick={handleExportCSV}>
+              <i className="fas fa-file-csv"></i> CSV
             </button>
+          </div>
             <div className="export-buttons flex gap-2 ml-2">
                 <button className="btn btn--outline" onClick={handleExportCSV}>
                     <i className="fas fa-file-csv"></i> CSV
