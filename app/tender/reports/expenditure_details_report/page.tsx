@@ -24,12 +24,13 @@ type ReportField = {
 type ReportData = Record<string, any>;
 
 type Filters = {
+  fiscal_year: string;
   from_date: string;
   to_date: string;
   lift_irrigation_scheme: string;
+  phase: string;
   stage: string; // Matches Python: filters.get("stage")
   work_type: string;
-  fiscal_year: string;
   tender_number: string;
 };
 
@@ -82,12 +83,13 @@ export default function ExpenditureDetailsReport() {
   const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<Filters>({
+    fiscal_year: "",
     from_date: getOneMonthAgo(),
     to_date: getToday(),
     lift_irrigation_scheme: "",
+    phase: "",
     stage: "",
     work_type: "",
-    fiscal_year: "",
     tender_number: "",
   });
 
@@ -490,26 +492,7 @@ export default function ExpenditureDetailsReport() {
 
         {/* Filters Grid with Z-Index Handling */}
         <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">From Date</label>
-                <input 
-                    type="date" 
-                    className="form-control w-full" 
-                    value={filters.from_date}
-                    onChange={(e) => handleFilterChange("from_date", e.target.value)}
-                />
-            </div>
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">To Date</label>
-                <input 
-                    type="date" 
-                    className="form-control w-full" 
-                    value={filters.to_date}
-                    onChange={(e) => handleFilterChange("to_date", e.target.value)}
-                />
-            </div>
-
-            <div className="form-group z-[50]">
+            <div className="form-group z-[70]">
                 <label className="text-sm font-medium mb-1 block">Fiscal Year</label>
                 <LinkInput
                     value={filters.fiscal_year}
@@ -519,8 +502,26 @@ export default function ExpenditureDetailsReport() {
                     className="w-full relative"
                 />
             </div>
+            <div className="form-group z-[69]">
+                <label className="text-sm font-medium mb-1 block">From Date</label>
+                <input 
+                    type="date" 
+                    className="form-control w-full" 
+                    value={filters.from_date}
+                    onChange={(e) => handleFilterChange("from_date", e.target.value)}
+                />
+            </div>
+            <div className="form-group z-[68]">
+                <label className="text-sm font-medium mb-1 block">To Date</label>
+                <input 
+                    type="date" 
+                    className="form-control w-full" 
+                    value={filters.to_date}
+                    onChange={(e) => handleFilterChange("to_date", e.target.value)}
+                />
+            </div>
 
-            <div className="form-group z-[50]">
+            <div className="form-group z-[67]">
                 <label className="text-sm font-medium mb-1 block">Lift Irrigation Scheme</label>
                 <LinkInput
                     value={filters.lift_irrigation_scheme}
@@ -531,8 +532,19 @@ export default function ExpenditureDetailsReport() {
                 />
             </div>
 
+            <div className="form-group z-[66]">
+                <label className="text-sm font-medium mb-1 block">Phase</label>
+                <LinkInput
+                    value={filters.phase || ""}
+                    onChange={(value) => handleFilterChange("phase", value)}
+                    placeholder="Select Phase..."
+                    linkTarget="Phase"
+                    className="w-full relative"
+                />
+            </div>
+
             {/* Stage Filter - Dependent on LIS */}
-            <div className="form-group z-[50]">
+            <div className="form-group z-[65]">
                 <label className="text-sm font-medium mb-1 block">Stage</label>
                 <LinkInput
                     value={filters.stage}
@@ -546,7 +558,7 @@ export default function ExpenditureDetailsReport() {
             </div>
 
             {/* Tender Number Filter - Dependent on LIS */}
-            <div className="form-group z-[50]">
+            <div className="form-group z-[64]">
                 <label className="text-sm font-medium mb-1 block">Tender Number</label>
                 <LinkInput
                     value={filters.tender_number}
@@ -559,7 +571,7 @@ export default function ExpenditureDetailsReport() {
                 />
             </div>
 
-            <div className="form-group z-[50]">
+            <div className="form-group z-[63]">
                 <label className="text-sm font-medium mb-1 block">Work Type</label>
                 <LinkInput
                     value={filters.work_type}
@@ -586,8 +598,17 @@ export default function ExpenditureDetailsReport() {
           >
             <thead style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "white" }}>
               <tr>
-                {columnConfig.map((column) => (
-                  <th key={column.fieldname} style={{ width: column.width }}>
+                {columnConfig.map((column, index) => (
+                  <th 
+                    key={column.fieldname} 
+                    style={{ 
+                      width: column.width,
+                      position: index === 0 ? "sticky" : "static",
+                      left: index === 0 ? 0 : "auto",
+                      zIndex: index === 0 ? 25 : 20,
+                      backgroundColor: index === 0 ? "white" : "inherit"
+                    }}
+                  >
                     {column.label}
                   </th>
                 ))}
@@ -611,8 +632,16 @@ export default function ExpenditureDetailsReport() {
                         key={index} 
                         className={isBoldRow ? "bg-gray-50 font-bold" : ""}
                     >
-                      {columnConfig.map((column) => (
-                        <td key={`${index}-${column.fieldname}`}>
+                      {columnConfig.map((column, columnIndex) => (
+                        <td 
+                          key={`${index}-${column.fieldname}`} 
+                          style={{
+                            position: columnIndex === 0 ? "sticky" : "static",
+                            left: columnIndex === 0 ? 0 : "auto",
+                            zIndex: columnIndex === 0 ? 25 : 20,
+                            backgroundColor: columnIndex === 0 ? "white" : "inherit"
+                          }}
+                        >
                           {renderCellValue(row, column)}
                         </td>
                       ))}
