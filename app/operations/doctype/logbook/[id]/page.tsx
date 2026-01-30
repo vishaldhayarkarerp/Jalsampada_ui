@@ -127,11 +127,11 @@ export default function RecordDetailPage() {
         toast.success(messages.message);
         setLogbook(resp.data.data);
       } else {
-        toast.error(messages.message, { description: messages.description, duration: Infinity});
+        toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
     } catch (err: any) {
       const messages = getApiMessages(null, err, null, "Failed to submit document");
-      toast.error(messages.message, { description: messages.description, duration: Infinity});
+      toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsSaving(false);
     }
@@ -156,11 +156,11 @@ export default function RecordDetailPage() {
         toast.success(messages.message);
         setLogbook(resp.data.data);
       } else {
-        toast.error(messages.message, { description: messages.description, duration: Infinity});
+        toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
     } catch (err: any) {
       const messages = getApiMessages(null, err, null, "Failed to cancel document");
-      toast.error(messages.message, { description: messages.description, duration: Infinity});
+      toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsSaving(false);
     }
@@ -264,7 +264,7 @@ export default function RecordDetailPage() {
           { name: "operator_id", label: "Operator ID", type: "Read Only", linkTarget: "User", defaultValue: getVal("operator_id"), readOnly: true, displayDependsOn: "pump_operation == 'start'" },
           { name: "operator_name", label: "Operator Name", type: "Read Only", defaultValue: getVal("operator_name"), readOnly: true, displayDependsOn: "pump_operation == 'start'" },
           { name: "stop_datetime", label: "Stop Datetime", type: "DateTime", defaultValue: getVal("stop_datetime"), required: true, displayDependsOn: "pump_operation == 'stop'" },
-          { name: "pump_stop_reason", label: "Reason", type: "Link", linkTarget: "Pump Stop Reasons", defaultValue: getVal("pump_stop_reason"), displayDependsOn: "pump_operation == 'stop'" },
+          { name: "pump_stop_reason", label: "Pump Stop Reason", type: "Link", linkTarget: "Pump Stop Reasons", defaultValue: getVal("pump_stop_reason"), displayDependsOn: "pump_operation == 'stop'", required: true },
           { name: "specify", label: "Specify (if Other)", type: "Small Text", defaultValue: getVal("specify"), displayDependsOn: "pump_stop_reason == 'Other'" },
           { name: "operator_id_1", label: "Operator ID", type: "Read Only", linkTarget: "User", defaultValue: getVal("operator_id_1"), readOnly: true, displayDependsOn: "pump_operation == 'stop'" },
           { name: "operator_name_1", label: "Operator Name", type: "Read Only", defaultValue: getVal("operator_name_1"), readOnly: true, displayDependsOn: "pump_operation == 'stop'" },

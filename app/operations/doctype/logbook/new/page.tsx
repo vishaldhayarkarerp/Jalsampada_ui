@@ -250,7 +250,8 @@ export default function NewLogbookPage() {
             type: "Link",
             linkTarget: "Pump Stop Reasons",
             defaultValue: getValue("pump_stop_reason"),
-            displayDependsOn: "pump_operation == 'stop'"
+            displayDependsOn: "pump_operation == 'stop'",
+            required: true
           },
           {
             name: "specify",

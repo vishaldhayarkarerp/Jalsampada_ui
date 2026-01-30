@@ -606,6 +606,8 @@ export function DynamicForm({
       const result = await onSubmit(data, isDirty);
       if (result && result.status) {
         setCurrentStatus(result.status);
+        // Reset form to clear dirty state after successful save
+        reset(data, { keepValues: false });
       } else {
         setCurrentStatus(initialStatus);
       }
