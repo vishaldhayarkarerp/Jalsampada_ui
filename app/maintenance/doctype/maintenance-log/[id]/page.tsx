@@ -24,7 +24,7 @@ interface MaintenanceLogData {
   has_certificate?: number;
   completion_date?: string;
   log?: string;
-  maintenance_schedule?: string;
+  asset_maintenance?: string;
   docstatus: 0 | 1 | 2;
   modified: string;
 }
@@ -96,16 +96,17 @@ export default function MaintenanceLogDetailPage() {
     const getValue = (fieldName: keyof MaintenanceLogData, defaultValue: any = undefined) =>
       record?.[fieldName] ?? defaultValue;
 
-    return [
+     return [
       {
         name: "Details",
         fields: [
+          // Top identifiers row
           {
-            name: "maintenance_schedule",
+            name: "asset_maintenance",
             label: "Maintenance Schedule",
             type: "Link",
             linkTarget: "Asset Maintenance",
-            defaultValue: getValue("maintenance_schedule"),
+            defaultValue: getValue("asset_maintenance"),
           },
           {
             name: "naming_series",
@@ -114,29 +115,22 @@ export default function MaintenanceLogDetailPage() {
             options: [{ label: "ACC-AML-.YYYY.-", value: "ACC-AML-.YYYY.-" }],
             defaultValue: getValue("naming_series"),
           },
+
+          // Conditional fields: only show when maintenance_schedule is filled
           {
             name: "item_code",
             label: "Item Code",
             type: "Read Only",
             linkTarget: "Item",
-            displayDependsOn: "maintenance_schedule",
-            fetchFrom: {
-              sourceField: "maintenance_schedule",
-              targetDoctype: "Asset Maintenance",
-              targetField: "item_code",
-            },
+            displayDependsOn: "maintenance_schedule", fetchFrom: { sourceField: "asset_maintenance", targetDoctype: "Asset Maintenance", targetField: "item_code" }
           },
           {
-            name: "asset_name",
+            name: "asset_maintenance",
             label: "Asset Name",
             type: "Read Only",
             linkTarget: "Asset",
             displayDependsOn: "maintenance_schedule",
-            fetchFrom: {
-              sourceField: "maintenance_schedule",
-              targetDoctype: "Asset Maintenance",
-              targetField: "asset_name",
-            },
+            fetchFrom: { sourceField: "maintenance_schedule", targetDoctype: "Asset", targetField: "asset_name" }
           },
 
           { name: "section_break_1", type: "Section Break", label: "Maintenance Details" },
@@ -150,6 +144,61 @@ export default function MaintenanceLogDetailPage() {
             defaultValue: getValue("task"),
           },
           {
+            name: "task_name",
+            label: "Task Name",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
+
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "maintenance_task" }
+          },
+          {
+            name: "assign_to_name",
+            label: "Assign To",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
+
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "assign_to_name" }
+          },
+          {
+            name: "maintenance_type",
+            label: "Maintenance Type",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
+
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "maintenance_type" }
+          },
+          {
+            name: "due_date",
+            label: "Due Date",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
+
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "next_due_date" }
+          },
+          {
+            name: "periodicity",
+            label: "Periodicity",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
+
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "periodicity" }
+          },
+          {
+            name: "description",
+            label: "Description",
+            type: "Small Text",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
+
+             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "description" }
+
+          },
+          {
             name: "maintenance_status",
             label: "Status",
             type: "Select",
@@ -158,6 +207,7 @@ export default function MaintenanceLogDetailPage() {
               { label: "In Progress", value: "In Progress" },
               { label: "Cancelled", value: "Cancelled" },
               { label: "Overdue", value: "Overdue" },
+              { label: "Completed", value: "Completed" },
             ],
             defaultValue: getValue("maintenance_status", "Planned"),
           },
@@ -165,7 +215,9 @@ export default function MaintenanceLogDetailPage() {
             name: "completion_date",
             label: "Completion Date",
             type: "Date",
-            defaultValue: getValue("completion_date"),
+            disableAutoToday: true, 
+            // defaultValue: getValue("completion_date"),
+
           },
 
           { name: "section_break_2", type: "Section Break", label: "Certificate" },
@@ -180,7 +232,8 @@ export default function MaintenanceLogDetailPage() {
             name: "resume",
             label: "Upload Certificate",
             type: "Attach",
-            displayDependsOn: "has_certificate==1",
+            displayDependsOn: "has_certificate == 1",
+            requiredDependsOn: "has_certificate",
           },
 
           { name: "section_break_3", type: "Section Break", label: "Log Notes" },
