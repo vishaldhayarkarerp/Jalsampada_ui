@@ -68,103 +68,161 @@ export default function NewMaintenanceLogPage() {
   /* -------------------------------------------------
    Form tabs configuration
   ------------------------------------------------- */
-const formTabs: TabbedLayout[] = React.useMemo(() => {
-  const getValue = (fieldName: keyof MaintenanceLogData, defaultValue: any = undefined) =>
-    duplicateData?.[fieldName] ?? defaultValue;
+  const formTabs: TabbedLayout[] = React.useMemo(() => {
+    const getValue = (fieldName: keyof MaintenanceLogData, defaultValue: any = undefined) =>
+      duplicateData?.[fieldName] ?? defaultValue;
 
-  return [
-    {
-      name: "Details",
-      fields: [
-        // Top identifiers row
-        {
-          name: "asset_maintenance",
-          label: "Maintenance Schedule",
-          type: "Link",
-          linkTarget: "Asset Maintenance",
-          defaultValue: getValue("maintenance_schedule"),
-        },
-        {
-          name: "naming_series",
-          label: "Series",
-          type: "Select",
-          options: [{ label: "ACC-AML-.YYYY.-", value: "ACC-AML-.YYYY.-" }],
-          defaultValue: getValue("naming_series"),
-        },
+    return [
+      {
+        name: "Details",
+        fields: [
+          // Top identifiers row
+          {
+            name: "asset_maintenance",
+            label: "Maintenance Schedule",
+            type: "Link",
+            linkTarget: "Asset Maintenance",
+            // defaultValue: getValue("asset_maintenance"),
+          },
+          {
+            name: "naming_series",
+            label: "Series",
+            type: "Select",
+            options: [{ label: "ACC-AML-.YYYY.-", value: "ACC-AML-.YYYY.-" }],
+            defaultValue: getValue("naming_series"),
+          },
 
-        // Conditional fields: only show when maintenance_schedule is filled
-        {
-          name: "item_code",
-          label: "Item Code",
-          type: "Read Only",
-          linkTarget: "Item",
-          displayDependsOn: "maintenance_schedule", fetchFrom: { sourceField: "asset_maintenance", targetDoctype: "Asset Maintenance", targetField: "item_code" }
-        },
-        {
-          name: "asset_maintenance",
-          label: "Asset Name",
-          type: "Read Only",
-          linkTarget: "Asset",
-          displayDependsOn: "maintenance_schedule", 
-          fetchFrom: { sourceField: "maintenance_schedule", targetDoctype: "Asset", targetField: "asset_name" }
-        },
+          // Conditional fields: only show when maintenance_schedule is filled
+          {
+            name: "item_code",
+            label: "Item Code",
+            type: "Read Only",
+            linkTarget: "Item",
+            displayDependsOn: "maintenance_schedule", fetchFrom: { sourceField: "asset_maintenance", targetDoctype: "Asset Maintenance", targetField: "item_code" }
+          },
+          {
+            name: "asset_maintenance",
+            label: "Asset Name",
+            type: "Read Only",
+            linkTarget: "Asset",
+            displayDependsOn: "maintenance_schedule",
+            fetchFrom: { sourceField: "maintenance_schedule", targetDoctype: "Asset", targetField: "asset_name" }
+          },
 
-        { name: "section_break_1", type: "Section Break", label: "Maintenance Details" },
+          { name: "section_break_1", type: "Section Break", label: "Maintenance Details" },
 
-        {
-          name: "task",
-          label: "Task",
-          type: "Link",
-          linkTarget: "Asset Maintenance Task",
-          searchField: "maintenance_task",
-          defaultValue: getValue("task"),
-        },
-        {
-          name: "maintenance_status",
-          label: "Status",
-          type: "Select",
-          options: [
-            { label: "Planned", value: "Planned" },
-            { label: "In Progress", value: "In Progress" },
-            { label: "Cancelled", value: "Cancelled" },
-            { label: "Overdue", value: "Overdue" },
-          ],
-          defaultValue: getValue("maintenance_status", "Planned"),
-        },
-        {
-          name: "completion_date",
-          label: "Completion Date",
-          type: "Date",
-          defaultValue: getValue("completion_date"),
-        },
+          {
+            name: "task",
+            label: "Task",
+            type: "Link",
+            linkTarget: "Asset Maintenance Task",
+            searchField: "maintenance_task",
+            defaultValue: getValue("task"),
+          },
+          {
+            name: "task_name",
+            label: "Task Name",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
 
-        { name: "section_break_2", type: "Section Break", label: "Certificate" },
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "maintenance_task" }
+          },
+          {
+            name: "assign_to_name",
+            label: "Assign To",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
 
-        {
-          name: "has_certificate",
-          label: "Has Certificate?",
-          type: "Check",
-          defaultValue: getValue("has_certificate"),
-        },
-        {
-          name: "resume",
-          label: "Upload Certificate",
-          type: "Attach",
-          displayDependsOn: "has_certificate==1",
-        },
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "assign_to_name" }
+          },
+          {
+            name: "maintenance_type",
+            label: "Maintenance Type",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
 
-        { name: "section_break_3", type: "Section Break", label: "Log Notes" },
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "maintenance_type" }
+          },
+          {
+            name: "due_date",
+            label: "Due Date",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
 
-        {
-          name: "log",
-          label: "Log Notes",
-          type: "Small Text",
-          defaultValue: getValue("log"),
-        },
-      ],
-    },
-  ];
-}, [duplicateData]);
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "next_due_date" }
+          },
+          {
+            name: "periodicity",
+            label: "Periodicity",
+            type: "Read Only",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
+
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "periodicity" }
+          },
+          {
+            name: "description",
+            label: "Description",
+            type: "Small Text",
+            defaultValue: getValue("task"),
+            displayDependsOn: "task",
+
+             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "description" }
+
+          },
+          {
+            name: "maintenance_status",
+            label: "Status",
+            type: "Select",
+            options: [
+              { label: "Planned", value: "Planned" },
+              { label: "In Progress", value: "In Progress" },
+              { label: "Cancelled", value: "Cancelled" },
+              { label: "Overdue", value: "Overdue" },
+              { label: "Completed", value: "Completed" },
+            ],
+            defaultValue: getValue("maintenance_status", "Planned"),
+          },
+          {
+            name: "completion_date",
+            label: "Completion Date",
+            type: "Date",
+            defaultValue: getValue("completion_date"),
+             disableAutoToday: true, 
+          },
+
+          { name: "section_break_2", type: "Section Break", label: "Certificate" },
+
+          {
+            name: "has_certificate",
+            label: "Has Certificate?",
+            type: "Check",
+            defaultValue: getValue("has_certificate"),
+          },
+          {
+            name: "resume",
+            label: "Upload Certificate",
+            type: "Attach",
+            displayDependsOn: "has_certificate == 1",
+            requiredDependsOn: "has_certificate",
+          },
+
+          { name: "section_break_3", type: "Section Break", label: "Log Notes" },
+
+          {
+            name: "log",
+            label: "Log Notes",
+            type: "Small Text",
+            defaultValue: getValue("log"),
+          },
+        ],
+      },
+    ];
+  }, [duplicateData]);
 
 
 

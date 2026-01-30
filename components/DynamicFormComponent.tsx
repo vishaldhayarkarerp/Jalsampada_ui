@@ -80,7 +80,7 @@ export interface FormField {
   name: string;
   label: string;
   type: FieldType;
-  linkTarget?: string;  
+  linkTarget?: string;
   searchField?: string;
   customSearchUrl?: string;
   customSearchParams?: Record<string, any>;
@@ -129,6 +129,7 @@ export interface FormField {
   };
   customElement?: React.ReactNode;
   precision?: number;
+  disableAutoToday?: boolean;
 }
 
 export interface TabbedLayout {
@@ -702,7 +703,7 @@ export function DynamicForm({
         } catch (err: any) {
           console.error("Delete error:", err);
           const messages = getApiMessages(null, err, `${doctypeName} deleted successfully`, "Failed to delete record");
-          toast.error(messages.message, { description: messages.description , duration: Infinity});
+          toast.error(messages.message, { description: messages.description, duration: Infinity });
         }
       }
     }
@@ -1189,17 +1190,16 @@ export function DynamicForm({
           render={({ field: controllerField, fieldState: { error } }) => {
             // Auto-set current date/time if field is empty using useEffect
             React.useEffect(() => {
-              if (!controllerField.value) {
+              if (!controllerField.value && !field.disableAutoToday) {
                 const now = new Date();
                 const pad = (n: number) => String(n).padStart(2, '0');
-                const [yyyy, MM, dd, hh, mm, ss] = [
-                  now.getFullYear(),
-                  pad(now.getMonth() + 1),
-                  pad(now.getDate()),
-                  pad(now.getHours()),
-                  pad(now.getMinutes()),
-                  pad(now.getSeconds())
-                ];
+
+                const yyyy = now.getFullYear();
+                const MM = pad(now.getMonth() + 1);
+                const dd = pad(now.getDate());
+                const hh = pad(now.getHours());
+                const mm = pad(now.getMinutes());
+                const ss = pad(now.getSeconds());
 
                 controllerField.onChange(
                   type === "datetime-local"
@@ -1207,28 +1207,25 @@ export function DynamicForm({
                     : `${yyyy}-${MM}-${dd}`
                 );
               }
-            }, []);
+            }, [field.disableAutoToday]);
 
-            // Ensure the field has a proper initial value
-            let selectedDate: Date;
+            // ✅ Decide what date picker should show
+            let selectedDate: Date | null = null;
+
             if (controllerField.value) {
               const parsedDate = new Date(controllerField.value);
-              // Check if the parsed date is valid
-              if (isNaN(parsedDate.getTime())) {
-                // Try default value or fallback to current date
-                const defaultDate = field.defaultValue ? new Date(field.defaultValue) : null;
-                selectedDate = (defaultDate && !isNaN(defaultDate.getTime())) ? defaultDate : new Date();
-              } else {
+              if (!isNaN(parsedDate.getTime())) {
                 selectedDate = parsedDate;
               }
-            } else {
-              // Try default value or fallback to current date
-              const defaultDate = field.defaultValue ? new Date(field.defaultValue) : null;
-              selectedDate = (defaultDate && !isNaN(defaultDate.getTime())) ? defaultDate : new Date();
+            } else if (field.defaultValue) {
+              const defaultDate = new Date(field.defaultValue);
+              if (!isNaN(defaultDate.getTime())) {
+                selectedDate = defaultDate;
+              }
             }
 
-            // Final safety check - ensure selectedDate is always valid
-            if (!selectedDate || isNaN(selectedDate.getTime())) {
+            // ⭐ Only show today if auto-today is enabled
+            if (!selectedDate && !field.disableAutoToday) {
               selectedDate = new Date();
             }
 
@@ -1363,6 +1360,161 @@ export function DynamicForm({
       </div>
     );
   };
+
+
+  // const renderDateLike = (
+  //   field: FormField,
+  //   type: "date" | "datetime-local" | "time"
+  // ) => {
+  //   if (type === "date" || type === "datetime-local") {
+  //     const rules = rulesFor(field);
+
+  //     return (
+  //       <Controller
+  //         name={field.name}
+  //         control={control}
+  //         rules={rules}
+  //         render={({ field: controllerField, fieldState: { error } }) => {
+  //           // ✅ Auto-set current date ONLY if allowed
+  //           React.useEffect(() => {
+  //             if (!controllerField.value && !field.disableAutoToday) {
+  //               const now = new Date();
+  //               const pad = (n: number) => String(n).padStart(2, "0");
+
+  //               const yyyy = now.getFullYear();
+  //               const MM = pad(now.getMonth() + 1);
+  //               const dd = pad(now.getDate());
+  //               const hh = pad(now.getHours());
+  //               const mm = pad(now.getMinutes());
+  //               const ss = pad(now.getSeconds());
+
+  //               controllerField.onChange(
+  //                 type === "datetime-local"
+  //                   ? `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`
+  //                   : `${yyyy}-${MM}-${dd}`
+  //               );
+  //             }
+  //           }, [field.disableAutoToday]);
+
+  //           // ✅ Decide what date picker should show
+  //           let selectedDate: Date | null = null;
+
+  //           if (controllerField.value) {
+  //             const parsedDate = new Date(controllerField.value);
+  //             if (!isNaN(parsedDate.getTime())) {
+  //               selectedDate = parsedDate;
+  //             }
+  //           } else if (field.defaultValue) {
+  //             const defaultDate = new Date(field.defaultValue);
+  //             if (!isNaN(defaultDate.getTime())) {
+  //               selectedDate = defaultDate;
+  //             }
+  //           }
+
+  //           // ⭐ Only show today if auto-today is enabled
+  //           if (!selectedDate && !field.disableAutoToday) {
+  //             selectedDate = new Date();
+  //           }
+
+  //           return (
+  //             <div className="form-group">
+  //               <label htmlFor={field.name} className="form-label">
+  //                 {field.label}
+  //                 {field.required ? " *" : ""}
+  //               </label>
+
+  //               <div className={error ? "input-error-wrapper" : ""}>
+  //                 <DatePicker
+  //                   selected={selectedDate ?? null}
+  //                   onChange={(date: Date | null) => {
+  //                     if (!date) {
+  //                       controllerField.onChange("");
+  //                       return;
+  //                     }
+
+  //                     const pad = (n: number) => (n < 10 ? "0" + n : n);
+  //                     const yyyy = date.getFullYear();
+  //                     const MM = pad(date.getMonth() + 1);
+  //                     const dd = pad(date.getDate());
+
+  //                     if (type === "datetime-local") {
+  //                       const hh = pad(date.getHours());
+  //                       const mm = pad(date.getMinutes());
+  //                       const ss = pad(date.getSeconds());
+  //                       controllerField.onChange(`${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`);
+  //                     } else {
+  //                       controllerField.onChange(`${yyyy}-${MM}-${dd}`);
+  //                     }
+  //                   }}
+  //                   dateFormat={type === "datetime-local" ? "dd/MM/yyyy h:mm aa" : "dd/MM/yyyy"}
+  //                   showTimeSelect={type === "datetime-local"}
+  //                   timeIntervals={15}
+  //                   timeCaption="Time"
+  //                   placeholderText={type === "datetime-local" ? "DD/MM/YYYY HH:MM AM/PM" : "DD/MM/YYYY"}
+  //                   className={cn("form-control w-full", getErrorClass(field.name))}
+  //                   showYearDropdown
+  //                   scrollableYearDropdown
+  //                   yearDropdownItemNumber={100}
+  //                   autoComplete="off"
+  //                   withPortal
+  //                   portalId="root-portal"
+  //                 />
+  //               </div>
+
+  //               {error && (
+  //                 <span className="text-red-500 font-medium text-sm mt-1">
+  //                   {error.message}
+  //                 </span>
+  //               )}
+  //               <FieldHelp text={field.description} />
+  //             </div>
+  //           );
+  //         }}
+  //       />
+  //     );
+  //   }
+
+  //   // ⏰ TIME FIELD (unchanged)
+  //   if (type === "time") {
+  //     return (
+  //       <Controller
+  //         name={field.name}
+  //         control={control}
+  //         rules={rulesFor(field)}
+  //         render={({ field: controllerField }) => {
+  //           React.useEffect(() => {
+  //             if (!controllerField.value) {
+  //               const now = new Date();
+  //               const pad = (n: number) => String(n).padStart(2, "0");
+  //               controllerField.onChange(`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
+  //             }
+  //           }, []);
+
+  //           return (
+  //             <div className="form-group">
+  //               <label htmlFor={field.name} className="form-label">
+  //                 {field.label}
+  //                 {field.required ? " *" : ""}
+  //               </label>
+  //               <input
+  //                 id={field.name}
+  //                 type={type}
+  //                 step="1"
+  //                 className={cn("form-control", getErrorClass(field.name))}
+  //                 {...reg(field.name, rulesFor(field))}
+  //               />
+  //               <FieldError error={(errors as FieldErrors<Record<string, any>>)[field.name]} />
+  //               <FieldHelp text={field.description} />
+  //             </div>
+  //           );
+  //         }}
+  //       />
+  //     );
+  //   }
+
+  //   return null;
+  // };
+
 
   const renderDuration = (field: FormField) => {
     const base = field.name;
@@ -1502,6 +1654,7 @@ export function DynamicForm({
       <div className="form-group flex flex-col gap-2">
         <label className="form-label font-medium">{field.label}</label>
 
+        {/* Hidden file input */}
         <input
           type="file"
           className="hidden"
@@ -1511,66 +1664,91 @@ export function DynamicForm({
             if (typeof registerRef === "function") {
               registerRef(el);
             } else if (registerRef) {
-              (
-                registerRef as React.MutableRefObject<HTMLInputElement | null>
-              ).current = el;
+              (registerRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
             }
           }}
           onChange={(e) => {
-            if (registration && registration.onChange) registration.onChange(e);
+            if (registration?.onChange) registration.onChange(e);
             const file = e.target.files?.[0];
             if (file) {
-              setValue(field.name, file);
+              setValue(field.name, file, { shouldDirty: true });
             }
           }}
         />
 
+        {/* Upload Button */}
         {!value && (
           <Button
+            type="button"
             variant="outline"
             className={cn("w-fit flex items-center gap-2", getErrorClass(field.name))}
-            onClick={() => fileInputRefs.current[field.name]?.click()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              fileInputRefs.current[field.name]?.click();
+            }}
           >
             <Upload size={16} />
             Upload File
           </Button>
         )}
 
+        {/* File Selected View */}
         {value && (
-          <div className={cn("flex items-center gap-3 bg-muted/40 p-3 rounded-md border", getErrorClass(field.name))}>
+          <div
+            className={cn(
+              "flex items-center gap-3 bg-muted/40 p-3 rounded-md border",
+              getErrorClass(field.name)
+            )}
+          >
             <span className="text-sm flex-1">{value?.name}</span>
 
+            {/* Preview */}
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => {
-                // Open file in new tab for preview
-                if (value && typeof value === 'object' && value.file_url) {
-                  window.open(value.file_url, '_blank');
-                } else if (value && typeof value === 'object' && value.name) {
-                  // If it's a File object, create object URL
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (value?.file_url) {
+                  window.open(value.file_url, "_blank");
+                } else if (value instanceof File) {
                   const fileUrl = URL.createObjectURL(value);
-                  window.open(fileUrl, '_blank');
+                  window.open(fileUrl, "_blank");
                 }
               }}
             >
               <Eye size={16} />
             </Button>
 
+            {/* Replace */}
             <Button
+              type="button"
               variant="outline"
               className="h-8 px-2"
-              onClick={() => fileInputRefs.current[field.name]?.click()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                fileInputRefs.current[field.name]?.click();
+              }}
             >
               Replace
             </Button>
 
+            {/* Remove */}
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-red-500"
-              onClick={() => setValue(field.name, null)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setValue(field.name, null, { shouldDirty: true });
+              }}
             >
               <X size={16} />
             </Button>
@@ -1581,6 +1759,8 @@ export function DynamicForm({
       </div>
     );
   };
+
+
 
   // ── MAIN FIELD SWITCH ─────────────────────────────────────────────────────
   const renderField = (field: FormField, idx: number) => {
