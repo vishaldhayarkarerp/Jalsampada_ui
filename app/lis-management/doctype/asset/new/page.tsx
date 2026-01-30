@@ -106,7 +106,21 @@ export default function NewRecordPage() {
             label: "Current Linked Motor/Pump",
             type: "Link",
             linkTarget: "Asset",
-            readOnly: true
+            customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+            filters: (getValue) => {
+                const filters: Record<string, any> = {};
+                const lisPhase = getValue("custom_lis_phase");
+                const stageNo = getValue("custom_stage_no");
+                const lisName = getValue("custom_lis_name");
+
+                if (lisPhase) filters.custom_lis_phase = lisPhase;
+                if (stageNo) filters.custom_stage_no = stageNo;
+                if (lisName) filters.custom_lis_name = lisName;
+
+                return filters;
+            },
+            referenceDoctype: "Asset",
+            doctype: "Asset",
           },
           {
             name: "custom_linked_asset_no",
