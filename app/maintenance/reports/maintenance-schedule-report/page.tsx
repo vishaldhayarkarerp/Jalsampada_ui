@@ -4,13 +4,11 @@ import * as React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { LinkInput } from "@/components/LinkInput";
 import { useAuth } from "@/context/AuthContext";
-import DatePicker from "react-datepicker"; 
-import "react-datepicker/dist/react-datepicker.css";
 
 // --- API Configuration ---
 const API_BASE_URL = "http://103.219.1.138:4412/";
 const REPORT_API_PATH = "api/method/frappe.desk.query_report.run";
-const REPORT_NAME = "LogBook Report";
+const REPORT_NAME = "Maintenance Schedules";
 
 // --- Type Definitions ---
 type ReportField = {
@@ -24,21 +22,14 @@ type ReportField = {
 type ReportData = Record<string, any>;
 
 type Filters = {
-  from_date: string;
-  to_date: string;
-  custom_lis: string;
-  stage: string;
-  asset: string;
-  lis_phase: string;
-  status: string;
-  lis_name?: string;
+  id: string;
 };
 
 type ColumnConfig = {
   fieldname: string;
   label: string;
   width: string;
-  isHtml?: boolean; // Flag to identify HTML content
+  isHtml?: boolean;
   formatter?: (value: any) => string;
 };
 
@@ -56,28 +47,15 @@ const formatDateTime = (dateString: string | null): string => {
 };
 
 // --- Configuration ---
-// Static column configuration (kept as in original Logbook code, with added formatters where needed)
 const columnConfig: ColumnConfig[] = [
-  { fieldname: "name", label: "Logbook", width: "150px" },
-  { fieldname: "lis_name", label: "LIS", width: "150px" },
-  { fieldname: "lis_phase", label: "LIS Phase", width: "150px" },
-  { fieldname: "stage", label: "Stage", width: "150px" },
-  { fieldname: "asset", label: "Asset Name", width: "150px" },
-  { fieldname: "asset_no", label: "Asset No.", width: "120px" },
-  { fieldname: "previous_hours", label: "Previous Hours", width: "120px" },
-  { fieldname: "start_datetime", label: "Ledger Start", width: "160px", formatter: formatDateTime },
-  { fieldname: "end_datetime", label: "Ledger Stop", width: "160px", formatter: formatDateTime },
-  { fieldname: "current_hours", label: "Running", width: "120px" },
-  { fieldname: "status", label: "Status", width: "120px" },
-  { fieldname: "operator_name", label: "Operator", width: "150px" },
-  { fieldname: "cancelled", label: "Cancelled", width: "100px" },
-  { fieldname: "pump_stop_reason", label: "Pump Stop Reason", width: "220px" },
+  { fieldname: "name", label: "ID", width: "150px" },
+  { fieldname: "asset_name", label: "Asset Name", width: "180px" },
+  { fieldname: "maintenance_team", label: "Maintenance Team", width: "220px" },
 ];
 
-export default function LogBookSheetReportPage() {
+export default function MaintenanceScheduleReportPage() {
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
-  // --- State ---
   const [reportData, setReportData] = useState<ReportData[]>([]);
   const [filteredData, setFilteredData] = useState<ReportData[]>([]);
   const [apiFields, setApiFields] = useState<ReportField[]>([]);
@@ -86,19 +64,9 @@ export default function LogBookSheetReportPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<Filters>({
-    from_date: "",
-    to_date: "",
-    custom_lis: "",
-    stage: "",
-    asset: "",
-    status: "",
-    lis_phase: "",
-    lis_name: "",
+    id: "",
   });
 
-  // --- Actions ---
-
-  // Memoized fetch function
   const fetchReportData = useCallback(async (currentFilters: Filters) => {
     if (!isInitialized) return;
     if (!isAuthenticated || !apiKey || !apiSecret) {
@@ -110,7 +78,6 @@ export default function LogBookSheetReportPage() {
     setError(null);
 
     try {
-      // 1. Clean filters (remove empty strings)
       const cleanedFilters: Record<string, string> = {};
       Object.entries(currentFilters).forEach(([key, value]) => {
         if (value && value.trim() !== "") {
@@ -118,13 +85,11 @@ export default function LogBookSheetReportPage() {
         }
       });
 
-      // 2. Prepare URL Params
       const params = new URLSearchParams({
         report_name: REPORT_NAME,
         filters: JSON.stringify(cleanedFilters)
       });
 
-      // 3. Call Standard Report API
       const response = await fetch(
         `${API_BASE_URL}${REPORT_API_PATH}?${params.toString()}`,
         {
@@ -163,10 +128,6 @@ export default function LogBookSheetReportPage() {
     }
   }, [apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-
-  // --- Effects ---
-
-  // Auto-refresh when filters change (Debounced 500ms)
   useEffect(() => {
     if (!isInitialized || !isAuthenticated) return;
 
@@ -177,9 +138,6 @@ export default function LogBookSheetReportPage() {
     return () => clearTimeout(timer);
   }, [filters, fetchReportData, isInitialized, isAuthenticated]);
 
-
-  // --- Event Handlers ---
-
   const handleExportCSV = () => {
     if (filteredData.length === 0) return;
 
@@ -188,13 +146,11 @@ export default function LogBookSheetReportPage() {
       return columnConfig.map(col => {
         let val = row[col.fieldname];
 
-        // Strip HTML tags for CSV export cleanliness (though none here, kept for consistency)
         if (col.isHtml && typeof val === 'string') {
           val = val.replace(/<[^>]*>?/gm, '');
         }
 
         val = val === null || val === undefined ? "" : String(val);
-        // CSV Escaping
         if (val.includes(",") || val.includes("\n") || val.includes('"')) {
           val = `"${val.replace(/"/g, '""')}"`;
         }
@@ -206,7 +162,7 @@ export default function LogBookSheetReportPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "logbook_sheet_report.csv");
+    link.setAttribute("download", "maintenance_schedule_report.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -233,7 +189,6 @@ export default function LogBookSheetReportPage() {
       return "-";
     }
 
-    // Render HTML content safely (none here, but kept for consistency)
     if (col.isHtml) {
       return (
         <div
@@ -259,7 +214,7 @@ export default function LogBookSheetReportPage() {
     <div className="module active">
       <div className="module-header">
         <div>
-          <h2>Logbook Ledger</h2>
+          <h2>Maintenance Schedule Report</h2>
           <p>Track pump running hours and operator entries.</p>
         </div>
 
@@ -294,120 +249,18 @@ export default function LogBookSheetReportPage() {
 
         <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
 
-
-          <div className="form-group z-[150]">
-            <label className="text-sm font-medium mb-1 block"> From Date
-            </label>
-            <DatePicker
-              selected={filters.from_date ? new Date(filters.from_date) : null}
-              onChange={(date: Date | null) =>
-                handleFilterChange("from_date", date ? date.toISOString() : "")
-              }
-              placeholderText="DD/MM/YYYY"
-              dateFormat="dd/MM/yyyy"
-              className="form-control w-full placeholder:uppercase"
-            />
-
-          </div>
-          <div className="form-group z-[150]">
-            <label className="text-sm font-medium mb-1 block"> To Date
-            </label>
-            <DatePicker
-              selected={filters.to_date ? new Date(filters.to_date) : null}
-              onChange={(date: Date | null) =>
-                handleFilterChange("to_date", date ? date.toISOString() : "")
-              }
-              placeholderText="DD/MM/YYYY"
-              dateFormat="dd/MM/yyyy"
-              className="form-control w-full placeholder:uppercase"
-            />
-
-          </div>
-
-          {/* <div className="form-group z-[50]">
-            <label className="text-sm font-medium mb-1 block">From Date</label>
-            <input
-              type="date"
-              placeholder="DD/MM/YYYY"
-              className="form-control w-full"
-              value={filters.from_date}
-              onChange={(e) => handleFilterChange("from_date", e.target.value)}
-            />
-          </div> */}
-          {/* <div className="form-group z-[50]">
-            <label className="text-sm font-medium mb-1 block">To Date</label>
-            <input
-              type="date"
-              placeholder="DD/MM/YYYY"
-              className="form-control w-full"
-              value={filters.to_date}
-              onChange={(e) => handleFilterChange("to_date", e.target.value)}
-            />
-          </div> */}
-
-          <div className="form-group z-[110]">
-            <label className="text-sm font-medium mb-1 block">LIS</label>
-            <LinkInput
-              value={filters.lis_name}
-              onChange={(value) => handleFilterChange("lis_name", value)}
-              placeholder="Select LIS..."
-              linkTarget="Lift Irrigation Scheme"
-              className="w-full relative"
-            />
-          </div>
-          <div className="form-group z-[110]">
-            <label className="text-sm font-medium mb-1 block">LIS Phase</label>
-            <LinkInput
-              value={filters.lis_phase}
-              onChange={(value) => handleFilterChange("lis_phase", value)}
-              placeholder="Select LIS Phase..."
-              linkTarget="LIS Phases"
-              className="w-full relative"
-              filters={{
-                lis_name: filters.lis_name || undefined
-              }}
-            />
-          </div>
-          <div className="form-group relative z-[110]">
-            <label className="text-sm font-medium mb-1 block">Stage</label>
-            <LinkInput
-              value={filters.stage}
-              onChange={(value) => handleFilterChange("stage", value)}
-              placeholder="Select Stage..."
-              linkTarget="Stage No"
-              className="w-full"
-              filters={{
-                lis_name: filters.lis_name || undefined
-              }}
-            />
-          </div>
           <div className="form-group z-[50]">
-            <label className="text-sm font-medium mb-1 block">Asset Name</label>
-            <LinkInput
-              value={filters.asset}
-              onChange={(value) => handleFilterChange("asset", value)}
-              placeholder="Select Asset..."
-              linkTarget="Asset"
-              className="w-full relative"
+            <label className="text-sm font-medium mb-1 block">ID</label>
+            <input
+              type="text"
+              className="form-control w-full"
+              value={filters.id}
+              onChange={(e) => handleFilterChange("id", e.target.value)}
             />
           </div>
 
-          <div className="form-group z-[50]">
-            <label className="text-sm font-medium mb-1 block">Status</label>
-            <select
-              className="form-control w-full"
-              value={filters.status}
-              onChange={(e) => handleFilterChange("status", e.target.value)}
-            >
-              <option value="">All</option>
-              <option value="Running">Running</option>
-              <option value="Stopped">Stopped</option>
-              <option value="Closed">Closed</option>
-            </select>
-          </div>
         </div>
 
-        {/* Table Section */}
         <div
           className="stock-table-container border rounded-md relative z-10"
           style={{

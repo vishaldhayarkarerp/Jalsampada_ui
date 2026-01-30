@@ -1363,161 +1363,6 @@ export function DynamicForm({
     );
   };
 
-
-  // const renderDateLike = (
-  //   field: FormField,
-  //   type: "date" | "datetime-local" | "time"
-  // ) => {
-  //   if (type === "date" || type === "datetime-local") {
-  //     const rules = rulesFor(field);
-
-  //     return (
-  //       <Controller
-  //         name={field.name}
-  //         control={control}
-  //         rules={rules}
-  //         render={({ field: controllerField, fieldState: { error } }) => {
-  //           // ✅ Auto-set current date ONLY if allowed
-  //           React.useEffect(() => {
-  //             if (!controllerField.value && !field.disableAutoToday) {
-  //               const now = new Date();
-  //               const pad = (n: number) => String(n).padStart(2, "0");
-
-  //               const yyyy = now.getFullYear();
-  //               const MM = pad(now.getMonth() + 1);
-  //               const dd = pad(now.getDate());
-  //               const hh = pad(now.getHours());
-  //               const mm = pad(now.getMinutes());
-  //               const ss = pad(now.getSeconds());
-
-  //               controllerField.onChange(
-  //                 type === "datetime-local"
-  //                   ? `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`
-  //                   : `${yyyy}-${MM}-${dd}`
-  //               );
-  //             }
-  //           }, [field.disableAutoToday]);
-
-  //           // ✅ Decide what date picker should show
-  //           let selectedDate: Date | null = null;
-
-  //           if (controllerField.value) {
-  //             const parsedDate = new Date(controllerField.value);
-  //             if (!isNaN(parsedDate.getTime())) {
-  //               selectedDate = parsedDate;
-  //             }
-  //           } else if (field.defaultValue) {
-  //             const defaultDate = new Date(field.defaultValue);
-  //             if (!isNaN(defaultDate.getTime())) {
-  //               selectedDate = defaultDate;
-  //             }
-  //           }
-
-  //           // ⭐ Only show today if auto-today is enabled
-  //           if (!selectedDate && !field.disableAutoToday) {
-  //             selectedDate = new Date();
-  //           }
-
-  //           return (
-  //             <div className="form-group">
-  //               <label htmlFor={field.name} className="form-label">
-  //                 {field.label}
-  //                 {field.required ? " *" : ""}
-  //               </label>
-
-  //               <div className={error ? "input-error-wrapper" : ""}>
-  //                 <DatePicker
-  //                   selected={selectedDate ?? null}
-  //                   onChange={(date: Date | null) => {
-  //                     if (!date) {
-  //                       controllerField.onChange("");
-  //                       return;
-  //                     }
-
-  //                     const pad = (n: number) => (n < 10 ? "0" + n : n);
-  //                     const yyyy = date.getFullYear();
-  //                     const MM = pad(date.getMonth() + 1);
-  //                     const dd = pad(date.getDate());
-
-  //                     if (type === "datetime-local") {
-  //                       const hh = pad(date.getHours());
-  //                       const mm = pad(date.getMinutes());
-  //                       const ss = pad(date.getSeconds());
-  //                       controllerField.onChange(`${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`);
-  //                     } else {
-  //                       controllerField.onChange(`${yyyy}-${MM}-${dd}`);
-  //                     }
-  //                   }}
-  //                   dateFormat={type === "datetime-local" ? "dd/MM/yyyy h:mm aa" : "dd/MM/yyyy"}
-  //                   showTimeSelect={type === "datetime-local"}
-  //                   timeIntervals={15}
-  //                   timeCaption="Time"
-  //                   placeholderText={type === "datetime-local" ? "DD/MM/YYYY HH:MM AM/PM" : "DD/MM/YYYY"}
-  //                   className={cn("form-control w-full", getErrorClass(field.name))}
-  //                   showYearDropdown
-  //                   scrollableYearDropdown
-  //                   yearDropdownItemNumber={100}
-  //                   autoComplete="off"
-  //                   withPortal
-  //                   portalId="root-portal"
-  //                 />
-  //               </div>
-
-  //               {error && (
-  //                 <span className="text-red-500 font-medium text-sm mt-1">
-  //                   {error.message}
-  //                 </span>
-  //               )}
-  //               <FieldHelp text={field.description} />
-  //             </div>
-  //           );
-  //         }}
-  //       />
-  //     );
-  //   }
-
-  //   // ⏰ TIME FIELD (unchanged)
-  //   if (type === "time") {
-  //     return (
-  //       <Controller
-  //         name={field.name}
-  //         control={control}
-  //         rules={rulesFor(field)}
-  //         render={({ field: controllerField }) => {
-  //           React.useEffect(() => {
-  //             if (!controllerField.value) {
-  //               const now = new Date();
-  //               const pad = (n: number) => String(n).padStart(2, "0");
-  //               controllerField.onChange(`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
-  //             }
-  //           }, []);
-
-  //           return (
-  //             <div className="form-group">
-  //               <label htmlFor={field.name} className="form-label">
-  //                 {field.label}
-  //                 {field.required ? " *" : ""}
-  //               </label>
-  //               <input
-  //                 id={field.name}
-  //                 type={type}
-  //                 step="1"
-  //                 className={cn("form-control", getErrorClass(field.name))}
-  //                 {...reg(field.name, rulesFor(field))}
-  //               />
-  //               <FieldError error={(errors as FieldErrors<Record<string, any>>)[field.name]} />
-  //               <FieldHelp text={field.description} />
-  //             </div>
-  //           );
-  //         }}
-  //       />
-  //     );
-  //   }
-
-  //   return null;
-  // };
-
-
   const renderDuration = (field: FormField) => {
     const base = field.name;
     return (
@@ -1608,25 +1453,38 @@ export function DynamicForm({
     );
   };
 
-  const renderReadOnly = (field: FormField) => {
-    const val = watch(field.name);
-    return (
-      <div className="form-group">
-        <label className="form-label">{field.label}</label>
-        <input
-          type="text"
-          className={cn("form-control", getErrorClass(field.name))}
-          value={field.readOnlyValue ?? val ?? ""}
-          readOnly
-          style={{
-            background: "var(--color-surface-muted, transparent)",
-            cursor: "default"
-          }}
-        />
-        <FieldHelp text={field.description} />
-      </div>
-    );
-  };
+ const renderReadOnly = (field: FormField) => {
+  const val = watch(field.name);
+  let displayValue: any = field.readOnlyValue ?? val ?? "";
+  // Auto-format date strings to DD/MM/YYYY
+  if (
+    typeof displayValue === "string" &&
+    /^\d{4}-\d{2}-\d{2}/.test(displayValue) // detect date pattern
+  ) {
+    const date = new Date(displayValue);
+    if (!isNaN(date.getTime())) {
+      const pad = (n: number) => (n < 10 ? "0" + n : n);
+      displayValue = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+    }
+  }
+
+  return (
+    <div className="form-group">
+      <label className="form-label">{field.label}</label>
+      <input
+        type="text"
+        className={cn("form-control", getErrorClass(field.name))}
+        value={displayValue}
+        readOnly
+        style={{
+          background: "var(--color-surface-muted, transparent)",
+          cursor: "default",
+        }}
+      />
+      <FieldHelp text={field.description} />
+    </div>
+  );
+};
 
   const renderButton = (field: FormField) => (
     <div className="form-group">

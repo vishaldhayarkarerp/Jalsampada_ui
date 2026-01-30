@@ -19,7 +19,14 @@ const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 interface MaintenanceLogData {
   name: string;
   naming_series?: string;
+  task_name?: string;
+  assign_to_name?: string;
+  maintenance_type?: string;
+  due_date?: string;
+  periodicity?: string;
+  description?: string;
   task?: string;
+  item_code?: string;
   maintenance_status?: string;
   has_certificate?: number;
   completion_date?: string;
@@ -76,8 +83,8 @@ export default function MaintenanceLogDetailPage() {
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-            ? "Unauthorized"
-            : `Failed to load ${doctypeName}`
+              ? "Unauthorized"
+              : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -96,7 +103,7 @@ export default function MaintenanceLogDetailPage() {
     const getValue = (fieldName: keyof MaintenanceLogData, defaultValue: any = undefined) =>
       record?.[fieldName] ?? defaultValue;
 
-     return [
+    return [
       {
         name: "Details",
         fields: [
@@ -108,20 +115,21 @@ export default function MaintenanceLogDetailPage() {
             linkTarget: "Asset Maintenance",
             defaultValue: getValue("asset_maintenance"),
           },
-          {
-            name: "naming_series",
-            label: "Series",
-            type: "Select",
-            options: [{ label: "ACC-AML-.YYYY.-", value: "ACC-AML-.YYYY.-" }],
-            defaultValue: getValue("naming_series"),
-          },
+          // {
+          //   name: "naming_series",
+          //   label: "Series",
+          //   type: "Select",
+          //   options: [{ label: "ACC-AML-.YYYY.-", value: "ACC-AML-.YYYY.-" }],
+          //   defaultValue: getValue("naming_series"),
+          // },
 
           // Conditional fields: only show when maintenance_schedule is filled
           {
             name: "item_code",
             label: "Item Code",
             type: "Read Only",
-            linkTarget: "Item",
+            // linkTarget: "Item",
+            defaultValue : getValue("item_code"),
             displayDependsOn: "maintenance_schedule", fetchFrom: { sourceField: "asset_maintenance", targetDoctype: "Asset Maintenance", targetField: "item_code" }
           },
           {
@@ -147,7 +155,7 @@ export default function MaintenanceLogDetailPage() {
             name: "task_name",
             label: "Task Name",
             type: "Read Only",
-            defaultValue: getValue("task"),
+            defaultValue: getValue("task_name"),
             displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "maintenance_task" }
@@ -156,7 +164,7 @@ export default function MaintenanceLogDetailPage() {
             name: "assign_to_name",
             label: "Assign To",
             type: "Read Only",
-            defaultValue: getValue("task"),
+            defaultValue: getValue("assign_to_name"),
             displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "assign_to_name" }
@@ -165,7 +173,7 @@ export default function MaintenanceLogDetailPage() {
             name: "maintenance_type",
             label: "Maintenance Type",
             type: "Read Only",
-            defaultValue: getValue("task"),
+            defaultValue: getValue("maintenance_type"),
             displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "maintenance_type" }
@@ -174,7 +182,7 @@ export default function MaintenanceLogDetailPage() {
             name: "due_date",
             label: "Due Date",
             type: "Read Only",
-            defaultValue: getValue("task"),
+            defaultValue: getValue("due_date"),
             displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "next_due_date" }
@@ -183,7 +191,7 @@ export default function MaintenanceLogDetailPage() {
             name: "periodicity",
             label: "Periodicity",
             type: "Read Only",
-            defaultValue: getValue("task"),
+            defaultValue: getValue("periodicity"),
             displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "periodicity" }
@@ -192,10 +200,10 @@ export default function MaintenanceLogDetailPage() {
             name: "description",
             label: "Description",
             type: "Small Text",
-            defaultValue: getValue("task"),
+            defaultValue: getValue("description"),
             displayDependsOn: "task",
 
-             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "description" }
+            fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "description" }
 
           },
           {
@@ -215,8 +223,8 @@ export default function MaintenanceLogDetailPage() {
             name: "completion_date",
             label: "Completion Date",
             type: "Date",
-            disableAutoToday: true, 
-            // defaultValue: getValue("completion_date"),
+            disableAutoToday: true,
+            defaultValue: getValue("completion_date"),
 
           },
 

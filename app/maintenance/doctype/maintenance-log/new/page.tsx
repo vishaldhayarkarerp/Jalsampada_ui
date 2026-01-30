@@ -84,13 +84,13 @@ export default function NewMaintenanceLogPage() {
             linkTarget: "Asset Maintenance",
             // defaultValue: getValue("asset_maintenance"),
           },
-          {
-            name: "naming_series",
-            label: "Series",
-            type: "Select",
-            options: [{ label: "ACC-AML-.YYYY.-", value: "ACC-AML-.YYYY.-" }],
-            defaultValue: getValue("naming_series"),
-          },
+          // {
+          //   name: "naming_series",
+          //   label: "Series",
+          //   type: "Select",
+          //   options: [{ label: "ACC-AML-.YYYY.-", value: "ACC-AML-.YYYY.-" }],
+          //   defaultValue: getValue("naming_series"),
+          // },
 
           // Conditional fields: only show when maintenance_schedule is filled
           {
@@ -229,54 +229,87 @@ export default function NewMaintenanceLogPage() {
   /* -------------------------------------------------
    Submit handler
   ------------------------------------------------- */
-  const handleSubmit = async (data: Record<string, any>) => {
-    if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
-      toast.error("Authentication required. Please log in.");
-      return;
+ const handleSubmit = async (data: Record<string, any>) => {
+  if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
+    toast.error("Authentication required. Please log in.");
+    return;
+  }
+
+  if (!data.task) {
+    toast.info("Task field is required.");
+    return;
+  }
+
+  setIsSaving(true);
+
+  try {
+    const payload = { ...data };
+
+    // Remove auto placeholder name
+    if (payload.name === "Will be auto-generated") {
+      delete payload.name;
     }
 
-    if (!data.task) {
-      toast.info("Task field is required.");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const payload = { ...data };
-      if (payload.name === "Will be auto-generated") {
-        delete payload.name;
-      }
-
-      const response = await axios.post(`${API_BASE_URL}/${doctypeName}`, payload, {
+    const response = await axios.post(
+      `${API_BASE_URL}/${doctypeName}`,
+      payload,
+      {
         headers: {
           Authorization: `token ${apiKey}:${apiSecret}`,
           "Content-Type": "application/json",
         },
         withCredentials: true,
-      });
+      }
+    );
 
-      toast.success("Maintenance Log created successfully!");
-      const newName = response.data?.data?.name;
-      if (newName) {
-        router.push(`/maintenance/doctype/maintenance-log/${newName}`);
-      }
-    } catch (err: any) {
-      console.error("Create error:", err);
-      if (err.response?.data?.exc_type === "DuplicateEntryError") {
-        toast.error("Duplicate Entry Error", {
-          description: "A Maintenance Log with this series already exists.",
-        });
-      } else {
-        const errorMessage =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Failed to create Maintenance Log.";
-        toast.error(errorMessage);
-      }
-    } finally {
-      setIsSaving(false);
+    toast.success("Maintenance Log created successfully!");
+
+    const newName = response.data?.data?.name;
+    if (newName) {
+      router.push(`/maintenance/doctype/maintenance-log/${newName}`);
     }
-  };
+  } catch (err: any) {
+    console.error("Create error:", err);
+
+    const res = err.response?.data;
+
+    // ⭐ 1. FRAPPE VALIDATION ERRORS (MOST IMPORTANT)
+    if (res?._server_messages) {
+      try {
+        const messages = JSON.parse(res._server_messages); // array of strings
+
+        const cleanMessage = messages
+          .map((msg: string) => {
+            const parsed = JSON.parse(msg);
+            return parsed.message;
+          })
+          .join("\n");
+
+        toast.error(cleanMessage);
+        return;
+      } catch (parseErr) {
+        console.error("Server message parse error:", parseErr);
+      }
+    }
+
+    if (res?.exc_type === "DuplicateEntryError") {
+      toast.error("Duplicate Entry Error", {
+        description: "A Maintenance Log with this series already exists.",
+      });
+      return;
+    }
+
+    const errorMessage =
+      res?.message ||
+      res?.exception ||
+      res?.error ||
+      "Failed to create Maintenance Log.";
+
+    toast.error(errorMessage);
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const handleCancel = () => router.back();
 
