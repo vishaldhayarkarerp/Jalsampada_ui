@@ -85,7 +85,17 @@ label: "Gate No",
 type: "Link",
 linkTarget: "Gate",
 required: true,
-defaultValue: getValue("gate_no"),
+customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+filters: (getValue) => {
+const filters: Record<string, any> = {};
+const stage = getValue("stage");
+const lisName = getValue("lis_name");
+if (stage) filters.stage = stage;
+if (lisName) filters.lis_name = lisName;
+return filters;
+},
+referenceDoctype: "Gate",
+doctype: "Gate",
 },
 
 // Gate Operations Section
