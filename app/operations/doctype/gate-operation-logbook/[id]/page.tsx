@@ -9,9 +9,13 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { UseFormReturn } from "react-hook-form";
+import { getApiMessages } from "@/lib/utils";
+import axios from "axios";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_METHOD_URL = "http://103.219.1.138:4412/api/method";
+const DOCTYPE_NAME = "Gate Operation Logbook";
 
 /* -------------------------------------------------
    1. Gate Operation Logbook interface
@@ -49,8 +53,31 @@ export default function GateOperationLogbookDetailPage() {
     const [error, setError] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
     const [formInitialized, setFormInitialized] = React.useState(false);
+    const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
 
-    // Status mapping function
+    // 🟢 Badge Status Logic
+    const getCurrentStatus = () => {
+        if (!record) return "";
+
+        // 1. If Cancelled
+        if (record.docstatus === 2) return "Cancelled";
+
+        // 2. If Submitted
+        if (record.docstatus === 1) return "Submitted";
+
+        // 3. If Draft (docstatus === 0)
+        if (record.docstatus === 0) {
+            // Check if form has unsaved changes
+            if (formMethods?.formState.isDirty) {
+                return "Not Saved";
+            }
+            return "Draft";
+        }
+
+        return "";
+    };
+
+    // Status mapping function (kept for backward compatibility)
     const getStatusDisplay = (docstatus: number | undefined) => {
         switch (docstatus) {
             case 0: return "Draft";
@@ -63,49 +90,86 @@ export default function GateOperationLogbookDetailPage() {
     /* -------------------------------------------------
        3. FETCH RECORD
        ------------------------------------------------- */
-    React.useEffect(() => {
-        const fetchRecord = async () => {
-            if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret || !docname) {
-                setLoading(false);
-                return;
+    const fetchRecord = async () => {
+        if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret || !docname) {
+            setLoading(false);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            const resp = await axios.get(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
+                headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+            });
+            setRecord(resp.data.data);
+        } catch (err: any) {
+            setError("Failed to load Gate Operation Logbook record.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    React.useEffect(() => { fetchRecord(); }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
+
+    // 🟢 SUBMIT DOCUMENT
+    const handleSubmitDocument = async () => {
+        setIsSaving(true);
+        try {
+            const resp = await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
+                docstatus: 1
+            }, {
+                headers: {
+                    Authorization: `token ${apiKey}:${apiSecret}`,
+                    "Content-Type": "application/json",
+                },
+                withCredentials: true,
+            });
+
+            const messages = getApiMessages(resp, null, "Document submitted successfully!", "Failed to submit document");
+            if (messages.success) {
+                toast.success(messages.message);
+                setRecord(resp.data.data);
+            } else {
+                toast.error(messages.message, { description: messages.description, duration: Infinity});
             }
+        } catch (err: any) {
+            const messages = getApiMessages(null, err, null, "Failed to submit document");
+            toast.error(messages.message, { description: messages.description, duration: Infinity});
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
-            try {
-                setLoading(true);
-                setError(null);
+    // 🟢 CANCEL DOCUMENT
+    const handleCancelDocument = async () => {
+        setIsSaving(true);
+        try {
+            const resp = await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
+                docstatus: 2
+            }, {
+                headers: {
+                    Authorization: `token ${apiKey}:${apiSecret}`,
+                    "Content-Type": "application/json",
+                },
+                withCredentials: true,
+            });
 
-                const headers: HeadersInit = {
-                    'Authorization': `token ${apiKey}:${apiSecret}`,
-                };
-
-                const resp = await fetch(`${API_BASE_URL}/${doctypeName}/${docname}`, {
-                    method: 'GET',
-                    headers: headers,
-                    credentials: 'include',
-                });
-
-                if (!resp.ok) {
-                    throw new Error(`Failed to load ${doctypeName}`);
-                }
-                
-                const responseData = await resp.json();
-                setRecord(responseData.data);
-            } catch (err: any) {
-                console.error("API Error:", err);
-                setError(
-                    err.status === 404
-                        ? "Gate Operation Logbook not found"
-                        : err.status === 403
-                            ? "Unauthorized"
-                            : "Failed to load record"
-                );
-            } finally {
-                setLoading(false);
+            const messages = getApiMessages(resp, null, "Document cancelled successfully!", "Failed to cancel document");
+            if (messages.success) {
+                toast.success(messages.message);
+                setRecord(resp.data.data);
+            } else {
+                toast.error(messages.message, { description: messages.description, duration: Infinity});
             }
-        };
-
-        fetchRecord();
-    }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
+        } catch (err: any) {
+            const messages = getApiMessages(null, err, null, "Failed to cancel document");
+            toast.error(messages.message, { description: messages.description, duration: Infinity});
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // Handle form initialization to set proper baseline values
     const handleFormInit = React.useCallback((methods: any) => {
@@ -129,6 +193,7 @@ export default function GateOperationLogbookDetailPage() {
                 setFormInitialized(true);
             }, 100);
         }
+        setFormMethods(methods);
     }, [record, formInitialized]);
 
     /* -------------------------------------------------
@@ -183,6 +248,17 @@ export default function GateOperationLogbookDetailPage() {
                         type: "Link",
                         linkTarget: "Gate",
                         required: true,
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        filters: (getValue) => {
+                            const filters: Record<string, any> = {};
+                            const stage = getValue("stage");
+                            const lisName = getValue("lis_name");
+                            if (stage) filters.stage = stage;
+                            if (lisName) filters.lis_name = lisName;
+                            return filters;
+                        },
+                        referenceDoctype: "Gate",
+                        doctype: "Gate",
                     },
 
                     // Gate Operations Section
@@ -285,53 +361,20 @@ export default function GateOperationLogbookDetailPage() {
                 payload.lift_date = "";
             }
 
-            console.log("Sending payload:", payload);
-
-            const headers: HeadersInit = {
-                'Content-Type': 'application/json',
-                'Authorization': `token ${apiKey}:${apiSecret}`,
-            };
-            
-            const storedCsrfToken = localStorage.getItem('csrfToken');
-            if (storedCsrfToken) {
-                headers['X-Frappe-CSRF-Token'] = storedCsrfToken;
-            }
-
-            const resp = await fetch(`${API_BASE_URL}/${doctypeName}/${docname}`, {
-                method: 'PUT',
-                headers: headers,
-                credentials: 'include',
-                body: JSON.stringify(payload),
+            await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, payload, {
+                headers: { Authorization: `token ${apiKey}:${apiSecret}` },
             });
-
-            const responseData = await resp.json();
-
-            if (!resp.ok) {
-                console.log("Full server error:", responseData);
-                throw new Error(responseData.exception || responseData._server_messages || "Failed to save");
-            }
-
             toast.success("Gate Operation Logbook updated successfully!");
-
-            if (responseData && responseData.data) {
-                setRecord(responseData.data);
-            }
-
-            router.push(`/operations/doctype/gate-operation-logbook/${encodeURIComponent(docname)}`);
+            fetchRecord();
 
         } catch (err: any) {
-            console.error("Save error:", err);
-            console.log("Full server error:", err.message);
-        toast.error("Failed to save", {
-                description: (err as Error).message || "Check console for details.",
-                duration: Infinity
-            });
+            toast.error("Failed to update record", { duration: Infinity });
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleCancel = () => router.back();
+    const handleCancel = () => router.push('/operations/doctype/gate-operation-logbook');
 
     /* -------------------------------------------------
        6. UI STATES
@@ -355,15 +398,17 @@ export default function GateOperationLogbookDetailPage() {
             tabs={formTabs}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
+            onSubmitDocument={handleSubmitDocument}
+            onCancelDocument={handleCancelDocument}
             onFormInit={handleFormInit}
-            title={`${doctypeName}: ${record.name}`}
+            title={`${DOCTYPE_NAME}: ${record.name}`}
             description={`Record ID: ${docname}`}
-            initialStatus={getStatusDisplay(record.docstatus)}
+            initialStatus={getCurrentStatus()}
             docstatus={record.docstatus}
-            submitLabel={isSaving ? "Saving..." : "Save"}
-            cancelLabel="Cancel"
+            submitLabel={isSaving ? "Saving..." : "Save Changes"}
+            isSubmittable={true}
             deleteConfig={{
-                doctypeName: doctypeName,
+                doctypeName: DOCTYPE_NAME,
                 docName: docname,
                 redirectUrl: "/operations/doctype/gate-operation-logbook"
             }}
