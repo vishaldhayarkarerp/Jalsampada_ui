@@ -63,6 +63,12 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
                 }
             });
 
+            // Determine which fields to fetch based on linkTarget
+            let fieldsToFetch = ["name"];
+            if (linkTarget === "Prapan Suchi") {
+                fieldsToFetch = ["name", "work_name"];
+            }
+
             const query = searchFilters.length > 0 ? JSON.stringify(searchFilters) : undefined;
             const response = await axios.get(`${API_BASE_URL}/${linkTarget}`, {
                 headers: {
@@ -70,7 +76,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
                 },
                 params: {
                     filters: query,
-                    fields: JSON.stringify(["name"]),
+                    fields: JSON.stringify(fieldsToFetch),
                     limit_page_length: 20,
                 },
             });
@@ -78,7 +84,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
             if (response.data?.data) {
                 const formattedOptions = response.data.data.map((item: any) => ({
                     value: item.name,
-                    label: item.name,
+                    label: linkTarget === "Prapan Suchi" ? (item.work_name || item.name) : item.name,
                 }));
                 setOptions(formattedOptions);
             }

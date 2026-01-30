@@ -22,9 +22,9 @@ type ReportField = {
 type ReportData = Record<string, any>;
 
 type Filters = {
+  custom_fiscal_year: string;
   from_date: string;
   to_date: string;
-  custom_fiscal_year: string;
   custom_lis_name: string;
   custom_prapan_suchi: string;
   custom_tender_status: string;
@@ -80,9 +80,9 @@ export default function TenderLevelReport() {
   const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<Filters>({
+    custom_fiscal_year: "",
     from_date: "",
     to_date: "",
-    custom_fiscal_year: "",
     custom_lis_name: "",
     custom_prapan_suchi: "",
     custom_tender_status: "",
@@ -345,26 +345,7 @@ export default function TenderLevelReport() {
 
         {/* Filters Grid - High Z-Index for Dropdowns */}
         <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
-          <div className="form-group z-[50]">
-            <label className="text-sm font-medium mb-1 block">From Date</label>
-            <input 
-              type="date" 
-              className="form-control w-full" 
-              value={filters.from_date}
-              onChange={(e) => handleFilterChange("from_date", e.target.value)}
-            />
-          </div>
-          <div className="form-group z-[50]">
-            <label className="text-sm font-medium mb-1 block">To Date</label>
-            <input 
-              type="date" 
-              className="form-control w-full" 
-              value={filters.to_date}
-              onChange={(e) => handleFilterChange("to_date", e.target.value)}
-            />
-          </div>
-
-          <div className="form-group z-[50]">
+          <div className="form-group z-[70]">
             <label className="text-sm font-medium mb-1 block">Fiscal Year</label>
             <LinkInput
               value={filters.custom_fiscal_year}
@@ -374,8 +355,26 @@ export default function TenderLevelReport() {
               className="w-full relative"
             />
           </div>
+          <div className="form-group z-[69]">
+            <label className="text-sm font-medium mb-1 block">From Date</label>
+            <input 
+              type="date" 
+              className="form-control w-full" 
+              value={filters.from_date}
+              onChange={(e) => handleFilterChange("from_date", e.target.value)}
+            />
+          </div>
+          <div className="form-group z-[68]">
+            <label className="text-sm font-medium mb-1 block">To Date</label>
+            <input 
+              type="date" 
+              className="form-control w-full" 
+              value={filters.to_date}
+              onChange={(e) => handleFilterChange("to_date", e.target.value)}
+            />
+          </div>
 
-          <div className="form-group z-[50]">
+          <div className="form-group z-[67]">
             <label className="text-sm font-medium mb-1 block">LIS Name</label>
             <LinkInput
               value={filters.custom_lis_name}
@@ -386,8 +385,8 @@ export default function TenderLevelReport() {
             />
           </div>
 
-          {/* Dependent Filter: Name of Work (Prapan Suchi) */}
-          <div className="form-group z-[50]">
+          {/* Dependent Filter: Name of Work (Prapan Suchi) - with LIS filter and work_name field instead of Id */}
+          <div className="form-group z-[66]">
             <label className="text-sm font-medium mb-1 block">Name of Work</label>
             <LinkInput
               value={filters.custom_prapan_suchi}
@@ -399,7 +398,7 @@ export default function TenderLevelReport() {
             />
           </div>
 
-          <div className="form-group z-[50]">
+          <div className="form-group z-[65]">
             <label className="text-sm font-medium mb-1 block">Tender Status</label>
             <select 
               className="form-control w-full"
