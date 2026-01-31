@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { useForm, Controller } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 
 // 🟢 New Imports for Bulk Delete & Icons
 import { useSelection } from "@/hooks/useSelection";
@@ -39,6 +41,15 @@ interface StageNo {
   name: string;
   stage_no: string;
   lis_name?: string;
+  lis_phase?: string;
+}
+
+interface LisOption {
+  name: string;
+}
+
+interface LisPhaseOption {
+  name: string;
 }
 
 /* -------------------------------------------------
@@ -57,16 +68,46 @@ export default function DoctypePage() {
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
+  const [lisPhaseOptions, setLisPhaseOptions] = React.useState<LisPhaseOption[]>([]);
+
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      lis_name: "",
+      lis_phase: ""
+    }
+  });
+
+  const selectedLis = watch("lis_name");
+  const selectedLisPhase = watch("lis_phase");
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Filter stages client-side for instant results
   const filteredStages = React.useMemo(() => {
-    if (!searchTerm) return stages;
-    return stages.filter(stage =>
-      stage.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      stage.stage_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (stage.lis_name && stage.lis_name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [stages, searchTerm]);
+    let filtered = stages;
+    
+    // Apply search filter
+    if (debouncedSearch) {
+      filtered = filtered.filter(stage =>
+        stage.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        stage.stage_no.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        (stage.lis_name && stage.lis_name.toLowerCase().includes(debouncedSearch.toLowerCase()))
+      );
+    }
+    
+    // Apply LIS filter
+    if (selectedLis) {
+      filtered = filtered.filter(stage => stage.lis_name === selectedLis);
+    }
+    
+    // Apply LIS Phase filter
+    if (selectedLisPhase) {
+      filtered = filtered.filter(stage => stage.lis_phase === selectedLisPhase);
+    }
+    
+    return filtered;
+  }, [stages, debouncedSearch, selectedLis, selectedLisPhase]);
 
   // 🟢 1. Initialize Selection Hook
   const {
@@ -78,6 +119,45 @@ export default function DoctypePage() {
   } = useSelection(filteredStages, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // ── Load Filter Options ────────────────────────────────────────
+  React.useEffect(() => {
+    const fetchFilterOptions = async () => {
+      if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
+
+      try {
+        // Fetch LIS options
+        const lisResp = await axios.get(`${API_BASE_URL}/api/resource/Lift Irrigation Scheme`, {
+          params: {
+            fields: JSON.stringify(["name"]),
+            limit_page_length: "100",
+            order_by: "name asc",
+          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        });
+
+        // Fetch LIS Phase options
+        const lisPhaseResp = await axios.get(`${API_BASE_URL}/api/resource/LIS Phases`, {
+          params: {
+            fields: JSON.stringify(["name"]),
+            limit_page_length: "100",
+            order_by: "name asc",
+          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        });
+
+        const lisData = lisResp.data?.data ?? [];
+        const lisPhaseData = lisPhaseResp.data?.data ?? [];
+
+        setLisOptions([{ name: "" }, ...lisData]); // empty string = All
+        setLisPhaseOptions([{ name: "" }, ...lisPhaseData]); // empty string = All
+      } catch (err) {
+        console.error("Failed to load filter options:", err);
+      }
+    };
+
+    fetchFilterOptions();
+  }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
   /* -------------------------------------------------
   3. FETCH
@@ -97,7 +177,8 @@ export default function DoctypePage() {
         fields: JSON.stringify([
           "name",
           "stage_no",
-          "lis_name"
+          "lis_name",
+          "lis_phase"
         ]),
         limit_page_length: "20",
         order_by: "creation desc"
@@ -117,6 +198,7 @@ export default function DoctypePage() {
         name: r.name,
         stage_no: r.stage_no ?? r.name,
         lis_name: r.lis_name ?? "—",
+        lis_phase: r.lis_phase ?? "—",
       }));
 
       setStages(mapped);
@@ -208,6 +290,7 @@ export default function DoctypePage() {
   const getFieldsForStage = (stage: StageNo): RecordCardField[] => {
     const fields: RecordCardField[] = [];
     if (stage.lis_name) fields.push({ label: "LIS", value: stage.lis_name });
+    if (stage.lis_phase) fields.push({ label: "LIS Phase", value: stage.lis_phase });
     return fields;
   };
 
@@ -230,6 +313,7 @@ export default function DoctypePage() {
             </th>
             <th>Stage No</th>
             <th>LIS Name</th>
+            <th>LIS Phase</th>
             <th>ID</th>
           </tr>
         </thead>
@@ -260,13 +344,14 @@ export default function DoctypePage() {
                   </td>
                   <td>{stage.stage_no}</td>
                   <td>{stage.lis_name}</td>
+                  <td>{stage.lis_phase}</td>
                   <td>{stage.name}</td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -354,20 +439,79 @@ export default function DoctypePage() {
         className="search-filter-section"
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          gap: "8px",
           alignItems: "center",
           marginTop: "1rem",
         }}
       >
-        <div style={{ display: "flex", gap: "8px" }}>
-          <input
-            type="text"
-            placeholder={`Search ${title}...`}
-            className="form-control"
-            style={{ width: 240 }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          <div style={{ minWidth: "200px" }}>
+            <input
+              type="text"
+              placeholder={`Search ${title}...`}
+              className="form-control w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="lis_name"
+              render={({ field: { onChange, value } }) => {
+                const mockField = {
+                  name: "lis_name",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Lift Irrigation Scheme",
+                  placeholder: "Select LIS",
+                  required: false,
+                  defaultValue: ""
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px",marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="lis_phase"
+              render={({ field: { onChange, value } }) => {
+                const mockField = {
+                  name: "lis_phase",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "LIS Phases",
+                  placeholder: "Select LIS Phase",
+                  required: false,
+                  defaultValue: ""
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
         </div>
 
         <div className="view-switcher">

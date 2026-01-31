@@ -360,6 +360,8 @@ export default function TenderLevelReport() {
             <input 
               type="date" 
               className="form-control w-full" 
+              placeholder="DD-MM-YYYY"
+              style={{ textTransform: "uppercase" }}
               value={filters.from_date}
               onChange={(e) => handleFilterChange("from_date", e.target.value)}
             />
@@ -369,6 +371,8 @@ export default function TenderLevelReport() {
             <input 
               type="date" 
               className="form-control w-full" 
+              placeholder="DD-MM-YYYY"
+              style={{ textTransform: "uppercase" }}
               value={filters.to_date}
               onChange={(e) => handleFilterChange("to_date", e.target.value)}
             />
@@ -405,7 +409,7 @@ export default function TenderLevelReport() {
               value={filters.custom_tender_status}
               onChange={(e) => handleFilterChange("custom_tender_status", e.target.value)}
             >
-              <option value="">All Statuses</option>
+              <option value="">All Status</option>
               <option value="Ongoing">Ongoing</option>
               <option value="Completed">Completed</option>
               <option value="Cancelled">Cancelled</option>

@@ -54,6 +54,7 @@ interface Asset {
   name: string;
   location: string;
   custom_lis_name?: string;
+  custom_lis_phase?: string;
   custom_stage_no?: string;
   asset_category?: string;
   status?: string;
@@ -61,6 +62,14 @@ interface Asset {
 }
 
 interface AssetCategoryOption {
+  name: string;
+}
+
+interface StageOption {
+  name: string;
+}
+
+interface LisPhaseOption {
   name: string;
 }
 
@@ -106,6 +115,8 @@ export default function DoctypePage() {
   });
 
   const [categories, setCategories] = React.useState<AssetCategoryOption[]>([]);
+  const [stages, setStages] = React.useState<StageOption[]>([]);
+  const [lisPhases, setLisPhases] = React.useState<LisPhaseOption[]>([]);
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
@@ -120,14 +131,18 @@ export default function DoctypePage() {
 
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  // Form for category filter
+  // Form for filters
   const { control, watch } = useForm({
     defaultValues: {
-      asset_category: ""
+      asset_category: "",
+      custom_stage_no: "",
+      custom_lis_phase: ""
     }
   });
 
   const selectedCategory = watch("asset_category");
+  const selectedStage = watch("custom_stage_no");
+  const selectedLisPhase = watch("custom_lis_phase");
 
   // Close sort menu on outside click
   React.useEffect(() => {
@@ -140,14 +155,14 @@ export default function DoctypePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── Load Asset Categories ────────────────────────────────────────
+  // ── Load Filter Options ────────────────────────────────────────
   React.useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchFilterOptions = async () => {
       if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
 
       try {
-        // 🟢 Append /api/resource manually
-        const resp = await axios.get(`${API_BASE_URL}/api/resource/Asset Category`, {
+        // Fetch Asset Categories
+        const categoryResp = await axios.get(`${API_BASE_URL}/api/resource/Asset Category`, {
           params: {
             fields: JSON.stringify(["name"]),
             limit_page_length: "100",
@@ -156,14 +171,39 @@ export default function DoctypePage() {
           headers: { Authorization: `token ${apiKey}:${apiSecret}` },
         });
 
-        const data = resp.data?.data ?? [];
-        setCategories([{ name: "" }, ...data]); // empty string = All
+        // Fetch Stages
+        const stageResp = await axios.get(`${API_BASE_URL}/api/resource/Stage No`, {
+          params: {
+            fields: JSON.stringify(["name"]),
+            limit_page_length: "100",
+            order_by: "name asc",
+          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        });
+
+        // Fetch LIS Phases
+        const lisPhaseResp = await axios.get(`${API_BASE_URL}/api/resource/LIS Phases`, {
+          params: {
+            fields: JSON.stringify(["name"]),
+            limit_page_length: "100",
+            order_by: "name asc",
+          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        });
+
+        const categoryData = categoryResp.data?.data ?? [];
+        const stageData = stageResp.data?.data ?? [];
+        const lisPhaseData = lisPhaseResp.data?.data ?? [];
+
+        setCategories([{ name: "" }, ...categoryData]); // empty string = All
+        setStages([{ name: "" }, ...stageData]); // empty string = All
+        setLisPhases([{ name: "" }, ...lisPhaseData]); // empty string = All
       } catch (err) {
-        console.error("Failed to load asset categories:", err);
+        console.error("Failed to load filter options:", err);
       }
     };
 
-    fetchCategories();
+    fetchFilterOptions();
   }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
   // ── 🟢 Fetch Logic (Refactored for Pagination) ───────────────────
@@ -190,6 +230,7 @@ export default function DoctypePage() {
             "name",
             "location",
             "custom_lis_name",
+            "custom_lis_phase",
             "custom_stage_no",
             "asset_category",
             "status",
@@ -207,6 +248,12 @@ export default function DoctypePage() {
         if (selectedCategory) {
           filters.push(["Asset", "asset_category", "=", selectedCategory]);
         }
+        if (selectedStage) {
+          filters.push(["Asset", "custom_stage_no", "=", selectedStage]);
+        }
+        if (selectedLisPhase) {
+          filters.push(["Asset", "custom_lis_phase", "=", selectedLisPhase]);
+        }
         if (filters.length > 0) {
           params.filters = JSON.stringify(filters);
         }
@@ -223,6 +270,7 @@ export default function DoctypePage() {
           name: r.name,
           location: r.location ?? "—",
           custom_lis_name: r.custom_lis_name,
+          custom_lis_phase: r.custom_lis_phase,
           custom_stage_no: r.custom_stage_no,
           asset_category: r.asset_category,
           status: r.status,
@@ -251,7 +299,7 @@ export default function DoctypePage() {
         setIsLoadingMore(false);
       }
     },
-    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedCategory, sortConfig]
+    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedCategory, selectedStage, selectedLisPhase, sortConfig]
   );
 
   React.useEffect(() => {
@@ -332,6 +380,7 @@ export default function DoctypePage() {
     if (a.status) fields.push({ label: "Status", value: a.status });
     if (a.asset_category) fields.push({ label: "Category", value: a.asset_category });
     if (a.custom_lis_name) fields.push({ label: "LIS", value: a.custom_lis_name });
+    if (a.custom_lis_phase) fields.push({ label: "LIS Phase", value: a.custom_lis_phase });
     if (a.custom_stage_no) fields.push({ label: "Stage", value: a.custom_stage_no });
     fields.push({ label: "Location", value: a.location });
     return fields;
@@ -361,6 +410,7 @@ export default function DoctypePage() {
             <th>Status</th>
             <th>Category</th>
             <th>LIS</th>
+            <th>LIS Phase</th>
             <th>Stage</th>
             <th>Location</th>
           </tr>
@@ -394,6 +444,7 @@ export default function DoctypePage() {
                   <td>{a.status || "—"}</td>
                   <td>{a.asset_category || "—"}</td>
                   <td>{a.custom_lis_name || "—"}</td>
+                  <td>{a.custom_lis_phase || "—"}</td>
                   <td>{a.custom_stage_no || "—"}</td>
                   <td>{a.location}</td>
                 </tr>
@@ -401,7 +452,7 @@ export default function DoctypePage() {
             })
           ) : (
             <tr>
-              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
                 {!loading && "No records found."}
               </td>
             </tr>
@@ -491,6 +542,64 @@ export default function DoctypePage() {
                   type: "Link" as const,
                   linkTarget: "Asset Category",
                   placeholder: "Select Category",
+                  required: false,
+                  defaultValue: ""
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px" }}>
+            <Controller
+              control={control}
+              name="custom_lis_phase"
+              render={({ field: { onChange, value } }) => {
+                const mockField = {
+                  name: "custom_lis_phase",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "LIS Phases",
+                  placeholder: "Select LIS Phase",
+                  required: false,
+                  defaultValue: ""
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px" }}>
+            <Controller
+              control={control}
+              name="custom_stage_no"
+              render={({ field: { onChange, value } }) => {
+                const mockField = {
+                  name: "custom_stage_no",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Stage No",
+                  placeholder: "Select Stage",
                   required: false,
                   defaultValue: ""
                 };

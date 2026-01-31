@@ -28,7 +28,6 @@ type Filters = {
   from_date: string;
   to_date: string;
   lift_irrigation_scheme: string;
-  phase: string;
   stage: string; // Matches Python: filters.get("stage")
   work_type: string;
   tender_number: string;
@@ -87,7 +86,6 @@ export default function ExpenditureDetailsReport() {
     from_date: getOneMonthAgo(),
     to_date: getToday(),
     lift_irrigation_scheme: "",
-    phase: "",
     stage: "",
     work_type: "",
     tender_number: "",
@@ -528,17 +526,6 @@ export default function ExpenditureDetailsReport() {
                     onChange={(value) => handleFilterChange("lift_irrigation_scheme", value)}
                     placeholder="Select LIS..."
                     linkTarget="Lift Irrigation Scheme"
-                    className="w-full relative"
-                />
-            </div>
-
-            <div className="form-group z-[66]">
-                <label className="text-sm font-medium mb-1 block">Phase</label>
-                <LinkInput
-                    value={filters.phase || ""}
-                    onChange={(value) => handleFilterChange("phase", value)}
-                    placeholder="Select Phase..."
-                    linkTarget="Phase"
                     className="w-full relative"
                 />
             </div>
