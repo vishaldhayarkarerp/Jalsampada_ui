@@ -454,6 +454,8 @@ export function DynamicForm({
 }: DynamicFormProps) {
   const { apiKey, apiSecret } = useAuth();
 
+  const isReadOnlyMode = isSubmittable && docstatus > 0;
+
   // ── HOOKS ────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = React.useState(0);
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -733,6 +735,10 @@ export function DynamicForm({
         activeElement?.tagName === "SELECT" ||
         (activeElement as HTMLElement)?.isContentEditable;
 
+      if (isReadOnlyMode) {
+        return;
+      }
+
       if ((event.ctrlKey || event.metaKey) && event.key === "s") {
         event.preventDefault();
         const submitButton = formRef.current?.querySelector(
@@ -767,7 +773,7 @@ export function DynamicForm({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [handleDuplicate, prevRecord, nextRecord]);
+  }, [handleDuplicate, prevRecord, nextRecord, isReadOnlyMode]);
 
   // ── FETCH FROM FUNCTIONALITY ─────────────────────────────────────────────
   React.useEffect(() => {
@@ -923,6 +929,7 @@ export function DynamicForm({
       ...(field.step ? { step: field.step } : {}),
       ...(field.min !== undefined ? { min: field.min } : {}),
       ...(field.max !== undefined ? { max: field.max } : {}),
+      disabled: isReadOnlyMode,
     };
 
     const valueAsNumber = ["Int", "Float", "Currency", "Percent"].includes(
@@ -968,7 +975,6 @@ export function DynamicForm({
       );
     }
 
-
     return (
       <div className="form-group">
         <label htmlFor={field.name} className="form-label">
@@ -1005,6 +1011,7 @@ export function DynamicForm({
           className={cn("form-control", getErrorClass(field.name))}
           placeholder={field.placeholder}
           {...reg(field.name, rules)}
+          disabled={isReadOnlyMode}
         />
         <FieldError
           error={(errors as FieldErrors<Record<string, any>>)[field.name]}
@@ -1036,6 +1043,7 @@ export function DynamicForm({
           id={field.name}
           className={cn("form-control", getErrorClass(field.name))}
           {...reg(field.name, rules)}
+          disabled={isReadOnlyMode}
         >
           <option value="">Select...</option>
           {options?.map((opt) => (
@@ -1064,6 +1072,7 @@ export function DynamicForm({
               checked={!!rhfField.value}
               onChange={(val) => rhfField.onChange(val ? 1 : 0)}
               size="md"
+              disabled={isReadOnlyMode}
             />
             <label
               htmlFor={field.name}
@@ -1095,6 +1104,7 @@ export function DynamicForm({
               value={rhfField.value}
               onValueChange={rhfField.onChange}
               className="flex flex-row gap-6"
+              disabled={isReadOnlyMode}
             >
               {options.map((option) => (
                 <div key={option.value} className="flex items-center gap-2">
@@ -1132,6 +1142,7 @@ export function DynamicForm({
             <PumpStatusToggle
               checked={!!rhfField.value}
               onChange={(val) => rhfField.onChange(val ? 1 : 0)}
+              disabled={isReadOnlyMode}
             />
             <div className="flex flex-col">
               <label
@@ -1166,6 +1177,7 @@ export function DynamicForm({
           type="color"
           className={cn("form-control h-10 p-1", getErrorClass(field.name))}
           {...reg(field.name, rules)}
+          disabled={isReadOnlyMode}
         />
         <FieldError
           error={(errors as FieldErrors<Record<string, any>>)[field.name]}
@@ -1179,8 +1191,6 @@ export function DynamicForm({
     field: FormField,
     type: "date" | "datetime-local" | "time"
   ) => {
-    // We only use the custom picker for Date and DateTime to enforce formatting.
-    // Time fields use a simple input element.
     if (type === "date" || type === "datetime-local") {
       const rules = field.type === "DateTime" ? rulesFor(field) : rulesFor(field);
 
@@ -1190,11 +1200,11 @@ export function DynamicForm({
           control={control}
           rules={rules}
           render={({ field: controllerField, fieldState: { error } }) => {
-            // Auto-set current date/time if field is empty using useEffect
+            // Auto-set current date ONLY if allowed
             React.useEffect(() => {
               if (!controllerField.value && !field.disableAutoToday) {
                 const now = new Date();
-                const pad = (n: number) => String(n).padStart(2, '0');
+                const pad = (n: number) => String(n).padStart(2, "0");
 
                 const yyyy = now.getFullYear();
                 const MM = pad(now.getMonth() + 1);
@@ -1211,7 +1221,7 @@ export function DynamicForm({
               }
             }, [field.disableAutoToday]);
 
-            // ✅ Decide what date picker should show
+            // Decide what date picker should show
             let selectedDate: Date | null = null;
 
             if (controllerField.value) {
@@ -1226,7 +1236,7 @@ export function DynamicForm({
               }
             }
 
-            // ⭐ Only show today if auto-today is enabled
+            // Only show today if auto-today is enabled
             if (!selectedDate && !field.disableAutoToday) {
               selectedDate = new Date();
             }
@@ -1237,18 +1247,16 @@ export function DynamicForm({
                   {field.label}
                   {field.required ? " *" : ""}
                 </label>
+
                 <div className={error ? "input-error-wrapper" : ""}>
                   <DatePicker
-                    selected={selectedDate}
+                    selected={selectedDate ?? null}
                     onChange={(date: Date | null) => {
-                      // Handle Clear
                       if (!date) {
                         controllerField.onChange("");
                         return;
                       }
 
-                      // 🟢 Manual Formatting to prevent Timezone Shifts
-                      // We construct the string based on LOCAL time components
                       const pad = (n: number) => (n < 10 ? "0" + n : n);
                       const yyyy = date.getFullYear();
                       const MM = pad(date.getMonth() + 1);
@@ -1258,33 +1266,27 @@ export function DynamicForm({
                         const hh = pad(date.getHours());
                         const mm = pad(date.getMinutes());
                         const ss = pad(date.getSeconds());
-                        // Send backend: YYYY-MM-DD HH:mm:ss
                         controllerField.onChange(`${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`);
                       } else {
-                        // Send backend: YYYY-MM-DD
                         controllerField.onChange(`${yyyy}-${MM}-${dd}`);
                       }
                     }}
-                    // 🟢 ENFORCE INDIAN FORMAT HERE
                     dateFormat={type === "datetime-local" ? "dd/MM/yyyy h:mm aa" : "dd/MM/yyyy"}
                     showTimeSelect={type === "datetime-local"}
                     timeIntervals={15}
                     timeCaption="Time"
                     placeholderText={type === "datetime-local" ? "DD/MM/YYYY HH:MM AM/PM" : "DD/MM/YYYY"}
-                    className={cn(
-                      "form-control w-full",
-                      getErrorClass(field.name)
-                    )}
-                    // Enable year dropdown for easier navigation
+                    className={cn("form-control w-full", getErrorClass(field.name))}
                     showYearDropdown
                     scrollableYearDropdown
                     yearDropdownItemNumber={100}
                     autoComplete="off"
-                    // 🟢 PORTAL: This prevents the calendar from being hidden by table headers
                     withPortal
                     portalId="root-portal"
+                    disabled={isReadOnlyMode}
                   />
                 </div>
+
                 {error && (
                   <span className="text-red-500 font-medium text-sm mt-1">
                     {error.message}
@@ -1298,7 +1300,6 @@ export function DynamicForm({
       );
     }
 
-    // Handle time type with auto-set logic
     if (type === "time") {
       return (
         <Controller
@@ -1306,15 +1307,11 @@ export function DynamicForm({
           control={control}
           rules={rulesFor(field)}
           render={({ field: controllerField }) => {
-            // Auto-set current time if field is empty
             React.useEffect(() => {
               if (!controllerField.value) {
                 const now = new Date();
                 const pad = (n: number) => String(n).padStart(2, '0');
-                const hh = pad(now.getHours());
-                const mm = pad(now.getMinutes());
-                const ss = pad(now.getSeconds());
-                controllerField.onChange(`${hh}:${mm}:${ss}`);
+                controllerField.onChange(`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
               }
             }, []);
 
@@ -1330,10 +1327,9 @@ export function DynamicForm({
                   step="1"
                   className={cn("form-control", getErrorClass(field.name))}
                   {...reg(field.name, rulesFor(field))}
+                  disabled={isReadOnlyMode}
                 />
-                <FieldError
-                  error={(errors as FieldErrors<Record<string, any>>)[field.name]}
-                />
+                <FieldError error={(errors as FieldErrors<Record<string, any>>)[field.name]} />
                 <FieldHelp text={field.description} />
               </div>
             );
@@ -1354,10 +1350,9 @@ export function DynamicForm({
           step="1"
           className={cn("form-control", getErrorClass(field.name))}
           {...reg(field.name, rulesFor(field))}
+          disabled={isReadOnlyMode}
         />
-        <FieldError
-          error={(errors as FieldErrors<Record<string, any>>)[field.name]}
-        />
+        <FieldError error={(errors as FieldErrors<Record<string, any>>)[field.name]} />
         <FieldHelp text={field.description} />
       </div>
     );
@@ -1387,6 +1382,7 @@ export function DynamicForm({
               `${base}.hours`,
               rulesFor({ ...field, name: `${base}.hours`, label: "Hours" })
             )}
+            disabled={isReadOnlyMode}
           />
           <input
             type="number"
@@ -1397,6 +1393,7 @@ export function DynamicForm({
               `${base}.minutes`,
               rulesFor({ ...field, name: `${base}.minutes`, label: "Minutes" })
             )}
+            disabled={isReadOnlyMode}
           />
           <input
             type="number"
@@ -1407,6 +1404,7 @@ export function DynamicForm({
               `${base}.seconds`,
               rulesFor({ ...field, name: `${base}.seconds`, label: "Seconds" })
             )}
+            disabled={isReadOnlyMode}
           />
         </div>
         <FieldHelp text={field.description} />
@@ -1440,6 +1438,7 @@ export function DynamicForm({
                 borderColor: current >= n ? "var(--color-warning)" : undefined,
                 color: current >= n ? "var(--color-warning)" : undefined,
               }}
+              disabled={isReadOnlyMode}
             >
               Star
             </button>
@@ -1534,6 +1533,7 @@ export function DynamicForm({
               setValue(field.name, file, { shouldDirty: true });
             }
           }}
+          disabled={isReadOnlyMode}
         />
 
         {/* Upload Button */}
@@ -1547,6 +1547,7 @@ export function DynamicForm({
               e.stopPropagation();
               fileInputRefs.current[field.name]?.click();
             }}
+            disabled={isReadOnlyMode}
           >
             <Upload size={16} />
             Upload File
@@ -1580,6 +1581,7 @@ export function DynamicForm({
                   window.open(fileUrl, "_blank");
                 }
               }}
+              disabled={isReadOnlyMode}
             >
               <Eye size={16} />
             </Button>
@@ -1594,6 +1596,7 @@ export function DynamicForm({
                 e.stopPropagation();
                 fileInputRefs.current[field.name]?.click();
               }}
+              disabled={isReadOnlyMode}
             >
               Replace
             </Button>
@@ -1609,6 +1612,7 @@ export function DynamicForm({
                 e.stopPropagation();
                 setValue(field.name, null, { shouldDirty: true });
               }}
+              disabled={isReadOnlyMode}
             >
               <X size={16} />
             </Button>
@@ -1620,9 +1624,53 @@ export function DynamicForm({
     );
   };
 
+  const renderLink = (field: FormField) => {
+    const getValue = (name: string) => watch(name);
+    const filtersToPass = buildDynamicFilters(field, getValue);
 
+    return (
+      <LinkField
+        key={field.name}
+        field={field}
+        control={control}
+        error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+        filters={filtersToPass}
+        className={getErrorClass(field.name) ? "!border-red-500 !focus:ring-red-500" : ""}
+        disabled={isReadOnlyMode}
+      />
+    );
+  };
 
-  // ── MAIN FIELD SWITCH ─────────────────────────────────────────────────────
+  const renderTable = (field: FormField) => {
+    return (
+      <TableField
+        key={field.name}
+        field={field}
+        control={control}
+        register={reg}
+        errors={errors}
+        disabled={isReadOnlyMode}
+      />
+    );
+  };
+
+  const renderTableMultiSelect = (field: FormField) => {
+    const getValue = (name: string) => watch(name);
+    const filtersToPass = buildDynamicFilters(field, getValue);
+
+    return (
+      <TableMultiSelect
+        key={field.name}
+        field={field}
+        control={control}
+        error={(errors as FieldErrors<Record<string, any>>)[field.name]}
+        filters={filtersToPass}
+        className={getErrorClass(field.name) ? "!border-red-500 !focus:ring-red-500" : ""}
+        disabled={isReadOnlyMode}
+      />
+    );
+  };
+
   const renderField = (field: FormField, idx: number) => {
     const isHidden =
       field.displayDependsOn &&
@@ -1666,23 +1714,8 @@ export function DynamicForm({
           return renderPumpStatus(field);
         case "Select":
           return renderSelect(field);
-        case "Link": {
-          const getValue = (name: string) => watch(name);
-          const filtersToPass = buildDynamicFilters(field, getValue);
-          // 🟢 FIXED: Use stable key (field.name) instead of including filters in key.
-          // This prevents the component from unmounting when filters change, 
-          // keeping the selectedOptionRef valid.
-          return (
-            <LinkField
-              key={field.name}
-              field={field}
-              control={control}
-              error={(errors as FieldErrors<Record<string, any>>)[field.name]}
-              filters={filtersToPass}
-              className={getErrorClass(field.name) ? "!border-red-500 !focus:ring-red-500" : ""}
-            />
-          );
-        }
+        case "Link":
+          return renderLink(field);
         case "Barcode":
           return renderInput(field, "text");
         case "Read Only":
@@ -1690,30 +1723,9 @@ export function DynamicForm({
         case "Rating":
           return renderRating(field);
         case "Table":
-          return (
-            <TableField
-              key={field.name}
-              field={field}
-              control={control}
-              register={reg}
-              errors={errors}
-            />
-          );
-        case "Table MultiSelect": {
-          const getValue = (name: string) => watch(name);
-          const filtersToPass = buildDynamicFilters(field, getValue);
-          // 🟢 FIXED: Use stable key here as well for consistency
-          return (
-            <TableMultiSelect
-              key={field.name}
-              field={field}
-              control={control}
-              error={(errors as FieldErrors<Record<string, any>>)[field.name]}
-              filters={filtersToPass}
-              className={getErrorClass(field.name) ? "!border-red-500 !focus:ring-red-500" : ""}
-            />
-          );
-        }
+          return renderTable(field);
+        case "Table MultiSelect":
+          return renderTableMultiSelect(field);
         case "Button":
           return renderButton(field);
         case "Attach":
@@ -1779,7 +1791,7 @@ export function DynamicForm({
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
 
-                {/* 🟢 Render Breadcrumbs */}
+                {/* Render Breadcrumbs */}
                 {renderHeaderContent()}
 
                 <span
@@ -1954,7 +1966,6 @@ export function DynamicForm({
             ))}
           </div>
 
-          {/* Dynamic grid */}
           {/* Dynamic grid */}
           <div
             className={`grid grid-cols-1 gap-x-6 gap-y-0 ${doctype === "Project" ? "md:grid-cols-4" : "md:grid-cols-3"

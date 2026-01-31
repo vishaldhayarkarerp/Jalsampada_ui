@@ -23,9 +23,10 @@ interface LinkFieldProps {
   className?: string;
   filters?: Record<string, any>;
   getQuery?: (filters: Record<string, any>) => string;
+  disabled?: boolean;
 }
 
-export function LinkField({ control, field, error, className, filters = {}, getQuery }: LinkFieldProps) {
+export function LinkField({ control, field, error, className, filters = {}, getQuery, disabled = false }: LinkFieldProps) {
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -200,7 +201,6 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
         }}
         render={({ field: { onChange, onBlur, value } }) => {
 
-
           React.useEffect(() => {
             if (value && !selectedOptionRef.current && (!searchTerm || searchTerm === value)) {
               // Temporarily show ID to prevent empty field
@@ -310,7 +310,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                       setIsOpen(false);
                     }, 200);
                   }}
-                  disabled={!isAuthenticated || !isInitialized}
+                  disabled={disabled || !isAuthenticated || !isInitialized}
                 />
 
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
@@ -320,6 +320,7 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
                     <X
                       className="h-4 w-4 cursor-pointer hover:text-gray-600"
                       onClick={() => {
+                        if (disabled) return;
                         setSearchTerm("");
                         onChange("");
                         selectedOptionRef.current = null;

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useFieldArray, useFormContext, useWatch } from "react-hook-form"; 
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { FormField } from "./DynamicFormComponent";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,23 +31,25 @@ interface TableFieldProps {
   control: any;
   register: any;
   errors: any;
+  disabled?: boolean;
 }
 
 // ... [Keep renderTableInput, renderTableTextarea, etc. unchanged] ...
 // (I will skip repeating the helper functions to save space, they are fine)
 
 // Helper functions for table field rendering (Keep these exactly as they were)
-const renderTableInput = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+const renderTableInput = (c: any, idx: number, rows: any[], handleTableInputChange: Function, disabled?: boolean) => (
   <input
     className="form-control-borderless"
     type="text"
     placeholder={c.label}
     value={(rows[idx] as any)?.[c.name] || ""}
     onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+    disabled={!!disabled}
   />
 );
 
-const renderTableTextarea = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+const renderTableTextarea = (c: any, idx: number, rows: any[], handleTableInputChange: Function, disabled?: boolean) => (
   <textarea
     className="form-control-borderless"
     rows={3}
@@ -55,10 +57,11 @@ const renderTableTextarea = (c: any, idx: number, rows: any[], handleTableInputC
     value={(rows[idx] as any)?.[c.name] || ""}
     onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
     style={{ minHeight: '60px', resize: 'vertical' }}
+    disabled={!!disabled}
   />
 );
 
-const renderTableNumber = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+const renderTableNumber = (c: any, idx: number, rows: any[], handleTableInputChange: Function, disabled?: boolean) => (
   <input
     className="form-control-borderless"
     type="number"
@@ -66,19 +69,21 @@ const renderTableNumber = (c: any, idx: number, rows: any[], handleTableInputCha
     value={(rows[idx] as any)?.[c.name] || ""}
     onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
     step={c.type === "Float" || c.type === "Currency" || c.type === "Percent" ? "0.01" : "1"}
+    disabled={!!disabled}
   />
 );
 
-const renderTableCheckbox = (c: any, idx: number, rows: any[], handleTableInputChange: Function, invertColors: boolean = false) => (
+const renderTableCheckbox = (c: any, idx: number, rows: any[], handleTableInputChange: Function, invertColors: boolean = false, disabled?: boolean) => (
   <ToggleButton
     checked={!!(rows[idx] as any)?.[c.name]}
     onChange={(checked) => handleTableInputChange(idx, c.name, checked ? 1 : 0)}
     size="sm"
     invertColors={invertColors}
+    disabled={!!disabled}
   />
 );
 
-const renderTableSelect = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => {
+const renderTableSelect = (c: any, idx: number, rows: any[], handleTableInputChange: Function, disabled?: boolean) => {
   const options = typeof c.options === "string"
     ? c.options.split("\n").map((o: string) => ({ label: o, value: o }))
     : c.options;
@@ -88,6 +93,7 @@ const renderTableSelect = (c: any, idx: number, rows: any[], handleTableInputCha
       className="form-control-borderless"
       value={(rows[idx] as any)?.[c.name] || ""}
       onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+      disabled={!!disabled}
     >
       <option value="">Select...</option>
       {options?.map((opt: any) => (
@@ -99,17 +105,18 @@ const renderTableSelect = (c: any, idx: number, rows: any[], handleTableInputCha
   );
 };
 
-const renderTableColor = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => (
+const renderTableColor = (c: any, idx: number, rows: any[], handleTableInputChange: Function, disabled?: boolean) => (
   <input
     className="form-control-borderless"
     type="color"
     value={(rows[idx] as any)?.[c.name] || "#000000"}
     onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
     style={{ width: '100%', height: '32px' }}
+    disabled={!!disabled}
   />
 );
 
-const renderTableDuration = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => {
+const renderTableDuration = (c: any, idx: number, rows: any[], handleTableInputChange: Function, disabled?: boolean) => {
   const value = (rows[idx] as any)?.[c.name] || {};
   return (
     <div style={{ display: 'flex', gap: '4px' }}>
@@ -121,6 +128,7 @@ const renderTableDuration = (c: any, idx: number, rows: any[], handleTableInputC
         onChange={(e) => handleTableInputChange(idx, c.name, { ...value, hours: e.target.value })}
         min={0}
         style={{ width: '50px' }}
+        disabled={!!disabled}
       />
       <input
         className="form-control-borderless"
@@ -130,6 +138,7 @@ const renderTableDuration = (c: any, idx: number, rows: any[], handleTableInputC
         onChange={(e) => handleTableInputChange(idx, c.name, { ...value, minutes: e.target.value })}
         min={0}
         style={{ width: '50px' }}
+        disabled={!!disabled}
       />
       <input
         className="form-control-borderless"
@@ -139,12 +148,13 @@ const renderTableDuration = (c: any, idx: number, rows: any[], handleTableInputC
         onChange={(e) => handleTableInputChange(idx, c.name, { ...value, seconds: e.target.value })}
         min={0}
         style={{ width: '50px' }}
+        disabled={!!disabled}
       />
     </div>
   );
 };
 
-const renderTableRating = (c: any, idx: number, rows: any[], handleTableInputChange: Function) => {
+const renderTableRating = (c: any, idx: number, rows: any[], handleTableInputChange: Function, disabled?: boolean) => {
   const value = (rows[idx] as any)?.[c.name] || 0;
   return (
     <div style={{ display: 'flex', gap: '2px' }}>
@@ -154,6 +164,7 @@ const renderTableRating = (c: any, idx: number, rows: any[], handleTableInputCha
           type="button"
           className="btn btn--ghost btn--sm"
           onClick={() => handleTableInputChange(idx, c.name, star)}
+          disabled={!!disabled}
           style={{
             color: star <= value ? '#fbbf24' : '#d1d5db',
             padding: '2px 4px',
@@ -194,12 +205,13 @@ const renderTableButton = (c: any, idx: number, rows: any[]) => (
 // ─────────────────────────────────────────────────────────────────────────────
 // 🟢 FIXED ATTACHMENT CELL
 // ─────────────────────────────────────────────────────────────────────────────
-function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChange }: {
+function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChange, disabled }: {
   fieldName: string,
   control: any,
   rowIndex?: number,
   columnName?: string,
-  onValueChange?: (value: any) => void
+  onValueChange?: (value: any) => void,
+  disabled?: boolean
 }) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const { watch, setValue } = useFormContext();
@@ -212,12 +224,12 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
     if (value instanceof File) {
       objectUrl = URL.createObjectURL(value);
       setPreviewUrl(objectUrl);
-    } 
+    }
     // Check for string paths from Frappe (e.g., "/private/files/...")
     else if (typeof value === 'string' && (value.startsWith("/files/") || value.startsWith("/private/files/"))) {
       // 🟢 FIX: Use SERVER_URL instead of API_BASE_URL
       setPreviewUrl(SERVER_URL + value);
-    } 
+    }
     else {
       setPreviewUrl(null);
     }
@@ -230,6 +242,7 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
   }, [value]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const file = e.target.files?.[0];
     if (file) {
       setValue(fieldName, file, { shouldDirty: true });
@@ -240,6 +253,7 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
   };
 
   const handleClear = () => {
+    if (disabled) return;
     setValue(fieldName, null, { shouldDirty: true });
     if (onValueChange && rowIndex !== undefined && columnName !== undefined) {
       onValueChange(null);
@@ -256,6 +270,7 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
         className="hidden"
         ref={fileInputRef}
         onChange={handleFileChange}
+        disabled={!!disabled}
       />
 
       {!value ? (
@@ -264,6 +279,7 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
           variant="outline"
           className="btn--sm"
           onClick={() => fileInputRef.current?.click()}
+          disabled={!!disabled}
         >
           <Upload size={14} className="mr-2" />
           Attach
@@ -295,6 +311,7 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
             className="h-8 w-8 text-red-500"
             onClick={handleClear}
             title="Clear"
+            disabled={!!disabled}
           >
             <X size={16} />
           </Button>
@@ -305,7 +322,7 @@ function AttachmentCell({ fieldName, control, rowIndex, columnName, onValueChang
 }
 
 // ... [The rest of TableFieldContent and TableField component remains exactly the same] ...
-function TableFieldContent({ field, control, register, errors }: TableFieldProps) {
+function TableFieldContent({ field, control, register, errors, disabled = false }: TableFieldProps) {
   const { apiKey, apiSecret } = useAuth();
   const formMethods = useFormContext();
 
@@ -325,6 +342,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
   const [selectedIndices, setSelectedIndices] = React.useState<Set<number>>(new Set());
 
   const handleTableInputChange = React.useCallback(async (rowIndex: number, fieldName: string, value: any) => {
+    if (disabled) return;
 
     formMethods.setValue(`${field.name}.${rowIndex}.${fieldName}`, value, { shouldDirty: true });
 
@@ -360,23 +378,26 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
         }
       }
     }
-  }, [field.name, field.columns, formMethods, apiKey, apiSecret]);
+  }, [field.name, field.columns, formMethods, apiKey, apiSecret, disabled]);
 
   const addRow = React.useCallback(() => {
+    if (disabled) return;
     const row: any = { id: Date.now().toString() + Math.random() };
     (field.columns || []).forEach((c) => {
       row[c.name] = c.defaultValue !== undefined ? c.defaultValue : "";
     });
     append(row);
-  }, [field.columns, append]);
+  }, [field.columns, append, disabled]);
 
   const toggleRow = (index: number) => {
+    if (disabled) return;
     const newSel = new Set(selectedIndices);
     newSel.has(index) ? newSel.delete(index) : newSel.add(index);
     setSelectedIndices(newSel);
   };
 
   const toggleSelectAll = () => {
+    if (disabled) return;
     setSelectedIndices(
       selectedIndices.size === fields.length
         ? new Set()
@@ -385,6 +406,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
   };
 
   const deleteSelected = () => {
+    if (disabled) return;
     const toRemove = Array.from(selectedIndices).sort((a, b) => b - a);
     remove(toRemove);
     setSelectedIndices(new Set());
@@ -428,6 +450,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
 
   const uploadInputRef = React.useRef<HTMLInputElement>(null);
   const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -485,149 +508,157 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
         <label className="form-label">{field.label}</label>
 
         <div className="stock-table-container">
-          
-            <table className="stock-table child-form-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 40 }} className="child-table-checkbox-cell">
-                    <input
-                      type="checkbox"
-                      className="form-control"
-                      style={{ width: 16, height: 16 }}
-                      checked={allSelected}
-                      ref={(el) => {
-                        if (el) el.indeterminate = someSelected;
-                      }}
-                      onChange={toggleSelectAll}
-                      aria-label="Select all rows"
-                    />
-                  </th>
-                  {(field.columns || []).map((c) => (
-                    <th key={c.name}>{c.label}</th>
-                  ))}
-                  <th style={{ width: 60, position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {fields.map((fieldItem, idx) => {
-                  const currentRowData = rows[idx] || {};
 
-                  return (
-                    <tr
-                      key={fieldItem.id}
-                      className={selectedIndices.has(idx) ? "row-selected" : ""}
-                    >
-                      <td className="child-table-checkbox-cell">
-                        <input
-                          type="checkbox"
-                          className="form-control"
-                          style={{ width: 16, height: 16 }}
-                          checked={selectedIndices.has(idx)}
-                          onChange={() => toggleRow(idx)}
-                          aria-label={`Select row ${idx + 1}`}
-                        />
+          <table className="stock-table child-form-table">
+            <thead>
+              <tr>
+                <th style={{ width: 40 }} className="child-table-checkbox-cell">
+                  <input
+                    type="checkbox"
+                    className="form-control"
+                    style={{ width: 16, height: 16 }}
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected;
+                    }}
+                    onChange={toggleSelectAll}
+                    aria-label="Select all rows"
+                    disabled={disabled}
+                  />
+                </th>
+
+                {(field.columns || []).map((c) => (
+                  <th key={c.name}>{c.label}</th>
+                ))}
+                <th style={{ width: 60, position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {fields.map((fieldItem, idx) => {
+                const currentRowData = rows[idx] || {};
+
+                return (
+                  <tr
+                    key={fieldItem.id}
+                    className={selectedIndices.has(idx) ? "row-selected" : ""}
+                  >
+                    <td className="child-table-checkbox-cell">
+                      <input
+                        type="checkbox"
+                        className="form-control"
+                        style={{ width: 16, height: 16 }}
+                        checked={selectedIndices.has(idx)}
+                        onChange={() => toggleRow(idx)}
+                        aria-label={`Select row ${idx + 1}`}
+                        disabled={disabled}
+                      />
+                    </td>
+
+                    {(field.columns || []).map((c) => (
+                      <td key={c.name} className="child-table-input-cell">
+                        {c.type === "Attach" ? (
+                          <AttachmentCell
+                            control={formMethods.control}
+                            fieldName={`${field.name}.${idx}.${c.name}`}
+                            rowIndex={idx}
+                            columnName={c.name}
+                            onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
+                            disabled={disabled}
+                          />
+                        ) : c.type === "Link" ? (
+                          <TableLinkCell
+                            control={formMethods.control}
+                            fieldName={`${field.name}.${idx}.${c.name}`}
+                            column={c}
+                            onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
+                            disabled={disabled}
+                          />
+                        ) : c.type === "Date" ? (
+                          <DatePicker
+                            selected={currentRowData[c.name] ? new Date(currentRowData[c.name]) : null}
+                            onChange={(date: Date | null) => {
+                              handleTableInputChange(idx, c.name, date ? date.toISOString().split('T')[0] : '');
+                            }}
+                            dateFormat="dd/MM/yyyy"
+                            className={cn("form-control-borderless w-full")}
+                            placeholderText="DD/MM/YYYY"
+                            showYearDropdown
+                            scrollableYearDropdown
+                            yearDropdownItemNumber={100}
+                            withPortal
+                            portalId="root"
+                            disabled={disabled}
+                          />
+                        ) : c.type === "Data" || c.type === "Small Text" || c.type === "Text" ? (
+                          renderTableInput(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "Long Text" || c.type === "Markdown Editor" ? (
+                          renderTableTextarea(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "Code" ? (
+                          renderTableTextarea(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "Password" ? (
+                          <input
+                            className="form-control-borderless"
+                            type="password"
+                            placeholder={c.label}
+                            value={currentRowData[c.name] || ""}
+                            onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+                            disabled={disabled}
+                          />
+                        ) : c.type === "Int" ? (
+                          renderTableNumber(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "Float" || c.type === "Currency" || c.type === "Percent" ? (
+                          renderTableNumber(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "Color" ? (
+                          renderTableColor(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "DateTime" || c.type === "Time" ? (
+                          <input
+                            className="form-control-borderless"
+                            type={c.type === "DateTime" ? "datetime-local" : "time"}
+                            placeholder={c.label}
+                            value={currentRowData[c.name] || ""}
+                            onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
+                            disabled={disabled}
+                          />
+                        ) : c.type === "Duration" ? (
+                          renderTableDuration(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "Check" ? (
+                          renderTableCheckbox(c, idx, rows, handleTableInputChange, formMethods.getValues("pump_operation") === "stop", disabled)
+                        ) : c.type === "Select" ? (
+                          renderTableSelect(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "Barcode" ? (
+                          renderTableInput(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "Read Only" ? (
+                          renderTableReadOnly(c, idx, rows)
+                        ) : c.type === "Rating" ? (
+                          renderTableRating(c, idx, rows, handleTableInputChange, disabled)
+                        ) : c.type === "Button" ? (
+                          renderTableButton(c, idx, rows)
+                        ) : (
+                          renderTableInput(c, idx, rows, handleTableInputChange, disabled)
+                        )}
                       </td>
+                    ))}
 
-                      {(field.columns || []).map((c) => (
-                        <td key={c.name} className="child-table-input-cell">
-                          {c.type === "Attach" ? (
-                            <AttachmentCell
-                              control={formMethods.control}
-                              fieldName={`${field.name}.${idx}.${c.name}`}
-                              rowIndex={idx}
-                              columnName={c.name}
-                              onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
-                            />
-                          ) : c.type === "Link" ? (
-                            <TableLinkCell
-                              control={formMethods.control}
-                              fieldName={`${field.name}.${idx}.${c.name}`}
-                              column={c}
-                              onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
-                            />
-                          ) : c.type === "Date" ? (
-                            <DatePicker
-                              selected={currentRowData[c.name] ? new Date(currentRowData[c.name]) : null}
-                              onChange={(date: Date | null) => {
-                                handleTableInputChange(idx, c.name, date ? date.toISOString().split('T')[0] : '');
-                              }}
-                              dateFormat="dd/MM/yyyy"
-                              className={cn("form-control-borderless w-full")}
-                              placeholderText="DD/MM/YYYY"
-                              showYearDropdown
-                              scrollableYearDropdown
-                              yearDropdownItemNumber={100}
-                              withPortal
-                              portalId="root"
-                            />
-                          ) : c.type === "Data" || c.type === "Small Text" || c.type === "Text" ? (
-                            renderTableInput(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "Long Text" || c.type === "Markdown Editor" ? (
-                            renderTableTextarea(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "Code" ? (
-                            renderTableTextarea(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "Password" ? (
-                            <input
-                              className="form-control-borderless"
-                              type="password"
-                              placeholder={c.label}
-                              value={currentRowData[c.name] || ""}
-                              onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
-                            />
-                          ) : c.type === "Int" ? (
-                            renderTableNumber(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "Float" || c.type === "Currency" || c.type === "Percent" ? (
-                            renderTableNumber(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "Color" ? (
-                            renderTableColor(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "DateTime" || c.type === "Time" ? (
-                            <input
-                              className="form-control-borderless"
-                              type={c.type === "DateTime" ? "datetime-local" : "time"}
-                              placeholder={c.label}
-                              value={currentRowData[c.name] || ""}
-                              onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
-                            />
-                          ) : c.type === "Duration" ? (
-                            renderTableDuration(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "Check" ? (
-                            renderTableCheckbox(c, idx, rows, handleTableInputChange, formMethods.getValues("pump_operation") === "stop")
-                          ) : c.type === "Select" ? (
-                            renderTableSelect(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "Barcode" ? (
-                            renderTableInput(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "Read Only" ? (
-                            renderTableReadOnly(c, idx, rows)
-                          ) : c.type === "Rating" ? (
-                            renderTableRating(c, idx, rows, handleTableInputChange)
-                          ) : c.type === "Button" ? (
-                            renderTableButton(c, idx, rows)
-                          ) : (
-                            renderTableInput(c, idx, rows, handleTableInputChange)
-                          )}
-                        </td>
-                      ))}
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleEdit(idx)}
+                        title="Edit row"
+                      >
+                        <Edit size={16} />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
-                      <td style={{ position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleEdit(idx)}
-                          title="Edit row"
-                        >
-                          <Edit size={16} />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          
         </div>
 
         <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
@@ -642,6 +673,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                 type="button"
                 className="btn btn--outline btn--sm btn--destructive"
                 onClick={deleteSelected}
+                disabled={disabled}
               >
                 <i className="fas fa-trash-alt" style={{ marginRight: 4 }}></i>
                 Delete ({selectedIndices.size})
@@ -657,13 +689,16 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                 accept=".csv"
                 onChange={handleUpload}
                 style={{ display: 'none' }}
+                disabled={disabled}
               />
+
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleDownload}
                 title="Download as CSV"
+                disabled={disabled}
               >
                 <Download size={16} className="mr-2" />
                 Download
@@ -674,6 +709,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
                 size="sm"
                 onClick={() => uploadInputRef.current?.click()}
                 title="Upload from CSV"
+                disabled={disabled}
               >
                 <UploadIcon size={16} className="mr-2" />
                 Upload
@@ -695,6 +731,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
             data={rows[editingRowIndex] || {}}
             onSubmit={handleEditSubmit}
             onCancel={handleEditCancel}
+            disabled={disabled}
           />
         </Modal>
       )}
@@ -702,7 +739,7 @@ function TableFieldContent({ field, control, register, errors }: TableFieldProps
   );
 }
 
-export function TableField({ field, control, register, errors }: TableFieldProps) {
+export function TableField({ field, control, register, errors, disabled = false }: TableFieldProps) {
   const formMethods = useFormContext();
 
   const rows = useWatch({
@@ -722,7 +759,7 @@ export function TableField({ field, control, register, errors }: TableFieldProps
       rows={rows || []}
       onUpdateRow={handleUpdateRow}
     >
-      <TableFieldContent field={field} control={control} register={register} errors={errors} />
+      <TableFieldContent field={field} control={control} register={register} errors={errors} disabled={disabled} />
     </TableRowProvider>
   );
 }

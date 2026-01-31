@@ -22,9 +22,10 @@ interface TableMultiSelectProps {
     className?: string;
     filters?: Record<string, any>;
     getQuery?: (filters: Record<string, any>) => string;
+    disabled?: boolean;
 }
 
-export function TableMultiSelect({ control, field, error, className, filters = {}, getQuery }: TableMultiSelectProps) {
+export function TableMultiSelect({ control, field, error, className, filters = {}, getQuery, disabled = false }: TableMultiSelectProps) {
     const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
 
     const [searchTerm, setSearchTerm] = React.useState("");
@@ -168,6 +169,7 @@ export function TableMultiSelect({ control, field, error, className, filters = {
                     }, [debouncedSearch, updateDropdownPosition]);
 
                     const handleOptionSelect = React.useCallback((option: TableMultiSelectOption) => {
+                        if (disabled) return;
                         const isSelected = isOptionSelected(option.label);
                         let newSelectedValues: any[];
 
@@ -195,14 +197,16 @@ export function TableMultiSelect({ control, field, error, className, filters = {
                     };
 
                     const removeSelectedValue = React.useCallback((valueToRemove: string) => {
+                        if (disabled) return;
                         const newSelectedValues = selectedValues.filter(v => getDisplayValue(v) !== valueToRemove);
                         onChange(newSelectedValues);
-                    }, [selectedValues, onChange, getDisplayValue]);
+                    }, [selectedValues, onChange, getDisplayValue, disabled]);
 
                     const clearAll = React.useCallback(() => {
+                        if (disabled) return;
                         onChange([]);
                         setSearchTerm("");
-                    }, [onChange]);
+                    }, [onChange, disabled]);
 
                     return (
                         <div className="relative" ref={dropdownRef} style={{ overflow: 'visible' }}>
@@ -229,6 +233,7 @@ export function TableMultiSelect({ control, field, error, className, filters = {
                                             type="button"
                                             className="text-xs text-gray-500 hover:text-gray-700 self-center"
                                             onClick={clearAll}
+                                            disabled={disabled}
                                         >
                                             Clear all
                                         </button>
@@ -255,7 +260,7 @@ export function TableMultiSelect({ control, field, error, className, filters = {
                                             setIsOpen(false);
                                         }, 200);
                                     }}
-                                    disabled={!isAuthenticated || !isInitialized}
+                                    disabled={disabled || !isAuthenticated || !isInitialized}
                                 />
 
                                 {/* Icons */}

@@ -25,9 +25,10 @@ interface TableLinkCellProps {
     };
     filters?: Record<string, any>;
     onValueChange?: (value: any) => void;
+    disabled?: boolean;
 }
 
-export function TableLinkCell({ control, fieldName, column, filters = {}, onValueChange }: TableLinkCellProps) {
+export function TableLinkCell({ control, fieldName, column, filters = {}, onValueChange, disabled = false }: TableLinkCellProps) {
     const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
     const { getValues } = useFormContext();
 
@@ -147,10 +148,11 @@ export function TableLinkCell({ control, fieldName, column, filters = {}, onValu
 
     // UPDATED: Sync IMMEDIATELY, removed requestAnimationFrame
     const handleChange = React.useCallback((newValue: string) => {
+        if (disabled) return;
         if (onValueChange) {
             onValueChange(newValue);
         }
-    }, [onValueChange]);
+    }, [disabled, onValueChange]);
 
     return (
         <div className="relative" ref={dropdownRef} style={{ overflow: 'visible' }}>
@@ -166,6 +168,7 @@ export function TableLinkCell({ control, fieldName, column, filters = {}, onValu
                     }, [value, isOpen]);
 
                     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                        if (disabled) return;
                         const newValue = e.target.value;
                         setSearchTerm(newValue);
                         setIsOpen(true);
@@ -179,6 +182,7 @@ export function TableLinkCell({ control, fieldName, column, filters = {}, onValu
                     };
 
                     const handleOptionSelect = (option: TableLinkOption) => {
+                        if (disabled) return;
                         setSearchTerm(option.label);
                         onChange(option.value);
                         setIsOpen(false);
@@ -186,6 +190,7 @@ export function TableLinkCell({ control, fieldName, column, filters = {}, onValu
                     };
 
                     const handleInputFocus = () => {
+                        if (disabled) return;
                         setIsOpen(true);
                         updateDropdownPosition();
                         performSearch(searchTerm);
@@ -211,15 +216,15 @@ export function TableLinkCell({ control, fieldName, column, filters = {}, onValu
                                             setIsOpen(false);
                                         }, 200);
                                     }}
-                                    disabled={!isAuthenticated || !isInitialized}
+                                    disabled={disabled || !isAuthenticated || !isInitialized}
                                 />
                                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
                                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> :
-                                        searchTerm ? <X className="h-4 w-4 cursor-pointer hover:text-gray-600" onClick={() => { setSearchTerm(""); onChange(""); setOptions([]); handleChange(""); }} /> :
+                                        searchTerm ? <X className="h-4 w-4 cursor-pointer hover:text-gray-600" onClick={() => { if (disabled) return; setSearchTerm(""); onChange(""); setOptions([]); handleChange(""); }} /> :
                                             <Search className="h-4 w-4" />}
                                 </div>
                             </div>
-                            {isOpen && createPortal(
+                            {isOpen && !disabled && createPortal(
                                 <div
                                     ref={dropdownRef}
                                     className="absolute z-[99999] bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"

@@ -93,6 +93,7 @@ interface DynamicFormForTableProps {
     onSubmit: (data: Record<string, any>) => void;
     onCancel: () => void;
     title?: string;
+    disabled?: boolean;
 }
 
 // Local UI helper components
@@ -125,7 +126,8 @@ export function DynamicFormForTable({
     data,
     onSubmit,
     onCancel,
-    title = ""
+    title = "",
+    disabled = false
 }: DynamicFormForTableProps) {
     const { editingRowIndex, updateRow, getRowData } = useTableRowContext();
     const { apiKey, apiSecret } = useAuth();
@@ -189,6 +191,7 @@ export function DynamicFormForTable({
     }, []);
 
     const handleInputChange = async (fieldName: string, value: any, _depth: number = 0) => {
+        if (disabled) return;
         console.log('handleInputChange:', { fieldName, value, valueType: typeof value, _depth });
 
         // Handle fetchFrom dependencies
@@ -308,6 +311,7 @@ export function DynamicFormForTable({
     };
 
     const handleSubmit = () => {
+        if (disabled) return;
         console.log('DynamicFormForTable: Submitting form data:', formData);
 
         // Clear any pending debounced updates
@@ -352,6 +356,7 @@ export function DynamicFormForTable({
                     linkTarget={field.linkTarget}
                     className="w-full"
                     filters={filtersToPass}
+                    disabled={disabled}
                 />
                 <FieldError error={null} />
                 <FieldHelp text={field.description} />
@@ -388,7 +393,9 @@ export function DynamicFormForTable({
                     {...(field.step ? { step: field.step } : {})}
                     {...(field.min !== undefined ? { min: field.min } : {})}
                     {...(field.max !== undefined ? { max: field.max } : {})}
+                    disabled={disabled}
                 />
+
                 <FieldError error={null} />
                 <FieldHelp text={field.description} />
             </div>
@@ -411,7 +418,9 @@ export function DynamicFormForTable({
                     placeholder={field.placeholder}
                     value={value}
                     onChange={(e) => handleInputChange(field.name, e.target.value)}
+                    disabled={disabled}
                 />
+
                 <FieldError error={null} />
                 <FieldHelp text={field.description} />
             </div>
@@ -440,6 +449,7 @@ export function DynamicFormForTable({
                     className="form-control"
                     value={value}
                     onChange={(e) => handleInputChange(field.name, e.target.value)}
+                    disabled={disabled}
                 >
                     <option value="">Select...</option>
                     {options?.map((opt) => (
@@ -465,7 +475,9 @@ export function DynamicFormForTable({
                     checked={checked}
                     onCheckedChange={(val) => handleInputChange(field.name, val)}
                     className="rounded border border-gray-300 data-[state=checked]:bg-primary"
+                    disabled={disabled}
                 />
+
                 <label
                     htmlFor={field.name}
                     className="text-sm font-medium leading-none cursor-pointer"
@@ -505,7 +517,9 @@ export function DynamicFormForTable({
                         showYearDropdown
                         scrollableYearDropdown
                         yearDropdownItemNumber={100}
+                        disabled={disabled}
                     />
+
                     <FieldError error={null} />
                     <FieldHelp text={field.description} />
                 </div>
@@ -524,7 +538,9 @@ export function DynamicFormForTable({
                     className="form-control"
                     value={value}
                     onChange={(e) => handleInputChange(field.name, e.target.value)}
+                    disabled={disabled}
                 />
+
                 <FieldError error={null} />
                 <FieldHelp text={field.description} />
             </div>
@@ -546,7 +562,9 @@ export function DynamicFormForTable({
                     className={cn("form-control h-10 p-1")}
                     value={value}
                     onChange={(e) => handleInputChange(field.name, e.target.value)}
+                    disabled={disabled}
                 />
+
                 <FieldError error={null} />
                 <FieldHelp text={field.description} />
             </div>
@@ -576,6 +594,7 @@ export function DynamicFormForTable({
                         placeholder="Hours"
                         value={value.hours || ""}
                         onChange={(e) => handleInputChange(field.name, { ...value, hours: e.target.value })}
+                        disabled={disabled}
                     />
                     <input
                         type="number"
@@ -584,6 +603,7 @@ export function DynamicFormForTable({
                         placeholder="Minutes"
                         value={value.minutes || ""}
                         onChange={(e) => handleInputChange(field.name, { ...value, minutes: e.target.value })}
+                        disabled={disabled}
                     />
                     <input
                         type="number"
@@ -592,7 +612,9 @@ export function DynamicFormForTable({
                         placeholder="Seconds"
                         value={value.seconds || ""}
                         onChange={(e) => handleInputChange(field.name, { ...value, seconds: e.target.value })}
+                        disabled={disabled}
                     />
+
                 </div>
                 <FieldHelp text={field.description} />
             </div>
@@ -615,6 +637,7 @@ export function DynamicFormForTable({
                             type="button"
                             className="btn btn--ghost btn--sm"
                             onClick={() => handleInputChange(field.name, star)}
+                            disabled={disabled}
                             style={{
                                 color: star <= value ? '#fbbf24' : '#d1d5db',
                                 padding: '4px 8px',
@@ -656,6 +679,7 @@ export function DynamicFormForTable({
                 type="button"
                 className="btn btn--outline btn--full-width"
                 onClick={() => field.action?.()}
+                disabled={disabled}
             >
                 {field.buttonLabel || field.label}
             </button>
@@ -689,6 +713,7 @@ export function DynamicFormForTable({
         }, [value]);
 
         const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            if (disabled) return;
             const file = e.target.files?.[0];
             if (file) {
                 handleInputChange(field.name, file);
@@ -696,6 +721,7 @@ export function DynamicFormForTable({
         };
 
         const handleClear = () => {
+            if (disabled) return;
             handleInputChange(field.name, null);
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
@@ -712,6 +738,7 @@ export function DynamicFormForTable({
                         className="hidden"
                         ref={fileInputRef}
                         onChange={handleFileChange}
+                        disabled={disabled}
                     />
 
                     {!value ? (
@@ -720,6 +747,7 @@ export function DynamicFormForTable({
                             variant="outline"
                             className="btn--sm"
                             onClick={() => fileInputRef.current?.click()}
+                            disabled={disabled}
                         >
                             <Upload size={14} className="mr-2" />
                             Attach
@@ -751,6 +779,7 @@ export function DynamicFormForTable({
                                 className="h-8 w-8 text-red-500"
                                 onClick={handleClear}
                                 title="Clear"
+                                disabled={disabled}
                             >
                                 <X size={16} />
                             </Button>
@@ -904,6 +933,7 @@ export function DynamicFormForTable({
                     type="button"
                     className="bg-primary hover:bg-primary/90"
                     onClick={handleSubmit}
+                    disabled={disabled}
                 >
                     Save
                 </Button>

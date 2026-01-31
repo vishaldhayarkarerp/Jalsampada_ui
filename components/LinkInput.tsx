@@ -19,9 +19,10 @@ interface LinkInputProps {
     linkTarget?: string;
     className?: string;
     filters?: Record<string, any>;
+    disabled?: boolean;
 }
 
-export function LinkInput({ value, onChange, placeholder, linkTarget, className, filters = {} }: LinkInputProps) {
+export function LinkInput({ value, onChange, placeholder, linkTarget, className, filters = {}, disabled = false }: LinkInputProps) {
     const { apiKey, apiSecret, isAuthenticated } = useAuth();
 
     const [searchTerm, setSearchTerm] = React.useState("");
@@ -154,11 +155,12 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
 
     // Input handlers
     const handleFocus = React.useCallback(() => {
+        if (disabled) return;
         setIsFocused(true);
         setSearchTerm(value || "");
         setIsOpen(true);
         performSearch(value || "");
-    }, [value, performSearch]);
+    }, [disabled, value, performSearch]);
 
     const handleBlur = React.useCallback(() => {
         setTimeout(() => {
@@ -170,6 +172,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
     }, [value, searchTerm]);
 
     const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        if (disabled) return;
         const newValue = e.target.value;
         setSearchTerm(newValue);
         setIsOpen(true);
@@ -178,20 +181,22 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
         if (newValue === "") {
             onChange("");
         }
-    }, [onChange]);
+    }, [disabled, onChange]);
 
     const handleOptionSelect = React.useCallback((option: LinkInputOption) => {
+        if (disabled) return;
         setSearchTerm(option.value);
         onChange(option.value); // Update on selection
         setIsOpen(false);
         setIsFocused(false);
-    }, [onChange]);
+    }, [disabled, onChange]);
 
     const handleClear = React.useCallback(() => {
+        if (disabled) return;
         setSearchTerm("");
         onChange("");
         setIsOpen(false);
-    }, [onChange]);
+    }, [disabled, onChange]);
 
     return (
         <div className={`relative ${className}`} ref={dropdownRef}>
@@ -207,6 +212,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
                     className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none form-control focus:border-transparent"
                     autoComplete="off"
                     spellCheck="false"
+                    disabled={disabled}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">
                     {isLoading ? (
