@@ -13,7 +13,7 @@ interface LinkInputOption {
 }
 
 interface LinkInputProps {
-    value: string;
+    value: string | undefined;
     onChange: (value: string) => void;
     placeholder?: string;
     linkTarget?: string;

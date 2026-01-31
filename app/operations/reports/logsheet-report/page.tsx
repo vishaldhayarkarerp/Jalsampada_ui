@@ -4,6 +4,8 @@ import * as React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { LinkInput } from "@/components/LinkInput";
 import { useAuth } from "@/context/AuthContext";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 // --- API Configuration ---
 const API_BASE_URL = "http://103.219.1.138:4412/";
@@ -27,6 +29,7 @@ type Filters = {
   from_date: string;
   to_date: string;
   asset: string;
+  lis_phase: string;
 };
 
 type ColumnConfig = {
@@ -53,7 +56,9 @@ const formatDateTime = (dateString: string | null): string => {
 // --- Configuration ---
 
 const columnConfig: ColumnConfig[] = [
+  { fieldname: "name", label: "Logsheet", width: "140px" },
   { fieldname: "lis", label: "LIS", width: "140px" },
+  { fieldname: "lis_phase", label: "LIS Phase", width: "140px" },
   { fieldname: "stage_no", label: "Stage No.", width: "120px" },
   { fieldname: "asset", label: "Asset Name", width: "150px" },
   { fieldname: "pump_no", label: "Pump No.", width: "120px" },
@@ -98,6 +103,7 @@ export default function LogsheetReportPage() {
     from_date: "",
     to_date: "",
     asset: "",
+    lis_phase: "",
   });
 
   // --- Actions ---
@@ -296,11 +302,33 @@ export default function LogsheetReportPage() {
           </div>
         )}
 
-        {/* Z-Index Fix: 
-            Added relative and z-[60] to the parent grid, and high z-index to individual form groups 
-            to ensure LinkInput dropdowns appear ABOVE the sticky table header below.
-        */}
         <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
+
+          <div className="form-group z-[110]">
+            <label className="text-sm font-medium mb-1 block">From Date</label>
+            <DatePicker
+              selected={filters.from_date ? new Date(filters.from_date) : null}
+              onChange={(date: Date | null) =>
+                handleFilterChange("from_date", date ? date.toISOString() : "")
+              }
+              placeholderText="DD/MM/YYYY"
+              dateFormat="dd/MM/yyyy"
+              className="form-control w-full placeholder:uppercase"
+            />
+          </div>
+          <div className="form-group z-[110]">
+            <label className="text-sm font-medium mb-1 block">To Date</label>
+            <DatePicker
+              selected={filters.to_date ? new Date(filters.to_date) : null}
+              onChange={(date: Date | null) =>
+                handleFilterChange("to_date", date ? date.toISOString() : "")
+              }
+              placeholderText="DD/MM/YYYY"
+              dateFormat="dd/MM/yyyy"
+              className="form-control w-full placeholder:uppercase"
+            />
+          </div>
+
           <div className="form-group z-[50]">
             <label className="text-sm font-medium mb-1 block">LIS</label>
             <LinkInput
@@ -309,6 +337,20 @@ export default function LogsheetReportPage() {
               placeholder="Select LIS..."
               linkTarget="Lift Irrigation Scheme"
               className="w-full relative"
+            />
+          </div>
+
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">LIS Phase</label>
+            <LinkInput
+              value={filters.lis_phase}
+              onChange={(value) => handleFilterChange("lis_phase", value)}
+              placeholder="Select LIS Phase..."
+              linkTarget="LIS Phases"
+              className="w-full relative"
+              filters={{
+                lis_name: filters.lis || undefined
+              }}
             />
           </div>
 
@@ -326,24 +368,7 @@ export default function LogsheetReportPage() {
             />
           </div>
 
-          <div className="form-group z-[30]">
-            <label className="text-sm font-medium mb-1 block">From Date</label>
-            <input
-              type="date"
-              className="form-control w-full"
-              value={filters.from_date}
-              onChange={(e) => handleFilterChange("from_date", e.target.value)}
-            />
-          </div>
-          <div className="form-group z-[30]">
-            <label className="text-sm font-medium mb-1 block">To Date</label>
-            <input
-              type="date"
-              className="form-control w-full"
-              value={filters.to_date}
-              onChange={(e) => handleFilterChange("to_date", e.target.value)}
-            />
-          </div>
+
           <div className="form-group z-[30]">
             <label className="text-sm font-medium mb-1 block">Asset</label>
             <LinkInput
