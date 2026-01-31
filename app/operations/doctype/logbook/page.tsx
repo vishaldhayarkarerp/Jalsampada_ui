@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { Controller, useForm } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 import Link from "next/link";
 import { 
   Search, 
@@ -84,6 +86,17 @@ export default function LogbookPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      lis_name: "",
+      stage: "",
+    },
+  });
+
+  const selectedLis = watch("lis_name");
+  const selectedStage = watch("stage");
+
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
     direction: "dsc",
@@ -139,6 +152,8 @@ export default function LogbookPage() {
         order_by: "modified desc",
       };
 
+      const filters: any[] = [];
+
       if (debouncedSearch) {
         // Search by ID, status, LIS
         params.or_filters = JSON.stringify({
@@ -146,6 +161,18 @@ export default function LogbookPage() {
           status: ["like", `%${debouncedSearch}%`],
           lis_name: ["like", `%${debouncedSearch}%`],
         });
+      }
+
+      if (selectedLis) {
+        filters.push(["Logbook", "lis_name", "=", selectedLis]);
+      }
+
+      if (selectedStage) {
+        filters.push(["Logbook", "stage", "=", selectedStage]);
+      }
+
+      if (filters.length > 0) {
+        params.filters = JSON.stringify(filters);
       }
 
       // 🟢 Append /api/resource manually
@@ -171,7 +198,7 @@ export default function LogbookPage() {
     } finally {
       setLoading(false);
     }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis, selectedStage]);
 
   React.useEffect(() => {
     fetchLogbooks();
@@ -429,22 +456,81 @@ export default function LogbookPage() {
         className="search-filter-section"
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          gap: "8px",
           alignItems: "center",
           marginTop: "1rem",
-          gap: "8px",
         }}
       >
-        {/* Left: Single Omni-Search */}
-        <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
-          <input
-            type="text"
-            placeholder="Search Logbook..."
-            className="form-control w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search Logbook"
-          />
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          {/* Left: Single Omni-Search */}
+          <div className="relative" style={{ minWidth: "200px" }}>
+            <input
+              type="text"
+              placeholder="Search Logbook..."
+              className="form-control w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search Logbook"
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="lis_name"
+              render={({ field: { value } }) => {
+                const mockField = {
+                  name: "lis_name",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Lift Irrigation Scheme",
+                  placeholder: "Select LIS",
+                  required: false,
+                  defaultValue: "",
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="stage"
+              render={({ field: { value } }) => {
+                const mockField = {
+                  name: "stage",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Stage No",
+                  placeholder: "Select Stage",
+                  required: false,
+                  defaultValue: "",
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
         </div>
 
         {/* Right: Sort Pill + View Switcher */}
