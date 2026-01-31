@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { useForm, Controller } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 
 // 🟢 New Imports for Bulk Delete & Icons
 import { useSelection } from "@/hooks/useSelection";
@@ -34,6 +36,16 @@ function useDebounce<T>(value: T, delay: number): T {
 
 interface DraftTenderPaper {
   name: string;
+  lis_name?: string;
+  stage?: string;
+}
+
+interface LisOption {
+  name: string;
+}
+
+interface StageOption {
+  name: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -49,15 +61,44 @@ export default function DoctypePage() {
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
+  const [stageOptions, setStageOptions] = React.useState<StageOption[]>([]);
   const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      lis_name: "",
+      stage: ""
+    }
+  });
+
+  const selectedLis = watch("lis_name");
+  const selectedStage = watch("stage");
 
   // Filter records client-side for instant results
   const filteredRecords = React.useMemo(() => {
-    if (!debouncedSearch) return records;
-    return records.filter(record =>
-      record.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-    );
-  }, [records, debouncedSearch]);
+    let filtered = records;
+    
+    // Apply search filter
+    if (debouncedSearch) {
+      filtered = filtered.filter(record =>
+        record.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      );
+    }
+    
+    // Apply LIS filter
+    if (selectedLis) {
+      filtered = filtered.filter(record => record.lis_name === selectedLis);
+    }
+    
+    // Apply Stage filter
+    if (selectedStage) {
+      filtered = filtered.filter(record => record.stage === selectedStage);
+    }
+    
+    return filtered;
+  }, [records, debouncedSearch, selectedLis, selectedStage]);
 
   // 🟢 1. Initialize Selection Hook
   const {
@@ -69,6 +110,45 @@ export default function DoctypePage() {
   } = useSelection(filteredRecords, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // ── Load Filter Options ────────────────────────────────────────
+  React.useEffect(() => {
+    const fetchFilterOptions = async () => {
+      if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
+
+      try {
+        // Fetch LIS options
+        const lisResp = await axios.get(`${API_BASE_URL}/api/resource/Lift Irrigation Scheme`, {
+          params: {
+            fields: JSON.stringify(["name"]),
+            limit_page_length: "100",
+            order_by: "name asc",
+          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        });
+
+        // Fetch Stage options
+        const stageResp = await axios.get(`${API_BASE_URL}/api/resource/Stage No`, {
+          params: {
+            fields: JSON.stringify(["name"]),
+            limit_page_length: "100",
+            order_by: "name asc",
+          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        });
+
+        const lisData = lisResp.data?.data ?? [];
+        const stageData = stageResp.data?.data ?? [];
+
+        setLisOptions([{ name: "" }, ...lisData]); // empty string = All
+        setStageOptions([{ name: "" }, ...stageData]); // empty string = All
+      } catch (err) {
+        console.error("Failed to load filter options:", err);
+      }
+    };
+
+    fetchFilterOptions();
+  }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
   /* -------------------------------------------------
   3. FETCH
@@ -87,6 +167,8 @@ export default function DoctypePage() {
       const params = {
         fields: JSON.stringify([
           "name",
+          "lis_name",
+          "stage",
         ]),
         limit_page_length: "20",
         order_by: "creation desc"
@@ -104,6 +186,8 @@ export default function DoctypePage() {
       const raw = resp.data?.data ?? [];
       const mapped: DraftTenderPaper[] = raw.map((r: any) => ({
         name: r.name,
+        lis_name: r.lis_name ?? "—",
+        stage: r.stage ?? "—",
       }));
 
       setRecords(mapped);
@@ -192,6 +276,8 @@ export default function DoctypePage() {
   const getFieldsForRecord = (record: DraftTenderPaper): RecordCardField[] => {
     const fields: RecordCardField[] = [];
     fields.push({ label: "ID", value: record.name });
+    if (record.lis_name) fields.push({ label: "LIS", value: record.lis_name });
+    if (record.stage) fields.push({ label: "Stage", value: record.stage });
     return fields;
   };
 
@@ -213,6 +299,8 @@ export default function DoctypePage() {
               />
             </th>
             <th>Name</th>
+            <th>LIS</th>
+            <th>Stage</th>
           </tr>
         </thead>
         <tbody>
@@ -241,12 +329,14 @@ export default function DoctypePage() {
                     />
                   </td>
                   <td>{record.name}</td>
+                  <td>{record.lis_name}</td>
+                  <td>{record.stage}</td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={2} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -313,20 +403,79 @@ export default function DoctypePage() {
         className="search-filter-section"
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          gap: "8px",
           alignItems: "center",
           marginTop: "1rem",
         }}
       >
-        <div style={{ display: "flex", gap: "8px" }}>
-          <input
-            type="text"
-            placeholder={`Search ${title}...`}
-            className="form-control"
-            style={{ width: 240 }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          <div style={{ minWidth: "200px" }}>
+            <input
+              type="text"
+              placeholder={`Search ${title}...`}
+              className="form-control w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="lis_name"
+              render={({ field: { onChange, value } }) => {
+                const mockField = {
+                  name: "lis_name",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Lift Irrigation Scheme",
+                  placeholder: "Select LIS",
+                  required: false,
+                  defaultValue: ""
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="stage"
+              render={({ field: { onChange, value } }) => {
+                const mockField = {
+                  name: "stage",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Stage No",
+                  placeholder: "Select Stage",
+                  required: false,
+                  defaultValue: ""
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
         </div>
 
         <div className="view-switcher">

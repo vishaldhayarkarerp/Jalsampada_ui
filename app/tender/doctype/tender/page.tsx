@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { useForm, Controller } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 
 // 🟢 New Imports for Bulk Delete
 import { useSelection } from "@/hooks/useSelection";
@@ -35,6 +37,11 @@ interface Tender {
   name: string;              // id
   status?: string;           // from custom_tender_status
   tender_name?: string;      // from custom_prapan_suchi
+  lis_name?: string;          // from custom_lis_name
+}
+
+interface LisOption {
+  name: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -49,16 +56,38 @@ export default function DoctypePage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      lis_name: ""
+    }
+  });
+
+  const selectedLis = watch("lis_name");
 
   // Filter tenders client-side
   const filteredTenders = React.useMemo(() => {
-    if (!searchTerm) return tenders;
-    return tenders.filter(tender =>
-      tender.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (tender.tender_name && tender.tender_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (tender.status && tender.status.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [tenders, searchTerm]);
+    let filtered = tenders;
+    
+    // Apply search filter
+    if (debouncedSearch) {
+      filtered = filtered.filter(tender =>
+        tender.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        (tender.tender_name && tender.tender_name.toLowerCase().includes(debouncedSearch.toLowerCase())) ||
+        (tender.status && tender.status.toLowerCase().includes(debouncedSearch.toLowerCase()))
+      );
+    }
+    
+    // Apply LIS filter
+    if (selectedLis) {
+      filtered = filtered.filter(tender => tender.lis_name === selectedLis);
+    }
+    
+    return filtered;
+  }, [tenders, debouncedSearch, selectedLis]);
 
   // 🟢 1. Initialize Selection Hook
   const { 
@@ -70,6 +99,32 @@ export default function DoctypePage() {
   } = useSelection(filteredTenders, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // ── Load Filter Options ────────────────────────────────────────
+  React.useEffect(() => {
+    const fetchFilterOptions = async () => {
+      if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
+
+      try {
+        // Fetch LIS options
+        const lisResp = await axios.get(`${API_BASE_URL}/api/resource/Lift Irrigation Scheme`, {
+          params: {
+            fields: JSON.stringify(["name"]),
+            limit_page_length: "100",
+            order_by: "name asc",
+          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        });
+
+        const lisData = lisResp.data?.data ?? [];
+        setLisOptions([{ name: "" }, ...lisData]); // empty string = All
+      } catch (err) {
+        console.error("Failed to load filter options:", err);
+      }
+    };
+
+    fetchFilterOptions();
+  }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
   // ── Fetch Data ────────────────────────────────────────────────
   const fetchTenders = React.useCallback(async () => {
@@ -88,6 +143,7 @@ export default function DoctypePage() {
           "name",
           "custom_tender_status",
           "custom_prapan_suchi",
+          "custom_lis_name",
         ]),
         limit_page_length: 20,
         order_by: "creation desc",
@@ -107,6 +163,7 @@ export default function DoctypePage() {
         name: r.name,
         status: r.custom_tender_status ?? "",
         tender_name: r.custom_prapan_suchi ?? "",
+        lis_name: r.custom_lis_name ?? "",
       }));
 
       setTenders(mapped);
@@ -201,6 +258,7 @@ export default function DoctypePage() {
     fields.push({ label: "ID", value: t.name });
     if (t.status) fields.push({ label: "Status", value: t.status });
     if (t.tender_name) fields.push({ label: "Prapan Suchi", value: t.tender_name });
+    if (t.lis_name) fields.push({ label: "LIS", value: t.lis_name });
     return fields;
   };
 
@@ -240,6 +298,7 @@ export default function DoctypePage() {
             </th>
             <th>ID</th>
             <th>Prapan Suchi</th>
+            <th>LIS</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -270,13 +329,14 @@ export default function DoctypePage() {
                   </td>
                   <td>{t.name}</td>
                   <td>{t.tender_name}</td>
+                  <td>{t.lis_name}</td>
                   <td>{t.status}</td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -332,20 +392,50 @@ export default function DoctypePage() {
         className="search-filter-section"
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          gap: "8px",
           alignItems: "center",
           marginTop: "1rem",
         }}
       >
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            placeholder={`Search ${title}...`}
-            className="form-control"
-            style={{ width: 240 }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          <div style={{ minWidth: "200px" }}>
+            <input
+              type="text"
+              placeholder={`Search ${title}...`}
+              className="form-control w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="lis_name"
+              render={({ field: { onChange, value } }) => {
+                const mockField = {
+                  name: "lis_name",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Lift Irrigation Scheme",
+                  placeholder: "Select LIS",
+                  required: false,
+                  defaultValue: ""
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
         </div>
         <div className="view-switcher">
           <button

@@ -237,7 +237,8 @@ throw new Error(responseData.exception || responseData._server_messages || "Fail
 }
 toast.success("Gate Operation Logbook created successfully!");
 // Navigate to the list view
-router.push(`/operations/doctype/gate-operation-logbook`);
+router.push(`/operations/doctype/gate-operation-logbook/${responseData.data.name}`);
+      return { statusCode: resp.status, status: responseData.data?.status };  
 
 } catch (err: any) {
 console.error("Save error:", err);

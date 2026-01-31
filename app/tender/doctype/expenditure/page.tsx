@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { Controller, useForm } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 
 // 🟢 New Imports for Bulk Delete & Icons
 import { useSelection } from "@/hooks/useSelection";
@@ -41,6 +43,10 @@ interface Expenditure {
   lift_irrigation_scheme?: string;
 }
 
+interface LisOption {
+  name: string;
+}
+
 type ViewMode = "grid" | "list";
 
 export default function DoctypePage() {
@@ -54,15 +60,36 @@ export default function DoctypePage() {
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
   const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      lis_name: "",
+    },
+  });
+
+  const selectedLis = watch("lis_name");
 
   // Filter records client-side for instant results
   const filteredRecords = React.useMemo(() => {
-    if (!debouncedSearch) return records;
-    return records.filter(record =>
-      record.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-    );
-  }, [records, debouncedSearch]);
+    let filtered = records;
+
+    if (debouncedSearch) {
+      filtered = filtered.filter(record =>
+        record.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      );
+    }
+
+    if (selectedLis) {
+      filtered = filtered.filter(
+        record => record.lift_irrigation_scheme === selectedLis
+      );
+    }
+
+    return filtered;
+  }, [records, debouncedSearch, selectedLis]);
 
   // 🟢 1. Initialize Selection Hook
   const {
@@ -74,6 +101,34 @@ export default function DoctypePage() {
   } = useSelection(filteredRecords, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // ── Load Filter Options ────────────────────────────────────────
+  React.useEffect(() => {
+    const fetchFilterOptions = async () => {
+      if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
+
+      try {
+        const lisResp = await axios.get(
+          `${API_BASE_URL}/api/resource/Lift Irrigation Scheme`,
+          {
+            params: {
+              fields: JSON.stringify(["name"]),
+              limit_page_length: "100",
+              order_by: "name asc",
+            },
+            headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+          }
+        );
+
+        const lisData = lisResp.data?.data ?? [];
+        setLisOptions([{ name: "" }, ...lisData]);
+      } catch (err) {
+        console.error("Failed to load filter options:", err);
+      }
+    };
+
+    fetchFilterOptions();
+  }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
   /* -------------------------------------------------
   3. FETCH
@@ -350,20 +405,50 @@ export default function DoctypePage() {
         className="search-filter-section"
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          gap: "8px",
           alignItems: "center",
           marginTop: "1rem",
         }}
       >
-        <div style={{ display: "flex", gap: "8px" }}>
-          <input
-            type="text"
-            placeholder={`Search ${title}...`}
-            className="form-control"
-            style={{ width: 240 }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          <div style={{ minWidth: "200px" }}>
+            <input
+              type="text"
+              placeholder={`Search ${title}...`}
+              className="form-control w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="lis_name"
+              render={({ field: { value } }) => {
+                const mockField = {
+                  name: "lis_name",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Lift Irrigation Scheme",
+                  placeholder: "Select LIS",
+                  required: false,
+                  defaultValue: "",
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
         </div>
 
         <div className="view-switcher">
