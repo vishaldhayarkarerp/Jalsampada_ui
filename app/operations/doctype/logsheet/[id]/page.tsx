@@ -243,6 +243,7 @@ export default function LogSheetDetailPage() {
                 setRecord(resp.data.data);
             }
             router.push(`/operations/doctype/logsheet/${encodeURIComponent(docname)}`);
+            return { statusCode: resp.status, status: resp.data?.data?.status };
         } catch (err: any) {
             console.error("Save error:", err);
             toast.error("Failed to Save", {

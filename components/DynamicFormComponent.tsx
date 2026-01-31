@@ -146,7 +146,7 @@ export interface DeleteConfig {
 
 export interface DynamicFormProps {
   tabs: TabbedLayout[];
-  onSubmit: (data: Record<string, any>, isDirty: boolean) => Promise<{ status?: string } | void>;
+  onSubmit: (data: Record<string, any>, isDirty: boolean) => Promise<{ status?: string; statusCode?: number } | void>;
   onCancel?: () => void;
   title?: string;
   description?: string;
@@ -610,8 +610,11 @@ export function DynamicForm({
         setCurrentStatus(result.status);
         // Reset form to clear dirty state after successful save
         reset(data, { keepValues: false });
+      } else if (result?.statusCode === 200) {
+        setCurrentStatus("Draft");
+        reset(data, { keepValues: false });
       } else {
-        setCurrentStatus(initialStatus);
+        setCurrentStatus("Not Saved");
       }
     } catch (error) {
       console.error('Save error:', error);
@@ -1452,38 +1455,38 @@ export function DynamicForm({
     );
   };
 
- const renderReadOnly = (field: FormField) => {
-  const val = watch(field.name);
-  let displayValue: any = field.readOnlyValue ?? val ?? "";
-  // Auto-format date strings to DD/MM/YYYY
-  if (
-    typeof displayValue === "string" &&
-    /^\d{4}-\d{2}-\d{2}/.test(displayValue) // detect date pattern
-  ) {
-    const date = new Date(displayValue);
-    if (!isNaN(date.getTime())) {
-      const pad = (n: number) => (n < 10 ? "0" + n : n);
-      displayValue = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+  const renderReadOnly = (field: FormField) => {
+    const val = watch(field.name);
+    let displayValue: any = field.readOnlyValue ?? val ?? "";
+    // Auto-format date strings to DD/MM/YYYY
+    if (
+      typeof displayValue === "string" &&
+      /^\d{4}-\d{2}-\d{2}/.test(displayValue) // detect date pattern
+    ) {
+      const date = new Date(displayValue);
+      if (!isNaN(date.getTime())) {
+        const pad = (n: number) => (n < 10 ? "0" + n : n);
+        displayValue = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+      }
     }
-  }
 
-  return (
-    <div className="form-group">
-      <label className="form-label">{field.label}</label>
-      <input
-        type="text"
-        className={cn("form-control", getErrorClass(field.name))}
-        value={displayValue}
-        readOnly
-        style={{
-          background: "var(--color-surface-muted, transparent)",
-          cursor: "default",
-        }}
-      />
-      <FieldHelp text={field.description} />
-    </div>
-  );
-};
+    return (
+      <div className="form-group">
+        <label className="form-label">{field.label}</label>
+        <input
+          type="text"
+          className={cn("form-control", getErrorClass(field.name))}
+          value={displayValue}
+          readOnly
+          style={{
+            background: "var(--color-surface-muted, transparent)",
+            cursor: "default",
+          }}
+        />
+        <FieldHelp text={field.description} />
+      </div>
+    );
+  };
 
   const renderButton = (field: FormField) => (
     <div className="form-group">
