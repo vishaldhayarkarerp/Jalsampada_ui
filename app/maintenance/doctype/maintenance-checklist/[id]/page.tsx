@@ -219,6 +219,8 @@ export default function MaintenanceChecklistDetailPage() {
       if (resp.data?.data) {
         setRecord(resp.data.data);
       }
+      router.push(`/maintenance/doctype/maintenance-checklist/${encodeURIComponent(record.name)}`);
+      return { statusCode: resp.status, status: resp.data?.data?.status };
 
     } catch (err: any) {
       console.error("Save error:", err);
