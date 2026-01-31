@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { Controller, useForm } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 import Link from "next/link";
 import {
   Search,
@@ -52,6 +54,8 @@ interface LisIncidentRecord {
   priority?: string;
   raised_by?: string;
   modified?: string;
+  custom_lis?: string;
+  custom_stage?: string;
 }
 
 type SortDirection = "asc" | "dsc";
@@ -67,6 +71,8 @@ const SORT_OPTIONS: { label: string; key: keyof LisIncidentRecord }[] = [
   { label: "Status", key: "workflow_state" },
   { label: "Priority", key: "priority" },
   { label: "Raised By", key: "raised_by" },
+  { label: "Lift Irrigation Scheme", key: "custom_lis" },
+  { label: "Stage / Sub Scheme", key: "custom_stage" },
 ];
 
 type ViewMode = "grid" | "list";
@@ -83,6 +89,17 @@ export default function LisIncidentRecordPage() {
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      custom_lis: "",
+      custom_stage: "",
+    },
+  });
+
+  const selectedLis = watch("custom_lis");
+  const selectedStage = watch("custom_stage");
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
@@ -127,6 +144,16 @@ export default function LisIncidentRecordPage() {
       setLoading(true);
       setError(null);
 
+      const filters: any[] = [];
+
+      if (selectedLis) {
+        filters.push(["Issue", "custom_lis", "=", selectedLis]);
+      }
+
+      if (selectedStage) {
+        filters.push(["Issue", "custom_stage", "=", selectedStage]);
+      }
+
       const params: any = {
         fields: JSON.stringify([
           "name",
@@ -135,6 +162,8 @@ export default function LisIncidentRecordPage() {
           "priority",
           "raised_by",
           "modified",
+          "custom_lis",
+          "custom_stage",
         ]),
         limit_page_length: "20",
         order_by: "modified desc",
@@ -148,6 +177,10 @@ export default function LisIncidentRecordPage() {
           priority: ["like", `%${debouncedSearch}%`],
           raised_by: ["like", `%${debouncedSearch}%`],
         });
+      }
+
+      if (filters.length > 0) {
+        params.filters = JSON.stringify(filters);
       }
 
       // 🟢 Append /api/resource manually
@@ -168,6 +201,8 @@ export default function LisIncidentRecordPage() {
         priority: r.priority,
         raised_by: r.raised_by,
         modified: r.modified,
+        custom_lis: r.custom_lis,
+        custom_stage: r.custom_stage,
       }));
 
       setRows(mapped);
@@ -177,7 +212,7 @@ export default function LisIncidentRecordPage() {
     } finally {
       setLoading(false);
     }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis, selectedStage]);
 
   React.useEffect(() => {
     fetchRows();
@@ -274,6 +309,8 @@ export default function LisIncidentRecordPage() {
     if (row.workflow_state) fields.push({ label: "Status", value: row.workflow_state });
     if (row.priority) fields.push({ label: "Priority", value: row.priority });
     if (row.raised_by) fields.push({ label: "Raised By", value: row.raised_by });
+    if (row.custom_lis) fields.push({ label: "LIS", value: row.custom_lis });
+    if (row.custom_stage) fields.push({ label: "Stage", value: row.custom_stage });
     return fields;
   };
 
@@ -294,7 +331,7 @@ export default function LisIncidentRecordPage() {
     >
       <table
         className="stock-table"
-        style={{ minWidth: "900px", whiteSpace: "nowrap" }}
+        style={{ minWidth: "1200px", whiteSpace: "nowrap" }}
       >
         <thead>
           <tr>
@@ -337,6 +374,18 @@ export default function LisIncidentRecordPage() {
             >
               Raised By
             </th>
+            <th
+              style={{ cursor: "pointer", minWidth: 180 }}
+              onClick={() => requestSort("custom_lis")}
+            >
+              Lift Irrigation Scheme
+            </th>
+            <th
+              style={{ cursor: "pointer", minWidth: 140 }}
+              onClick={() => requestSort("custom_stage")}
+            >
+              Stage / Sub Scheme
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -369,12 +418,14 @@ export default function LisIncidentRecordPage() {
                   <td style={{ minWidth: 120 }}>{row.workflow_state || "—"}</td>
                   <td style={{ minWidth: 120 }}>{row.priority || "—"}</td>
                   <td style={{ minWidth: 160 }}>{row.raised_by || "—"}</td>
+                  <td style={{ minWidth: 180 }}>{row.custom_lis || "—"}</td>
+                  <td style={{ minWidth: 140 }}>{row.custom_stage || "—"}</td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -424,7 +475,7 @@ export default function LisIncidentRecordPage() {
           <p>Incident records with workflow_state, priority, and reporter</p>
         </div>
         
-        {/* 🟢 3. Header Action Switch */}
+        {/* Header Action Switch */}
         {selectedIds.size > 0 ? (
           <BulkActionBar
             selectedCount={selectedIds.size}
@@ -446,27 +497,85 @@ export default function LisIncidentRecordPage() {
         className="search-filter-section"
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          gap: "8px",
           alignItems: "center",
           marginTop: "1rem",
-          gap: "8px",
         }}
       >
-        {/* Left: Single Omni-Search */}
-        <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
-          <input
-            type="text"
-            placeholder="Search LIS Incident Record..."
-            className="form-control w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search LIS Incident Record"
-          />
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          {/* Left: Single Omni-Search */}
+          <div className="relative" style={{ minWidth: "200px" }}>
+            <input
+              type="text"
+              placeholder="Search LIS Incident Record..."
+              className="form-control w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search LIS Incident Record"
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="custom_lis"
+              render={({ field: { value } }) => {
+                const mockField = {
+                  name: "custom_lis",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Lift Irrigation Scheme",
+                  placeholder: "Select LIS",
+                  required: false,
+                  defaultValue: "",
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="custom_stage"
+              render={({ field: { value } }) => {
+                const mockField = {
+                  name: "custom_stage",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Stage No",
+                  placeholder: "Select Stage",
+                  required: false,
+                  defaultValue: "",
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
         </div>
 
         {/* Right: Sort Pill + View Switcher */}
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {/* Sort Pill */}
           <div className="relative" ref={sortMenuRef}>
             <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
               <button

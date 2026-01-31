@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { Controller, useForm } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 import Link from "next/link";
 import {
   Search,
@@ -94,6 +96,17 @@ export default function LogSheetPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      lis: "",
+      stage: "",
+    },
+  });
+
+  const selectedLis = watch("lis");
+  const selectedStage = watch("stage");
+
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
     direction: "dsc",
@@ -108,7 +121,7 @@ export default function LogSheetPage() {
     handleSelectOne,
     handleSelectAll,
     clearSelection,
-    isAllSelected
+    isAllSelected,
   } = useSelection(rows, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -158,12 +171,26 @@ export default function LogSheetPage() {
         order_by: "modified desc",
       };
 
+      const filters: any[] = [];
+
       if (debouncedSearch) {
         params.or_filters = JSON.stringify({
           name: ["like", `%${debouncedSearch}%`],
           lis: ["like", `%${debouncedSearch}%`],
           stage: ["like", `%${debouncedSearch}%`],
         });
+      }
+
+      if (selectedLis) {
+        filters.push(["Log Sheet", "lis", "=", selectedLis]);
+      }
+
+      if (selectedStage) {
+        filters.push(["Log Sheet", "stage", "=", selectedStage]);
+      }
+
+      if (filters.length > 0) {
+        params.filters = JSON.stringify(filters);
       }
 
       // 🟢 Append /api/resource manually
@@ -198,7 +225,7 @@ export default function LogSheetPage() {
     } finally {
       setLoading(false);
     }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis, selectedStage]);
 
   React.useEffect(() => {
     fetchLogSheet();
@@ -238,7 +265,7 @@ export default function LogSheetPage() {
           // Show error messages from server
           toast.error("Failed to delete records", {
             description: <FrappeErrorDisplay messages={errorMessages} />,
-            duration: Infinity
+            duration: Infinity,
           });
           return; // Don't proceed with success handling
         }
@@ -379,7 +406,7 @@ export default function LogSheetPage() {
                   onClick={() => handleCardClick(row.name)}
                   style={{
                     cursor: "pointer",
-                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined,
                   }}
                 >
                   {/* 🟢 Row Checkbox */}
@@ -422,7 +449,6 @@ export default function LogSheetPage() {
     </div>
   );
 
-
   const renderGridView = () => (
     <div className="equipment-grid">
       {rows.length ? (
@@ -457,7 +483,7 @@ export default function LogSheetPage() {
 
   return (
     <div className="module active">
-      <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="module-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2>{title}</h2>
           <p>LogSheet entries with electrical and water parameters</p>
@@ -485,22 +511,81 @@ export default function LogSheetPage() {
         className="search-filter-section"
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          gap: "8px",
           alignItems: "center",
           marginTop: "1rem",
-          gap: "8px",
         }}
       >
-        {/* Left: Single Omni-Search */}
-        <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
-          <input
-            type="text"
-            placeholder="Search Log Sheet..."
-            className="form-control w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search Log Sheet"
-          />
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          {/* Left: Single Omni-Search */}
+          <div className="relative" style={{ minWidth: "200px" }}>
+            <input
+              type="text"
+              placeholder="Search Log Sheet..."
+              className="form-control w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search Log Sheet"
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="lis"
+              render={({ field: { value } }) => {
+                const mockField = {
+                  name: "lis",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Lift Irrigation Scheme",
+                  placeholder: "Select LIS",
+                  required: false,
+                  defaultValue: "",
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="stage"
+              render={({ field: { value } }) => {
+                const mockField = {
+                  name: "stage",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Stage No",
+                  placeholder: "Select Stage",
+                  required: false,
+                  defaultValue: "",
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
         </div>
 
         {/* Right: Sort Pill + View Switcher */}
