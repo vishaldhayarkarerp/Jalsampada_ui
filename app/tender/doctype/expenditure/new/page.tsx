@@ -179,13 +179,13 @@ export default function NewExpenditurePage() {
 
   const handleFormInit = React.useCallback((form: any) => {
     setFormInstance(form);
-    
+
     let previousBillType: string | undefined;
-    
+
     // Store the initial bill type value, but only if it's not "Running" due to RA in prev_bill_no
     const initialBillType = form.getValues('bill_type');
     const initialPrevBillNo = form.getValues('prev_bill_no');
-    
+
     // If current bill type is "Running" but prev_bill_no contains "ra", 
     // we should assume original value wasn't "Running"
     if (initialBillType === 'Running' && initialPrevBillNo && typeof initialPrevBillNo === 'string' && /ra/i.test(initialPrevBillNo)) {
@@ -196,13 +196,13 @@ export default function NewExpenditurePage() {
     } else {
       previousBillType = 'Select Type'; // Default fallback
     }
-    
+
     // Watch the prev_bill_no field and set bill_type accordingly
     form.watch((value: any, { name }: { name?: string }) => {
       if (name === 'prev_bill_no' || name === undefined) {
         const prevBillNo = form.getValues('prev_bill_no');
         const currentBillType = form.getValues('bill_type');
-        
+
         // Check if prev_bill_no contains 'ra' or 'RA' (case-insensitive)
         if (prevBillNo && typeof prevBillNo === 'string' && /ra/i.test(prevBillNo)) {
           // Set bill_type to "Running" if it's not already set
@@ -287,6 +287,11 @@ export default function NewExpenditurePage() {
             precision: 2,
           },
           {
+            name: "mb_no",
+            label: "MB No",
+            type: "Data",
+          },
+          {
             name: "bill_amount",
             label: "Bill Amount",
             type: "Currency",
@@ -307,26 +312,19 @@ export default function NewExpenditurePage() {
             precision: 2,
           },
           {
-            name: "bill_type",
-            label: "Bill Type",
-            type: "Select",
-            options: [
-              { label: "Select Type", value: "Select Type" },
-              { label: "Running", value: "Running" },
-              { label: "Final", value: "Final" },
-            ],
-          },
-          {
-            name: "mb_no",
-            label: "MB No",
-            type: "Data",
-          },
-          {
             name: "page_no",
             label: "Page No",
             type: "Data",
           },
-
+          {
+            name: "bill_type",
+            label: "Bill Type",
+            type: "Select",
+            options: [
+              { label: "Running", value: "Running" },
+              { label: "Final", value: "Final" },
+            ],
+          },
           {
             name: "lift_irrigation_scheme",
             label: "Lift Irrigation Scheme",
@@ -570,10 +568,10 @@ export default function NewExpenditurePage() {
     } catch (err: any) {
       console.error("Create error:", err);
       console.log("Full server error:", err.response?.data);
-      
+
       // Extract actual validation message from server response
       let errorMessage = (err as Error).message || "Check the browser console (F12) for the full server error.";
-      
+
       if (err.response?.status === 417) {
         const serverMessages = err.response?.data?._server_messages;
         if (serverMessages) {
@@ -588,7 +586,7 @@ export default function NewExpenditurePage() {
           }
         }
       }
-      
+
       toast.error("Failed to create Expenditure", {
         description: errorMessage,
         duration: Infinity

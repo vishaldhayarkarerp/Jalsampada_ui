@@ -238,13 +238,13 @@ export default function RecordDetailPage() {
 
   const handleFormInit = React.useCallback((form: any) => {
     setFormInstance(form);
-    
+
     let previousBillType: string | undefined;
-    
+
     // Store the initial bill type value, but only if it's not "Running" due to RA in prev_bill_no
     const initialBillType = form.getValues('bill_type');
     const initialPrevBillNo = form.getValues('prev_bill_no');
-    
+
     // If current bill type is "Running" but prev_bill_no contains "ra", 
     // we should assume the original value wasn't "Running"
     if (initialBillType === 'Running' && initialPrevBillNo && typeof initialPrevBillNo === 'string' && /ra/i.test(initialPrevBillNo)) {
@@ -255,13 +255,13 @@ export default function RecordDetailPage() {
     } else {
       previousBillType = 'Select Type'; // Default fallback
     }
-    
+
     // Watch the prev_bill_no field and set bill_type accordingly
     form.watch((value: any, { name }: { name?: string }) => {
       if (name === 'prev_bill_no' || name === undefined) {
         const prevBillNo = form.getValues('prev_bill_no');
         const currentBillType = form.getValues('bill_type');
-        
+
         // Check if prev_bill_no contains 'ra' or 'RA' (case-insensitive)
         if (prevBillNo && typeof prevBillNo === 'string' && /ra/i.test(prevBillNo)) {
           // Set bill_type to "Running" if it's not already set
@@ -369,6 +369,11 @@ export default function RecordDetailPage() {
             precision: 2,
           },
           {
+            name: "mb_no",
+            label: "MB No",
+            type: "Data",
+          },
+          {
             name: "bill_amount",
             label: "Bill Amount",
             type: "Currency",
@@ -389,26 +394,19 @@ export default function RecordDetailPage() {
             precision: 2,
           },
           {
-            name: "bill_type",
-            label: "Bill Type",
-            type: "Select",
-            options: [
-              { label: "Select Type", value: "Select Type" },
-              { label: "Running", value: "Running" },
-              { label: "Final", value: "Final" },
-            ],
-          },
-          {
-            name: "mb_no",
-            label: "MB No",
-            type: "Data",
-          },
-          {
             name: "page_no",
             label: "Page No",
             type: "Data",
           },
-
+          {
+            name: "bill_type",
+            label: "Bill Type",
+            type: "Select",
+            options: [
+              { label: "Running", value: "Running" },
+              { label: "Final", value: "Final" },
+            ],
+          },
           {
             name: "lift_irrigation_scheme",
             label: "Lift Irrigation Scheme",
@@ -539,7 +537,8 @@ export default function RecordDetailPage() {
     if (billAmount > tenderAmount) {
       toast.error("Validation Failed", {
         description: "The Bill Amount cannot be greater than the Tender Amount. Please verify the bill amount."
-       ,duration: Infinity});
+        , duration: Infinity
+      });
       return; // Stop the save process
     }
 
@@ -692,7 +691,7 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
       if (messages.success) {
         toast.success(messages.message, { description: messages.description });
       } else {
-        toast.error(messages.message, { description: messages.description , duration: Infinity});
+        toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
 
       if (resp.data && resp.data.data) {
@@ -738,7 +737,7 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
         }
       );
 
-      toast.error(messages.message, { description: messages.description, duration: Infinity});
+      toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsSaving(false);
     }
