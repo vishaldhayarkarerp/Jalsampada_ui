@@ -313,7 +313,7 @@ export default function NewLogbookPage() {
   /* -------------------------------------------------
       4. SUBMIT
   ------------------------------------------------- */
-  const handleSubmit = async (data: Record<string, any>) => {
+  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!data.pump_operation) {
       toast.error("Please select either Start Pump or Stop Pump", { duration: Infinity });
       return;
