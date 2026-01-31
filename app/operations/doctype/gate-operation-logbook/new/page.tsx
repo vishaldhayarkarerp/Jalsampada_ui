@@ -66,6 +66,13 @@ required: true,
 defaultValue: getValue("lis_name"),
 },
 {
+name: "lis_phase",
+label: "LIS Phase",
+type: "Link",
+linkTarget: "LIS Phases",
+defaultValue: getValue("lis_phase"),
+},
+{
 name: "stage",
 label: "Stage/ Sub Scheme",
 type: "Link",
@@ -182,6 +189,7 @@ try {
 const payload: Record<string, any> = {
 doctype: doctypeName,
 lis_name: data.lis_name,
+lis_phase: data.lis_phase,
 stage: data.stage,
 gate_no: data.gate_no,
 gate_operation: data.gate_operation,

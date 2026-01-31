@@ -11,6 +11,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
+import { de } from "date-fns/locale";
+import { get } from "http";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
 
@@ -24,7 +26,7 @@ interface ContractorData {
   address_type: string;
   city: string;
   postal_code: string;
-  county: string;
+  country: string;
   email_address: string;
   phone: string;
   docstatus: 0 | 1 | 2;
@@ -105,6 +107,7 @@ export default function ContractorDetailsPage({
             label: "Contractor Name",
             type: "Data",
             required: true,
+            
           },
           {
             name: "supplier_group",
@@ -141,9 +144,10 @@ export default function ContractorDetailsPage({
             type: "Data",
           },
           {
-            name: "county",
-            label: "County",
-            type: "Data",
+            name: "country",
+            label: "Country",
+            type: "Link",
+            linkTarget: "Country",
           },
           {
             name: "postal_code",
