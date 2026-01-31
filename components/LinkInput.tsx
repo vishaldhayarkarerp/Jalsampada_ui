@@ -83,10 +83,13 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
             });
 
             if (response.data?.data) {
-                const formattedOptions = response.data.data.map((item: any) => ({
-                    value: item.name,
-                    label: linkTarget === "Prapan Suchi" ? (item.work_name || item.name) : item.name,
-                }));
+                const formattedOptions = response.data.data.map((item: any) => {
+                    const label = linkTarget === "Prapan Suchi" ? (item.work_name || item.name) : item.name;
+                    return {
+                        value: label,
+                        label,
+                    };
+                });
                 setOptions(formattedOptions);
             }
         } catch (error) {
@@ -231,9 +234,9 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
             {isOpen && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                     {filteredOptions.length > 0 ? (
-                        filteredOptions.map((option) => (
+                        filteredOptions.map((option, index) => (
                             <div
-                                key={option.value}
+                                key={`${option.value}-${index}`}
                                 onClick={() => handleOptionSelect(option)}
                                 className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors"
                             >

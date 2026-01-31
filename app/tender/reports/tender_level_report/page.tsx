@@ -437,7 +437,16 @@ export default function TenderLevelReport() {
             <thead style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "white" }}>
               <tr>
                 {columnConfig.map((column) => (
-                  <th key={column.fieldname} style={{ width: column.width }}>
+                  <th
+                    key={column.fieldname}
+                    style={{
+                      width: column.width,
+                      position: column.fieldname === "name" ? "sticky" : "static",
+                      left: column.fieldname === "name" ? 0 : "auto",
+                      zIndex: column.fieldname === "name" ? 25 : 20,
+                      backgroundColor: column.fieldname === "name" ? "white" : "inherit",
+                    }}
+                  >
                     {column.label}
                   </th>
                 ))}
@@ -457,7 +466,15 @@ export default function TenderLevelReport() {
                 filteredData.map((row, index) => (
                   <tr key={index}>
                     {columnConfig.map((column) => (
-                      <td key={`${index}-${column.fieldname}`}>
+                      <td
+                        key={`${index}-${column.fieldname}`}
+                        style={{
+                          position: column.fieldname === "name" ? "sticky" : "static",
+                          left: column.fieldname === "name" ? 0 : "auto",
+                          zIndex: column.fieldname === "name" ? 25 : 20,
+                          backgroundColor: column.fieldname === "name" ? "white" : "inherit",
+                        }}
+                      >
                         {renderCellValue(row, column)}
                       </td>
                     ))}
