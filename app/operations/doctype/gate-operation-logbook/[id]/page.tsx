@@ -23,6 +23,7 @@ const DOCTYPE_NAME = "Gate Operation Logbook";
 interface GateOperationLogbookData {
     name: string;
     lis_name?: string;              // Link to Lift Irrigation Scheme
+    lis_phase?: string;             // Link to LIS Phases
     stage?: string;                 // Link to Stage No
     gate_no?: string;               // Link to Gate
     gate_operation?: "Lift" | "Lowered"; // Select
@@ -176,6 +177,7 @@ export default function GateOperationLogbookDetailPage() {
         if (record && !formInitialized) {
             const formData = {
                 lis_name: record.lis_name || "",
+                lis_phase: record.lis_phase || "",
                 stage: record.stage || "",
                 gate_no: record.gate_no || "",
                 gate_operation: record.gate_operation || "",
@@ -224,8 +226,12 @@ export default function GateOperationLogbookDetailPage() {
                         linkTarget: "Lift Irrigation Scheme",
                         required: true,
                     },
-                  
-
+                    {
+                        name: "lis_phase",
+                        label: "LIS Phase",
+                        type: "Link",
+                        linkTarget: "LIS Phases",
+                    },
                     {
                         name: "stage",
                         label: "Stage/ Sub Scheme",
@@ -339,6 +345,7 @@ export default function GateOperationLogbookDetailPage() {
         try {
             const payload: Record<string, any> = {
                 lis_name: data.lis_name?.trim() || "",
+                lis_phase: data.lis_phase?.trim() || "",
                 stage: data.stage?.trim() || "",
                 gate_no: data.gate_no?.trim() || "",
                 gate_operation: data.gate_operation || "",

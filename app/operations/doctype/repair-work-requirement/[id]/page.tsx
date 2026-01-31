@@ -140,6 +140,9 @@ export default function RepairWorkRequirementDetailPage() {
                         label: "Stage/ Sub Scheme",
                         type: "Link",
                         linkTarget: "Stage No",
+                        filterMapping: [
+                            { sourceField: "lis_name", targetField: "lis_name" }
+                        ],
                         required: true,
                         
                     },
@@ -157,6 +160,7 @@ export default function RepairWorkRequirementDetailPage() {
                         label: "Prepared By",
                         type: "Link",
                         linkTarget: "Employee",
+                        searchField: "employee_name"
                     },
 
                     {
@@ -172,7 +176,11 @@ export default function RepairWorkRequirementDetailPage() {
                         name: "designation",
                         label: "Designation",
                         type: "Data",
-                        
+                        fetchFrom: {
+                            sourceField: "prepared_by",
+                            targetDoctype: "Employee",
+                            targetField: "designation"
+                        }
                         
                     },
 
@@ -189,6 +197,11 @@ export default function RepairWorkRequirementDetailPage() {
                                 name: "asset_name",
                                 label: "Asset Name",
                                 type: "Data",
+                                fetchFrom: {
+                                    sourceField: "asset_id",
+                                    targetDoctype: "Asset",
+                                    targetField: "asset_name"
+                                }
 
                             },
                             {
@@ -256,18 +269,21 @@ export default function RepairWorkRequirementDetailPage() {
                         label: "Recommended By (Incharge/JE)",
                         type: "Link",
                         linkTarget: "Employee",
+                        searchField: "employee_name"
                     },
                     {
                         name: "approved_by",
                         label: "Approved By (EE)",
                         type: "Link",
                         linkTarget: "Employee",
+                        searchField: "employee_name"
                     },
                     {
                         name: "verified_by",
                         label: "Verified By (DE)",
                         type: "Link",
                         linkTarget: "Employee",
+                        searchField: "employee_name"
                     },
                 ]),
             },

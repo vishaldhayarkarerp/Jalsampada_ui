@@ -72,6 +72,9 @@ export default function NewRepairWorkRequirementPage() {
             type: "Link",
             linkTarget: "Stage No",
             required: true,
+            filterMapping: [
+              { sourceField: "lis_name", targetField: "lis_name" }
+            ],
             defaultValue: getValue("stage"),
           },
 
@@ -87,6 +90,7 @@ export default function NewRepairWorkRequirementPage() {
             label: "Prepared By",
             type: "Link",
             linkTarget: "Employee",
+            searchField: "employee_name",
             defaultValue: getValue("prepared_by"),
           },
           {
@@ -101,6 +105,11 @@ export default function NewRepairWorkRequirementPage() {
             name: "designation",
             label: "Designation",
             type: "Data",
+            fetchFrom:{
+              sourceField: "prepared_by",
+              targetDoctype: "Employee",
+              targetField: "designation"
+            },
             defaultValue: getValue("designation"),
           },
 
@@ -114,7 +123,9 @@ export default function NewRepairWorkRequirementPage() {
             columns: [
               { name: "sr_no", label: "Sr. No.", type: "Data" },
               { name: "asset_id", label: "Asset ID", type: "Link", linkTarget: "Asset" },
-              { name: "asset_name", label: "Asset Name", type: "Data" },
+              { name: "asset_name", label: "Asset Name", type: "Data", 
+                 fetchFrom: { sourceField: "asset_id", targetDoctype: "Asset", targetField: "asset_name" }
+               },
               {
                 name: "equipement_model",
                 label: "Equipement Model",
@@ -182,6 +193,7 @@ export default function NewRepairWorkRequirementPage() {
             label: "Recommended By (Incharge/JE)",
             type: "Link",
             linkTarget: "Employee",
+            searchField: "employee_name",
             defaultValue: getValue("recommended_by"),
           },
           {
@@ -189,6 +201,7 @@ export default function NewRepairWorkRequirementPage() {
             label: "Approved By (EE)",
             type: "Link",
             linkTarget: "Employee",
+            searchField: "employee_name",
             defaultValue: getValue("approved_by"),
           },
           {
@@ -196,6 +209,7 @@ export default function NewRepairWorkRequirementPage() {
             label: "Verified By (DE)",
             type: "Link",
             linkTarget: "Employee",
+            searchField: "employee_name",
             defaultValue: getValue("verified_by"),
           },
         ],

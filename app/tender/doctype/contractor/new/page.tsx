@@ -26,7 +26,7 @@ interface ContractorData {
   address_type?: string;
   city?: string;
   postal_code?: string;
-  county?: string;
+  country?: string;
   email_address?: string;
   phone?: string;
   modified?: string;
@@ -93,9 +93,10 @@ export default function NewContractorPage() {
             type: "Data",
           },
           {
-            name: "county",
-            label: "County",
-            type: "Data",
+            name: "country",
+            label: "Country",
+            type: "Link",
+            linkTarget: "Country",
           },
           {
             name: "postal_code",
