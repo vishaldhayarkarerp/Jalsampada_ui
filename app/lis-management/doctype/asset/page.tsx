@@ -15,6 +15,7 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 
 import {
   Search,
@@ -26,6 +27,7 @@ import {
   ArrowDownWideNarrow,
   Check,
   Loader2,
+  Clock,
 } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
@@ -413,6 +415,9 @@ export default function DoctypePage() {
             <th>LIS Phase</th>
             <th>Stage</th>
             <th>Location</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -447,12 +452,15 @@ export default function DoctypePage() {
                   <td>{a.custom_lis_phase || "—"}</td>
                   <td>{a.custom_stage_no || "—"}</td>
                   <td>{a.location}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={a.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={9} style={{ textAlign: "center", padding: "32px" }}>
                 {!loading && "No records found."}
               </td>
             </tr>
