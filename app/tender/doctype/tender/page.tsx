@@ -15,7 +15,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay"; // Assuming you have sonner installed (or use your preferred toast)
-import { Plus } from "lucide-react"; // Optional: if you want to use Lucide icons for consistency
+import { Plus, List, LayoutGrid, Clock } from "lucide-react"; // Optional: if you want to use Lucide icons for consistency
+import { TimeAgo } from "@/components/TimeAgo";
 
 const API_BASE_URL = "http://103.219.1.138:4412"; // 🟢 Changed: Removed /api/resource so RPC helper can append /api/method
 
@@ -38,6 +39,7 @@ interface Tender {
   status?: string;           // from custom_tender_status
   tender_name?: string;      // from custom_prapan_suchi
   lis_name?: string;          // from custom_lis_name
+  modified?: string;
 }
 
 interface LisOption {
@@ -144,6 +146,7 @@ export default function DoctypePage() {
           "custom_tender_status",
           "custom_prapan_suchi",
           "custom_lis_name",
+          "modified",
         ]),
         limit_page_length: 20,
         order_by: "creation desc",
@@ -164,6 +167,7 @@ export default function DoctypePage() {
         status: r.custom_tender_status ?? "",
         tender_name: r.custom_prapan_suchi ?? "",
         lis_name: r.custom_lis_name ?? "",
+        modified: r.modified,
       }));
 
       setTenders(mapped);
@@ -300,6 +304,9 @@ export default function DoctypePage() {
             <th>Prapan Suchi</th>
             <th>LIS</th>
             <th>Status</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -331,12 +338,15 @@ export default function DoctypePage() {
                   <td>{t.tender_name}</td>
                   <td>{t.lis_name}</td>
                   <td>{t.status}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={t.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>

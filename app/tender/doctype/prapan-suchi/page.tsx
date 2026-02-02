@@ -15,7 +15,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { Plus, List, LayoutGrid, Clock } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -40,6 +41,7 @@ interface PrapanSuchi {
   lis_name?: string;
   type?: string;
   amount?: number | string;
+  modified?: string;
 }
 
 interface LisOption {
@@ -148,6 +150,7 @@ export default function DoctypePage() {
           "lis_name",
           "type",
           "amount",
+          "modified",
         ]),
         limit_page_length: "20",
         order_by: "creation desc",
@@ -169,6 +172,7 @@ export default function DoctypePage() {
         lis_name: r.lis_name ?? "",
         type: r.type ?? "",
         amount: r.amount ?? "",
+        modified: r.modified ?? "",
       }));
 
       setRecords(mapped);
@@ -285,6 +289,9 @@ export default function DoctypePage() {
             <th>LIS Name</th>
             <th>Type</th>
             <th>Amount</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -317,12 +324,15 @@ export default function DoctypePage() {
                   <td>{record.lis_name}</td>
                   <td>{record.type}</td>
                   <td>{record.amount}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={record.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>

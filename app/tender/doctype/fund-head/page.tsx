@@ -13,7 +13,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { Plus, List, LayoutGrid, Clock } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -34,6 +35,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 interface FundHead {
   name: string;
+  modified?: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -85,7 +87,7 @@ export default function FundHeadPage() {
       setError(null);
 
       const params = {
-        fields: JSON.stringify(["name"]),
+        fields: JSON.stringify(["name", "modified"]),
         limit_page_length: "20",
         order_by: "creation desc"
       };
@@ -102,6 +104,7 @@ export default function FundHeadPage() {
       const raw = resp.data?.data ?? [];
       const mapped: FundHead[] = raw.map((r: any) => ({
         name: r.name,
+        modified: r.modified,
       }));
 
       setRecords(mapped);
@@ -209,6 +212,9 @@ export default function FundHeadPage() {
               />
             </th>
             <th>Name</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -237,12 +243,15 @@ export default function FundHeadPage() {
                     />
                   </td>
                   <td>{record.name}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={record.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={2} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
