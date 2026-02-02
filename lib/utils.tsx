@@ -106,3 +106,45 @@ export function getApiMessages(
     }
   }
 }
+
+// lib/utils.tsx (Add these functions)
+
+/**
+ * Formats a date string into a compact, human-readable "Time Ago" format.
+ * Mimics Frappe's list view timestamps.
+ */
+export function formatTimeAgo(dateString: string | undefined): string {
+  if (!dateString) return "—";
+
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return "Just now";
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m`;
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h`;
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays}d`;
+
+  // For older dates, show "Day Month" (e.g., 2 Feb)
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+/**
+ * Returns a full localized string for tooltips.
+ */
+export function formatFullTimestamp(dateString: string | undefined): string {
+  if (!dateString) return "";
+  return new Date(dateString).toLocaleString("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
