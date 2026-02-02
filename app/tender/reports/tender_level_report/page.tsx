@@ -134,12 +134,19 @@ export default function TenderLevelReport() {
 
   // --- Dependent Filters Logic ---
   // The 'Prapan Suchi' filter depends on LIS Name and Fiscal Year
+  // But for search, we'll make it less restrictive like LIS Name filter
   const prapanSuchiFilters = useMemo(() => {
     const depFilters: Record<string, string> = {};
-    if (filters.custom_lis_name) depFilters["lis_name"] = filters.custom_lis_name;
-    if (filters.custom_fiscal_year) depFilters["fiscal_year"] = filters.custom_fiscal_year;
+    // Only apply filters if they are set and we're not searching
+    // This makes the search work like LIS Name filter
+    if (filters.custom_lis_name && filters.custom_prapan_suchi) {
+      depFilters["lis_name"] = filters.custom_lis_name;
+    }
+    if (filters.custom_fiscal_year && filters.custom_prapan_suchi) {
+      depFilters["fiscal_year"] = filters.custom_fiscal_year;
+    }
     return Object.keys(depFilters).length > 0 ? depFilters : undefined;
-  }, [filters.custom_lis_name, filters.custom_fiscal_year]);
+  }, [filters.custom_lis_name, filters.custom_fiscal_year, filters.custom_prapan_suchi]);
 
   // --- Actions ---
   const fetchReportData = useCallback(async (currentFilters: Filters) => {
@@ -156,7 +163,10 @@ export default function TenderLevelReport() {
       const cleanedFilters: Record<string, string> = {};
       Object.entries(currentFilters).forEach(([key, value]) => {
         if (value && value.trim() !== "") {
-          cleanedFilters[key] = value;
+          // Skip custom_prapan_suchi filter for server-side since it doesn't work
+          if (key !== 'custom_prapan_suchi') {
+            cleanedFilters[key] = value;
+          }
         }
       });
 
@@ -214,6 +224,68 @@ export default function TenderLevelReport() {
 
     return () => clearTimeout(timer);
   }, [filters, fetchReportData, isInitialized, isAuthenticated]);
+
+  // --- Client-side filtering effect ---
+  useEffect(() => {
+    if (!reportData.length) {
+      setFilteredData([]);
+      return;
+    }
+
+    let filtered = [...reportData];
+
+    // Apply all client-side filters
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && value.trim()) {
+        switch (key) {
+          case 'custom_prapan_suchi':
+            filtered = filtered.filter(row => {
+              const prapanSuchi = row.custom_prapan_suchi;
+              return prapanSuchi && 
+                     prapanSuchi.toString().toLowerCase() === value.toLowerCase();
+            });
+            break;
+          case 'custom_lis_name':
+            filtered = filtered.filter(row => {
+              const lisName = row.custom_lis_name;
+              return lisName && 
+                     lisName.toString().toLowerCase() === value.toLowerCase();
+            });
+            break;
+          case 'custom_fiscal_year':
+            filtered = filtered.filter(row => {
+              const fiscalYear = row.custom_fiscal_year;
+              return fiscalYear && 
+                     fiscalYear.toString().toLowerCase() === value.toLowerCase();
+            });
+            break;
+          case 'custom_tender_status':
+            filtered = filtered.filter(row => {
+              const status = row.custom_tender_status;
+              return status && 
+                     status.toString().toLowerCase() === value.toLowerCase();
+            });
+            break;
+          case 'from_date':
+            filtered = filtered.filter(row => {
+              const postingDate = row.custom_posting_date;
+              if (!postingDate) return false;
+              return new Date(postingDate) >= new Date(value);
+            });
+            break;
+          case 'to_date':
+            filtered = filtered.filter(row => {
+              const postingDate = row.custom_posting_date;
+              if (!postingDate) return false;
+              return new Date(postingDate) <= new Date(value);
+            });
+            break;
+        }
+      }
+    });
+
+    setFilteredData(filtered);
+  }, [reportData, filters]);
 
   // --- Handlers ---
   const handleExportCSV = () => {

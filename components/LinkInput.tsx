@@ -46,7 +46,12 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
         try {
             const searchFilters: any[] = [];
             if (term?.trim()) {
-                searchFilters.push([linkTarget, "name", "like", `%${term.trim()}%`]);
+                if (linkTarget === "Prapan Suchi") {
+                    // For Prapan Suchi, search in work_name field first (more likely to contain work names)
+                    searchFilters.push([linkTarget, "work_name", "like", `%${term.trim()}%`]);
+                } else {
+                    searchFilters.push([linkTarget, "name", "like", `%${term.trim()}%`]);
+                }
             }
 
             // Apply filters from filterMapping
@@ -83,13 +88,59 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
             });
 
             if (response.data?.data) {
-                const formattedOptions = response.data.data.map((item: any) => {
+                let formattedOptions = response.data.data.map((item: any) => {
                     const label = linkTarget === "Prapan Suchi" ? (item.work_name || item.name) : item.name;
                     return {
-                        value: label,
+                        value: linkTarget === "Prapan Suchi" ? (item.work_name || item.name) : item.name, // Use actual value, not display label
                         label,
                     };
                 });
+                
+                // If searching for Prapan Suchi and no results found in work_name, try name field
+                if (linkTarget === "Prapan Suchi" && formattedOptions.length === 0 && term?.trim()) {
+                    try {
+                        const nameFilters: any[] = [[linkTarget, "name", "like", `%${term.trim()}%`]];
+                        
+                        // Apply filters from filterMapping for name search
+                        Object.entries(filters).forEach(([key, value]) => {
+                            if (value != null && value !== "") {
+                                if (Array.isArray(value) && value[0] === "in") {
+                                    const arrayValues = value[1];
+                                    if (Array.isArray(arrayValues) && arrayValues.length > 0) {
+                                        nameFilters.push([linkTarget, key, "in", arrayValues]);
+                                    }
+                                } else {
+                                    nameFilters.push([linkTarget, key, "=", value]);
+                                }
+                            }
+                        });
+                        
+                        const nameQuery = nameFilters.length > 0 ? JSON.stringify(nameFilters) : undefined;
+                        const nameResponse = await axios.get(`${API_BASE_URL}/${linkTarget}`, {
+                            headers: {
+                                Authorization: `token ${apiKey}:${apiSecret}`,
+                            },
+                            params: {
+                                filters: nameQuery,
+                                fields: JSON.stringify(fieldsToFetch),
+                                limit_page_length: 20,
+                            },
+                        });
+                        
+                        if (nameResponse.data?.data) {
+                            formattedOptions = nameResponse.data.data.map((item: any) => {
+                                const label = item.work_name || item.name;
+                                return {
+                                    value: item.work_name || item.name, // Use actual value, not display label
+                                    label,
+                                };
+                            });
+                        }
+                    } catch (fallbackError) {
+                        console.log("Fallback search failed:", fallbackError);
+                    }
+                }
+                
                 setOptions(formattedOptions);
             }
         } catch (error) {
