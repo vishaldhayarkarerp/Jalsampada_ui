@@ -78,20 +78,12 @@ export default function NewRepairWorkRequirementPage() {
             defaultValue: getValue("stage"),
           },
 
-          // Work Requirement & Prepared By
+          // Work Requirement & Date
           {
             name: "work_requirement_number",
             label: "Work Requirement Number",
             type: "Data",
             defaultValue: getValue("work_requirement_number"),
-          },
-          {
-            name: "prepared_by",
-            label: "Prepared By",
-            type: "Link",
-            linkTarget: "Employee",
-            searchField: "employee_name",
-            defaultValue: getValue("prepared_by"),
           },
           {
             name: "date",
@@ -100,6 +92,14 @@ export default function NewRepairWorkRequirementPage() {
             // 🟢 FIXED: Use actual date string instead of "Today"
             defaultValue: getValue("date", new Date().toISOString().split('T')[0]),
             required: true,
+          },
+          {
+            name: "prepared_by",
+            label: "Prepared By",
+            type: "Link",
+            linkTarget: "Employee",
+            searchField: "employee_name",
+            defaultValue: getValue("prepared_by"),
           },
           {
             name: "designation",
@@ -122,7 +122,22 @@ export default function NewRepairWorkRequirementPage() {
             defaultValue: getValue("repair_work_details", []),
             columns: [
               { name: "sr_no", label: "Sr. No.", type: "Data" },
-              { name: "asset_id", label: "Asset ID", type: "Link", linkTarget: "Asset" },
+              { name: "asset_id", label: "Asset ID", type: "Link", linkTarget: "Asset",
+                filters: (getValues: (name: string) => any) => {
+                  const parentLisName = getValues("parent.lis_name");
+                  const parentStage = getValues("parent.stage");
+                  
+                  const filters: any = {};
+                  if (parentLisName) {
+                    filters.custom_lis_name = parentLisName;
+                  }
+                  if (parentStage) {
+                    filters.custom_stage_no = parentStage;
+                  }
+                  
+                  return filters;
+                }
+              },
               { name: "asset_name", label: "Asset Name", type: "Data", 
                  fetchFrom: { sourceField: "asset_id", targetDoctype: "Asset", targetField: "asset_name" }
                },

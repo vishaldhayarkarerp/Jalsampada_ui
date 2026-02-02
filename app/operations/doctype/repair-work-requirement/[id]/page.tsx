@@ -147,20 +147,13 @@ export default function RepairWorkRequirementDetailPage() {
                         
                     },
 
-                    // Work Requirement & Prepared By
+                    // Work Requirement & Date
                     {
                         name: "work_requirement_number",
                         label: "Work Requirement Number",
                         type: "Data",
+                        required: true,
 
-                    },
-
-                    {
-                        name: "prepared_by",
-                        label: "Prepared By",
-                        type: "Link",
-                        linkTarget: "Employee",
-                        searchField: "employee_name"
                     },
 
                     {
@@ -170,6 +163,14 @@ export default function RepairWorkRequirementDetailPage() {
                         defaultValue: "Today",
                         required: true,
                         
+                    },
+
+                    {
+                        name: "prepared_by",
+                        label: "Prepared By",
+                        type: "Link",
+                        linkTarget: "Employee",
+                        searchField: "employee_name"
                     },
 
                     {
@@ -192,7 +193,22 @@ export default function RepairWorkRequirementDetailPage() {
                         type: "Table",
                         columns: [
                             { name: "sr_no", label: "Sr. No.", type: "Data" },
-                            { name: "asset_id", label: "Asset ID", type: "Link", linkTarget: "Asset" },
+                            { name: "asset_id", label: "Asset ID", type: "Link", linkTarget: "Asset",
+                              filters: (getValues: (name: string) => any) => {
+                                const parentLisName = getValues("parent.lis_name");
+                                const parentStage = getValues("parent.stage");
+                                
+                                const filters: any = {};
+                                if (parentLisName) {
+                                  filters.custom_lis_name = parentLisName;
+                                }
+                                if (parentStage) {
+                                  filters.custom_stage_no = parentStage;
+                                }
+                                
+                                return filters;
+                              }
+                            },
                             {
                                 name: "asset_name",
                                 label: "Asset Name",
