@@ -28,6 +28,9 @@ export default function NewLogbookPage() {
   // Store form methods
   const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
 
+  // State to track current operation for dynamic validation
+  const [currentOperation, setCurrentOperation] = React.useState("");
+
   const doctypeName = "Logbook";
 
   // Fetch current user info
@@ -77,6 +80,10 @@ export default function NewLogbookPage() {
     }
   }, [searchParams]);
 
+  // Initialize state with initial pump operation value
+  React.useEffect(() => {
+    setCurrentOperation(duplicateData?.pump_operation || "");
+  }, [duplicateData]);
 
   React.useEffect(() => {
     if (!formMethods || !apiKey || !apiSecret) return;
@@ -86,6 +93,9 @@ export default function NewLogbookPage() {
 
       // ➤ LOGIC A: Handle Radio Button Selection
       if (name === "pump_operation") {
+        // Update state to track current operation for dynamic required validation
+        setCurrentOperation(value.pump_operation);
+
         if (value.pump_operation === "start") {
           setPrimaryListLabel("Stopped Pumps (Select to Start)");
           fetchPumps("Stopped");
@@ -166,6 +176,9 @@ export default function NewLogbookPage() {
   ------------------------------------------------- */
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     const getValue = (field: string, def: any = undefined) => duplicateData?.[field] ?? def;
+
+    // Variable for conditional required validation based on pump operation
+    const isStopOperationRequired = currentOperation === "stop" || getValue("pump_operation") === "stop";
 
     return [
       {
@@ -251,7 +264,7 @@ export default function NewLogbookPage() {
             linkTarget: "Pump Stop Reasons",
             defaultValue: getValue("pump_stop_reason"),
             displayDependsOn: "pump_operation == 'stop'",
-            required: true
+            required: isStopOperationRequired
           },
           {
             name: "specify",
@@ -308,7 +321,7 @@ export default function NewLogbookPage() {
         ],
       },
     ];
-  }, [duplicateData, primaryListLabel]);
+  }, [duplicateData, primaryListLabel, currentOperation]);
 
   /* -------------------------------------------------
       4. SUBMIT
