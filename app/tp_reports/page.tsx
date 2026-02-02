@@ -57,17 +57,6 @@ const reportDoctypeGroups = [
     ]
   },
   {
-    title: "Maintenance Reports",
-    basePath: "/maintenance/reports",
-    doctypes: [
-      {
-        name: "maintenance-schedule-report",
-        title: "Maintenance Schedule Report",
-        icon: Calendar
-      }
-    ]
-  },
-  {
     title: "Tender Reports",
     basePath: "/tender/reports",
     doctypes: [
@@ -83,6 +72,18 @@ const reportDoctypeGroups = [
       }
     ]
   },
+  {
+    title: "Maintenance Reports",
+    basePath: "/maintenance/reports",
+    doctypes: [
+      {
+        name: "maintenance-schedule-report",
+        title: "Maintenance Schedule Report",
+        icon: Calendar
+      }
+    ]
+  },
+  
   // {
   //   title: "LIS Management Reports",
   //   basePath: "/lis-management/reports",
