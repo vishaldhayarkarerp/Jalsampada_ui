@@ -538,24 +538,28 @@ export default function LISIncidentReportPage() {
             to ensure LinkInput dropdowns appear ABOVE the sticky table header below.
         */}
         <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">From Date</label>
-                <input 
-                    type="date" 
-                    className="form-control w-full" 
-                    value={filters.from_date}
-                    onChange={(e) => handleFilterChange("from_date", e.target.value)}
-                />
-            </div>
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">To Date</label>
-                <input 
-                    type="date" 
-                    className="form-control w-full" 
-                    value={filters.to_date}
-                    onChange={(e) => handleFilterChange("to_date", e.target.value)}
-                />
-            </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">From Date</label>
+            <input
+              type="date"
+              className="form-control w-full"
+              placeholder="DD-MM-YYYY"
+              style={{ textTransform: "uppercase" }}
+              value={filters.to_date}
+              onChange={(e) => handleFilterChange("to_date", e.target.value)}
+            />
+          </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">To Date</label>
+            <input
+              type="date"
+              className="form-control w-full"
+              placeholder="DD-MM-YYYY"
+              style={{ textTransform: "uppercase" }}
+              value={filters.to_date}
+              onChange={(e) => handleFilterChange("to_date", e.target.value)}
+            />
+          </div>
 
             <div className="form-group z-[50]">
                 <label className="text-sm font-medium mb-1 block">LIS Name</label>
@@ -597,7 +601,7 @@ export default function LISIncidentReportPage() {
                     value={filters.status}
                     onChange={(e) => handleFilterChange("status", e.target.value)}
                 >
-                    <option value="">All Statuses</option>
+                    <option value="">All Status</option>
                     <option value="Open">Open</option>
                     <option value="Closed">Closed</option>
                     <option value="Replied">Replied</option>
