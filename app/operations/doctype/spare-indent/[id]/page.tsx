@@ -142,10 +142,15 @@ export default function SpareIndentDetailPage() {
                         label: "Assets",
                         type: "Table MultiSelect",
                         linkTarget: "Asset",
-                        // 🟢 FIX: Extract only the 'asset' string from the database object
+                        // FIX: Extract only the 'asset' string from the database object
                         defaultValue: getVal("custom_assets", []).map((row: any) =>
                             typeof row === 'object' ? row.asset : row
                         ),
+                        filterMapping: [
+                            { sourceField: "custom_asset_category", targetField: "asset_category" },
+                            { sourceField: "custom_lis_name", targetField: "custom_lis_name" },
+                            { sourceField: "custom_stage", targetField: "custom_stage_no" }
+                        ],
                     },
                     { name: "warehouse_section", label: "Items", type: "Section Break" },
                     {
@@ -351,7 +356,7 @@ export default function SpareIndentDetailPage() {
                 payload.items = payload.items.map((item: any, index: number) => {
                     // Remove temporary UI fields
                     const { id, stage, name: tempName, ...rest } = item;
-                    
+
                     // Add proper child table fields
                     return {
                         ...rest,

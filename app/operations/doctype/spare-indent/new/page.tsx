@@ -104,6 +104,12 @@ export default function NewSpareIndentPage() {
             label: "Assets",
             type: "Table MultiSelect",
             linkTarget: "Asset",
+            // 🟢 Filter mapping similar to Frappe backend query
+            filterMapping: [
+              { sourceField: "custom_asset_category", targetField: "asset_category" },
+              { sourceField: "custom_lis_name", targetField: "custom_lis_name" },
+              { sourceField: "custom_stage", targetField: "custom_stage_no" }
+            ],
           },
           { name: "warehouse_section", label: "Items", type: "Section Break" },
           {
@@ -187,21 +193,21 @@ export default function NewSpareIndentPage() {
             label: "Name",
             type: "Data",
             fetchFrom: {
-                            sourceField: "custom_recommended_by",
-                            targetDoctype: "User",
-                            targetField: "full_name"
-                        },
+              sourceField: "custom_recommended_by",
+              targetDoctype: "User",
+              targetField: "full_name"
+            },
             readOnly: true,
           },
           {
             name: "custom_name2",
             label: "Name",
             type: "Data",
-             fetchFrom: {
-                            sourceField: "custom_verified_by",
-                            targetDoctype: "Employee",
-                            targetField: "employee_name"
-                        },
+            fetchFrom: {
+              sourceField: "custom_verified_by",
+              targetDoctype: "Employee",
+              targetField: "employee_name"
+            },
             readOnly: true,
           },
           {
@@ -209,10 +215,10 @@ export default function NewSpareIndentPage() {
             label: "Name",
             type: "Data",
             fetchFrom: {
-                            sourceField: "custom_approved_by",
-                            targetDoctype: "Employee",
-                            targetField: "employee_name"
-                        },
+              sourceField: "custom_approved_by",
+              targetDoctype: "Employee",
+              targetField: "employee_name"
+            },
             readOnly: true,
           },
           { name: "custom_date1", label: "Date", type: "Date" },
