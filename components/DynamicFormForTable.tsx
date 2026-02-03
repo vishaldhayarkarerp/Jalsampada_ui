@@ -136,34 +136,15 @@ export function DynamicFormForTable({
     // Local form state for the modal
     const [formData, setFormData] = React.useState<Record<string, any>>({});
 
-    // Initialize form data when modal opens or data changes
+    // Initialize form data only when modal opens (editingRowIndex changes)
     React.useEffect(() => {
-        let initialData: Record<string, any>;
+        const initialData = editingRowIndex !== null
+            ? (data ?? getRowData(editingRowIndex))
+            : (data || {});
 
-        if (editingRowIndex !== null) {
-            const currentRowData = data ?? getRowData(editingRowIndex);
-            console.log('DynamicFormForTable: Initializing with data from context:', currentRowData);
-            initialData = currentRowData;
-        } else if (data) {
-            console.log('DynamicFormForTable: Initializing with prop data:', data);
-            initialData = data;
-        } else {
-            initialData = {};
-        }
-
-        // Apply precision formatting to Currency and Float fields during initialization
-        const formattedData = { ...initialData };
-        (fields || []).forEach(f => {
-            if ((f.type === "Currency" || f.type === "Float") && f.precision && formattedData[f.name]) {
-                const value = parseFloat(formattedData[f.name]);
-                if (!isNaN(value)) {
-                    formattedData[f.name] = value.toFixed(f.precision);
-                }
-            }
-        });
-
-        setFormData(formattedData);
-    }, [data, editingRowIndex, fields, getRowData]);
+        setFormData(initialData);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editingRowIndex]); // Only re-initialize when editing a different row
 
     // Debounced update to context - prevents excessive updates during typing
     const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -176,9 +157,8 @@ export function DynamicFormForTable({
         }
 
         updateTimeoutRef.current = setTimeout(() => {
-            console.log('DynamicFormForTable: Debounced update to context:', newData);
             updateRow(editingRowIndex, newData);
-        }, 300); // 300ms debounce
+        }, 300);
     }, [editingRowIndex, updateRow]);
 
     // Cleanup timeout on unmount
@@ -192,16 +172,12 @@ export function DynamicFormForTable({
 
     const handleInputChange = async (fieldName: string, value: any, _depth: number = 0) => {
         if (disabled) return;
-        console.log('handleInputChange:', { fieldName, value, valueType: typeof value, _depth });
 
         // Handle fetchFrom dependencies
         const dependentFields = (fields || []).filter(f => f.fetchFrom?.sourceField === fieldName);
 
         if (dependentFields.length > 0) {
-            console.log('Found dependent fields:', dependentFields.map(f => f.name));
-
             if (!value || value === "") {
-                console.log('Clearing dependent fields for:', fieldName);
                 // Cancel any pending debounced update to prevent overwriting cleared values
                 if (updateTimeoutRef.current) {
                     clearTimeout(updateTimeoutRef.current);
@@ -213,8 +189,6 @@ export function DynamicFormForTable({
                 dependentFields.forEach((dep) => {
                     clearedData[dep.name] = "";
                 });
-
-                console.log('Cleared data:', clearedData);
 
                 // Update local state with cleared values
                 setFormData(current => {
@@ -236,7 +210,15 @@ export function DynamicFormForTable({
 
         // Update local state immediately for responsive UI
         setFormData(current => {
-            const newFormData = { ...current, [fieldName]: value };
+            let newFormData = { ...current, [fieldName]: value };
+
+            // Calculate amount if rate or quantity changes
+            if (fieldName === 'rate' || fieldName === 'qty') {
+                const rate = parseFloat(newFormData.rate) || 0;
+                const qty = parseFloat(newFormData.qty) || 0;
+                const amount = rate * qty;
+                newFormData = { ...newFormData, amount: amount.toString() };
+            }
 
             // Debounced update to context (only for non-dependent fields)
             if (_depth === 0) {
