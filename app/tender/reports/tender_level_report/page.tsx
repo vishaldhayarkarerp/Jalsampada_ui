@@ -133,20 +133,23 @@ export default function TenderLevelReport() {
   }
 
   // --- Dependent Filters Logic ---
-  // The 'Prapan Suchi' filter depends on LIS Name and Fiscal Year
-  // But for search, we'll make it less restrictive like LIS Name filter
+  // CORRECTION: Removed '&& filters.custom_prapan_suchi' check.
+  // We want to filter the OPTIONS based on LIS immediately, even if no work is selected yet.
   const prapanSuchiFilters = useMemo(() => {
     const depFilters: Record<string, string> = {};
-    // Only apply filters if they are set and we're not searching
-    // This makes the search work like LIS Name filter
-    if (filters.custom_lis_name && filters.custom_prapan_suchi) {
+
+    // Filter the 'Name of Work' list based on the selected LIS
+    if (filters.custom_lis_name) {
       depFilters["lis_name"] = filters.custom_lis_name;
     }
-    if (filters.custom_fiscal_year && filters.custom_prapan_suchi) {
+
+    // Filter based on Fiscal Year (if your Prapan Suchi doctype has this field)
+    if (filters.custom_fiscal_year) {
       depFilters["fiscal_year"] = filters.custom_fiscal_year;
     }
+
     return Object.keys(depFilters).length > 0 ? depFilters : undefined;
-  }, [filters.custom_lis_name, filters.custom_fiscal_year, filters.custom_prapan_suchi]);
+  }, [filters.custom_lis_name, filters.custom_fiscal_year]); // Removed filters.custom_prapan_suchi from dependency array
 
   // --- Actions ---
   const fetchReportData = useCallback(async (currentFilters: Filters) => {
