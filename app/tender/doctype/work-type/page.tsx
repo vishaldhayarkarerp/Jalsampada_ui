@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 import { TimeAgo } from "@/components/TimeAgo";
-import { Plus, List, LayoutGrid, Clock } from "lucide-react";
+import { Plus, List, LayoutGrid, Loader2 } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -49,6 +49,7 @@ export default function DoctypePage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [totalCount, setTotalCount] = React.useState(0);
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -104,6 +105,14 @@ export default function DoctypePage() {
         withCredentials: true,
       });
 
+      // Get total count
+      const countResp = await axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+        params: { doctype: doctypeName },
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        },
+      });
+
       const raw = resp.data?.data ?? [];
       const mapped: WorkType[] = raw.map((r: any) => ({
         name: r.name,
@@ -111,6 +120,7 @@ export default function DoctypePage() {
       }));
 
       setRecords(mapped);
+      setTotalCount(countResp.data.message || 0);
     } catch (err: any) {
       console.error("API error:", err);
       setError(
@@ -218,7 +228,11 @@ export default function DoctypePage() {
             </th>
             <th>Name</th>
             <th className="text-right pr-4" style={{ width: "100px" }}>
-              <Clock className="w-4 h-4 mr-1 float-right" />
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{filteredRecords.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
+              </div>
             </th>
           </tr>
         </thead>

@@ -78,6 +78,9 @@ export default function NewDraftTenderPaperPage() {
         label: "Stage",
         type: "Link",
         linkTarget: "Stage No",
+        filterMapping: [
+          { sourceField: "lis_name", targetField: "lis_name" },
+        ],
         required: true,
       },
       {

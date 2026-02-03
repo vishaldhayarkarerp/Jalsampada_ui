@@ -1,5 +1,5 @@
 // components/TimeAgo.tsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { formatTimeAgo, formatFullTimestamp, cn } from "@/lib/utils";
 
 interface TimeAgoProps {
@@ -8,6 +8,19 @@ interface TimeAgoProps {
 }
 
 export function TimeAgo({ date, className }: TimeAgoProps) {
+  const [timeAgo, setTimeAgo] = useState(formatTimeAgo(date));
+
+  useEffect(() => {
+    if (!date) return;
+
+    // Update every minute
+    const interval = setInterval(() => {
+      setTimeAgo(formatTimeAgo(date));
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, [date]);
+
   if (!date) return <span className="text-gray-400">—</span>;
 
   return (
@@ -18,7 +31,7 @@ export function TimeAgo({ date, className }: TimeAgoProps) {
         className
       )}
     >
-      {formatTimeAgo(date)}
+      {timeAgo}
     </span>
   );
 }
