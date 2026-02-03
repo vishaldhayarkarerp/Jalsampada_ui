@@ -14,7 +14,8 @@ import {
   ChevronDown, 
   ArrowUpNarrowWide, 
   ArrowDownWideNarrow,
-  Check
+  Check,
+  Clock,
 } from "lucide-react";
 
 // 🟢 New Imports for Bulk Delete
@@ -24,6 +25,7 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -291,6 +293,9 @@ export default function TemperatureReadingsPage() {
             >
               Temperature
             </th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -320,12 +325,15 @@ export default function TemperatureReadingsPage() {
                   </td>
                   <td>{r.name}</td>
                   <td>{r.temperature ?? "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={r.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={3} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
