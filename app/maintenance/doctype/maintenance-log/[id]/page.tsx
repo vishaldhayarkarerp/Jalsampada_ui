@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* --------------------------------------------------
   TYPES
@@ -129,7 +129,7 @@ export default function MaintenanceLogDetailPage() {
             label: "Item Code",
             type: "Read Only",
             // linkTarget: "Item",
-            defaultValue : getValue("item_code"),
+            defaultValue: getValue("item_code"),
             displayDependsOn: "maintenance_schedule", fetchFrom: { sourceField: "asset_maintenance", targetDoctype: "Asset Maintenance", targetField: "item_code" }
           },
           {

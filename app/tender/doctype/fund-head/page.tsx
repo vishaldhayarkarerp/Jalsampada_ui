@@ -11,12 +11,12 @@ import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { getApiMessages} from "@/lib/utils";
+import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 import { Plus, List, LayoutGrid } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
-const API_BASE_URL = "http://103.219.1.138:4412";
+const API_BASE_URL = "http://103.219.3.169:2223";
 
 // ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -153,7 +153,7 @@ export default function FundHeadPage() {
 
         if (errorMessages.length > 0) {
           // Show error messages from server
-          toast.error("Failed to delete records", { 
+          toast.error("Failed to delete records", {
             description: <FrappeErrorDisplay messages={errorMessages} />,
             duration: Infinity
           });
@@ -167,14 +167,14 @@ export default function FundHeadPage() {
       fetchRecords(); // Refresh list
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
-      
+
       const messages = getApiMessages(
         null,
         err,
         "Records deleted successfully",
         "Failed to delete records"
       );
-      
+
       toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsDeleting(false);
@@ -294,7 +294,7 @@ export default function FundHeadPage() {
           <h2>{title}</h2>
           <p>Manage Fund Head records</p>
         </div>
-        
+
         {/* 🟢 3. Header Action Switch */}
         {selectedIds.size > 0 ? (
           <BulkActionBar

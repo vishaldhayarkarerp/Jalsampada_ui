@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223//api/resource";
 
 /* -------------------------------------------------
  1. Rating data type
@@ -63,8 +63,8 @@ export default function RecordDetailPage() {
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-            ? "Unauthorized"
-            : `Failed to load ${doctypeName}`
+              ? "Unauthorized"
+              : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -86,7 +86,7 @@ export default function RecordDetailPage() {
         defaultValue:
           f.name in ratingDoc
             ? // @ts-ignore
-              ratingDoc[f.name as keyof RatingData]
+            ratingDoc[f.name as keyof RatingData]
             : f.defaultValue,
       }));
 
@@ -188,7 +188,7 @@ export default function RecordDetailPage() {
         doctypeName: doctypeName, // e.g. "Asset" or "Project"
         docName: docname,         // usually params.id
         redirectUrl: "/lis-management/doctype/rating" // The list page to go to after deletion 
-    }}
+      }}
     />
   );
 }

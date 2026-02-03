@@ -8,7 +8,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 // API base URL
-const API_BASE_URL = "http://103.219.1.138:4412/";
+const API_BASE_URL = "http://103.219.3.169:2223/";
 
 // Type definitions for API response
 type AssetReportField = {

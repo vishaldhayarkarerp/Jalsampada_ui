@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 // API
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* --------------------------------------------------
   TYPES
@@ -116,7 +116,7 @@ export default function MaintenanceScheduleDetailPage() {
       {
         name: "Details",
         fields: fields([
-          { name: "custom_lis", label: "LIS Name", type: "Link", linkTarget: "Lift Irrigation Scheme",},
+          { name: "custom_lis", label: "LIS Name", type: "Link", linkTarget: "Lift Irrigation Scheme", },
           { name: "custom_stage", label: "Stage", type: "Link", linkTarget: "Stage No" },
           { name: "asset_name", label: "Asset Name", type: "Link", linkTarget: "Asset" },
           // { name: "company", label: "Company", type: "Link", linkTarget: "Company" },

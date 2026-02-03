@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 interface LISPhaseData {
   name: string;
@@ -125,7 +125,7 @@ export default function LISPhaseDetailPage() {
         doctypeName: doctypeName, // e.g. "Asset" or "Project"
         docName: docname,         // usually params.id
         redirectUrl: "/lis-management/doctype/lis-phases" // The list page to go to
-    }}
+      }}
     />
   );
 }

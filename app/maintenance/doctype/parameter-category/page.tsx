@@ -14,7 +14,7 @@ import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 import { Plus, List, LayoutGrid } from "lucide-react";
 
 /* ─────────────────────────────────────────────── */
-const API_BASE_URL = "http://103.219.1.138:4412";
+const API_BASE_URL = "http://103.219.3.169:2223";
 const DOCTYPE = "Parameter Category";
 
 /* ── Debounce Hook ─────────────────────────────── */
@@ -183,11 +183,11 @@ export default function ParameterCategoryListPage() {
   const getFieldsForRecord = (
     record: ParameterCategory
   ): RecordCardField[] => [
-    {
-      label: "Parameter Category",
-      value: record.parameter_category || "-",
-    },
-  ];
+      {
+        label: "Parameter Category",
+        value: record.parameter_category || "-",
+      },
+    ];
 
   /* ── Views ───────────────────────────────────── */
   const renderListView = () => (

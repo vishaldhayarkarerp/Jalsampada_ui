@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* -------------------------------------------------
    1. Log Sheet type – mirrors fields from CSV
@@ -140,7 +140,7 @@ export default function LogSheetDetailPage() {
                         label: "Asset",
                         type: "Link",
                         linkTarget: "Asset",
-                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        customSearchUrl: "http://103.219.3.169:2223/api/method/frappe.desk.search.search_link",
                         customSearchParams: {
                             filters: {
                                 asset_category: "Pump",

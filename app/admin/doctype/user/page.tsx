@@ -7,18 +7,18 @@ import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 // Performance Fix: Import lightweight SVGs instead of loading heavy FontAwesome fonts
-import { 
-  Search, 
-  Plus, 
-  List, 
-  LayoutGrid, 
-  ChevronDown, 
-  ArrowUpNarrowWide, 
+import {
+  Search,
+  Plus,
+  List,
+  LayoutGrid,
+  ChevronDown,
+  ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check
 } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource"; // Fixed double slash
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource"; // Fixed double slash
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -84,8 +84,8 @@ export default function UserDoctypePage() {
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
-    key: "modified", 
-    direction: "dsc", 
+    key: "modified",
+    direction: "dsc",
   });
 
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
@@ -122,16 +122,16 @@ export default function UserDoctypePage() {
             "user_type", "user_image"
           ]),
           limit_page_length: "20",
-          order_by: "modified desc", 
+          order_by: "modified desc",
         };
 
         if (debouncedSearch) {
-            params.or_filters = JSON.stringify({
-                email: ["like", `%${debouncedSearch}%`],
-                full_name: ["like", `%${debouncedSearch}%`],
-                first_name: ["like", `%${debouncedSearch}%`],
-                last_name: ["like", `%${debouncedSearch}%`]
-            });
+          params.or_filters = JSON.stringify({
+            email: ["like", `%${debouncedSearch}%`],
+            full_name: ["like", `%${debouncedSearch}%`],
+            first_name: ["like", `%${debouncedSearch}%`],
+            last_name: ["like", `%${debouncedSearch}%`]
+          });
         }
 
         const resp = await axios.get(`${API_BASE_URL}/User`, {
@@ -195,8 +195,8 @@ export default function UserDoctypePage() {
     if (user.email) fields.push({ label: "Email", value: user.email });
     if (user.user_type) fields.push({ label: "User Type", value: user.user_type });
     if (user.mobile_no) fields.push({ label: "Mobile", value: user.mobile_no });
-    if (user.enabled !== undefined) fields.push({ 
-      label: "Status", 
+    if (user.enabled !== undefined) fields.push({
+      label: "Status",
       value: user.enabled ? "Active" : "Disabled",
       type: user.enabled ? "success" : "danger"
     });
@@ -250,18 +250,18 @@ export default function UserDoctypePage() {
     <div className="equipment-grid">
       {users.length ? users.map(user => (
         <RecordCard
-            key={user.name}
-            title={user.full_name || user.name}
-            subtitle={user.email}
-            fields={getFieldsForUser(user)}
-            onClick={() => handleCardClick(user.name)}
-          />
+          key={user.name}
+          title={user.full_name || user.name}
+          subtitle={user.email}
+          fields={getFieldsForUser(user)}
+          onClick={() => handleCardClick(user.name)}
+        />
       )) : <p style={{ color: "var(--color-text-secondary)" }}>No users found.</p>}
     </div>
   );
 
-  if (loading && users.length === 0) return <div className="module active" style={{padding:"2rem", textAlign:"center"}}>Loading users...</div>;
-  if (error && users.length === 0) return <div className="module active" style={{padding:"2rem"}}>{error}</div>;
+  if (loading && users.length === 0) return <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>Loading users...</div>;
+  if (error && users.length === 0) return <div className="module active" style={{ padding: "2rem" }}>{error}</div>;
 
   return (
     <div className="module active">
@@ -280,7 +280,7 @@ export default function UserDoctypePage() {
 
       {/* --- FILTER BAR --- */}
       <div className="search-filter-section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", gap: "8px" }}>
-        
+
         {/* Left: Single Omni-Search */}
         <div className="relative" style={{ flexGrow: 1, maxWidth: '400px' }}>
           <input
@@ -290,7 +290,7 @@ export default function UserDoctypePage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             // Accessibility: Label the input
-            aria-label="Search Users" 
+            aria-label="Search Users"
           />
           {/* Replaced FontAwesome 'i' with Lucide 'Search' component */}
           {/* Contrast Fix: Changed text-gray-400 to text-gray-500 */}
@@ -299,12 +299,12 @@ export default function UserDoctypePage() {
 
         {/* Right: Sort Pill + View Switcher */}
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          
+
           {/* Sort Pill */}
           <div className="relative" ref={sortMenuRef}>
             <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
-              
-              <button 
+
+              <button
                 className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
                 onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'dsc' : 'asc' }))}
                 title={`Sort ${sortConfig.direction === 'asc' ? 'Descending' : 'Ascending'}`}
@@ -312,15 +312,15 @@ export default function UserDoctypePage() {
                 aria-label={sortConfig.direction === 'asc' ? "Sort Descending" : "Sort Ascending"}
               >
                 {/* SVG Icons */}
-                {sortConfig.direction === 'asc' ? 
-                    <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" /> : 
-                    <ArrowUpNarrowWide className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                {sortConfig.direction === 'asc' ?
+                  <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" /> :
+                  <ArrowUpNarrowWide className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 }
               </button>
-              
+
               <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
-              
-              <button 
+
+              <button
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
                 onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
                 // Accessibility: Added aria-label
@@ -361,7 +361,7 @@ export default function UserDoctypePage() {
             // Accessibility: Added aria-label
             aria-label={view === "grid" ? "Switch to List View" : "Switch to Grid View"}
           >
-             {/* SVG Icons */}
+            {/* SVG Icons */}
             {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
           </button>
         </div>

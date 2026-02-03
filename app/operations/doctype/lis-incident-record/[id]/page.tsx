@@ -10,14 +10,14 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 const DOCTYPE_NAME = "Issue";
 
 export default function EditLisIncidentRecordPage() {
   const router = useRouter();
   const params = useParams();
   const docname = params.id as string;
-  
+
   const { apiKey, apiSecret } = useAuth();
   const [record, setRecord] = React.useState<any>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -26,24 +26,24 @@ export default function EditLisIncidentRecordPage() {
   // 1. Fetch Existing Record
   React.useEffect(() => {
     const fetchRecord = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
-                headers: {
-                    'Authorization': `token ${apiKey}:${apiSecret}`
-                }
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.exception || "Failed to fetch record");
-            setRecord(data.data);
-        } catch (error: any) {
-            toast.error("Error loading record", { description: error.message, duration: Infinity});
-        } finally {
-            setIsLoading(false);
-        }
+      try {
+        const res = await fetch(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
+          headers: {
+            'Authorization': `token ${apiKey}:${apiSecret}`
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.exception || "Failed to fetch record");
+        setRecord(data.data);
+      } catch (error: any) {
+        toast.error("Error loading record", { description: error.message, duration: Infinity });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     if (apiKey && apiSecret && docname) {
-        fetchRecord();
+      fetchRecord();
     }
   }, [apiKey, apiSecret, docname]);
 
@@ -63,50 +63,50 @@ export default function EditLisIncidentRecordPage() {
              Section 1: Incident Details (The Control Center)
              ----------------------------------------------------------- */
           { name: "custom_incident_details_header", label: "Incident Details", type: "Section Break" },
-          
+
           // Row 1: Incident Date & Time, Lift Irrigation Scheme
           { name: "custom_incident_datetime", label: "Incident Date & Time", type: "DateTime", defaultValue: getValue("custom_incident_datetime"), required: true },
-          { 
-            name: "custom_lis", 
-            label: "Lift Irrigation Scheme", 
-            type: "Link", 
-            linkTarget: "Lift Irrigation Scheme", 
+          {
+            name: "custom_lis",
+            label: "Lift Irrigation Scheme",
+            type: "Link",
+            linkTarget: "Lift Irrigation Scheme",
             defaultValue: getValue("custom_lis"),
-            required: true 
+            required: true
           },
-          { 
-            name: "custom_asset", 
-            label: "Asset", 
-            type: "Link", 
-            linkTarget: "Asset", 
+          {
+            name: "custom_asset",
+            label: "Asset",
+            type: "Link",
+            linkTarget: "Asset",
             defaultValue: getValue("custom_asset"),
             // Filter: Must match LIS and Stage (SAME AS NEW PAGE)
             filters: (getFormValue) => ({
-                custom_lis_name: getFormValue("custom_lis"),
-                custom_stage_no: getFormValue("custom_stage"),
-                custom_obsolete: 0
+              custom_lis_name: getFormValue("custom_lis"),
+              custom_stage_no: getFormValue("custom_stage"),
+              custom_obsolete: 0
             })
           },
           { name: "issue_type", label: "Issue Type", type: "Link", linkTarget: "Issue Type", defaultValue: getValue("issue_type") },
-          { 
-            name: "custom_stage", 
-            label: "Stage / Sub Scheme", 
-            type: "Link", 
-            linkTarget: "Stage No", 
+          {
+            name: "custom_stage",
+            label: "Stage / Sub Scheme",
+            type: "Link",
+            linkTarget: "Stage No",
             defaultValue: getValue("custom_stage"),
             // Filter: Must match LIS
             filters: (getFormValue) => ({
-                lis_name: getFormValue("custom_lis")
+              lis_name: getFormValue("custom_lis")
             })
           },
-          { name: "custom_asset_no", label: "Asset No", type: "Data", defaultValue: getValue("custom_asset_no"), readOnlyValue: getValue("custom_asset_no") }, 
+          { name: "custom_asset_no", label: "Asset No", type: "Data", defaultValue: getValue("custom_asset_no"), readOnlyValue: getValue("custom_asset_no") },
           { name: "custom_reported_by", label: "Reported By", type: "Link", linkTarget: "Employee", defaultValue: getValue("custom_reported_by") },
           { name: "priority", label: "Priority", type: "Link", linkTarget: "Issue Priority", defaultValue: getValue("priority") },
           { name: "status", label: "Status", type: "Select", options: "Open\nReplied\nOn Hold\nResolved\nClosed", defaultValue: getValue("status", "Open") },
-          { 
-            name: "custom_designation_", 
-            label: "Designation", 
-            type: "Data", 
+          {
+            name: "custom_designation_",
+            label: "Designation",
+            type: "Data",
             defaultValue: getValue("custom_designation_"),
             fetchFrom: { sourceField: "custom_reported_by", targetDoctype: "Employee", targetField: "designation" }
           },
@@ -137,11 +137,11 @@ export default function EditLisIncidentRecordPage() {
           { name: "custom_fire__short_circuit", label: "Fire / Short Circuit", type: "Check", defaultValue: getValue("custom_fire__short_circuit") },
           { name: "custom_personnel_injury", label: "Personnel Injury", type: "Check", defaultValue: getValue("custom_personnel_injury") },
           { name: "custom_other", label: "Other", type: "Check", defaultValue: getValue("custom_other") },
-          
-          { 
-            name: "custom_specify", 
-            label: "Specify (Other)", 
-            type: "Small Text", 
+
+          {
+            name: "custom_specify",
+            label: "Specify (Other)",
+            type: "Small Text",
             defaultValue: getValue("custom_specify"),
             displayDependsOn: "custom_other == true"
           },
@@ -162,11 +162,11 @@ export default function EditLisIncidentRecordPage() {
             ],
           },
           { name: "custom_scada_log_file", label: "SCADA Log File", type: "Select", options: "Yes\nNo", defaultValue: getValue("custom_scada_log_file") },
-          
-          { 
-            name: "custom_scada_attach", 
-            label: "SCADA Attachment", 
-            type: "Attach", 
+
+          {
+            name: "custom_scada_attach",
+            label: "SCADA Attachment",
+            type: "Attach",
             defaultValue: getValue("custom_scada_attach"),
             displayDependsOn: "custom_scada_log_file == 'Yes'",
             allowPreview: true
@@ -183,15 +183,15 @@ export default function EditLisIncidentRecordPage() {
             defaultValue: getValue("custom_component_affected", []),
             columns: [
               { name: "component", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
-              { 
-                name: "asset_id", 
-                label: "Asset", 
-                type: "Link", 
+              {
+                name: "asset_id",
+                label: "Asset",
+                type: "Link",
                 linkTarget: "Asset",
                 // Attempt to filter based on main form + row component
                 filters: (getFormValue) => ({
-                    custom_lis_name: getFormValue("custom_lis"),
-                    custom_stage_no: getFormValue("custom_stage"),
+                  custom_lis_name: getFormValue("custom_lis"),
+                  custom_stage_no: getFormValue("custom_stage"),
                 })
               },
               { name: "description_of_damage", label: "Damage Description", type: "Small Text" },
@@ -286,20 +286,20 @@ export default function EditLisIncidentRecordPage() {
     setIsSaving(true);
     try {
       const payload = { ...data };
-      
+
       // Ensure hidden subject is populated if missed by watcher
       if (!payload.subject) {
-         payload.subject = payload.custom_incident_subject;
+        payload.subject = payload.custom_incident_subject;
       }
 
       // Clean up payload (remove breaks, convert checks, handle complex objects)
       const finalPayload: Record<string, any> = {};
-      
+
       for (const key in payload) {
         // Skip UI-only fields
         if (payload[key] === undefined) continue;
         if (key.startsWith("custom_section") || key.startsWith("sb_") || key.startsWith("custom_subject_section")) continue;
-        
+
         const value = payload[key];
         if (value && typeof value === 'object') {
           if (value instanceof Date) {
@@ -320,14 +320,14 @@ export default function EditLisIncidentRecordPage() {
       const checkFields = [
         "custom_mechanical_failure", "custom_electrical_failure", "custom_flooding__waterlogging",
         "custom_control_scada", "custom_structural_damage", "custom_fire__short_circuit",
-        "custom_personnel_injury", "custom_other", "custom_resolved_onsite", 
-        "custom_escalated_to_higher_authority", "custom_intervention_required", 
+        "custom_personnel_injury", "custom_other", "custom_resolved_onsite",
+        "custom_escalated_to_higher_authority", "custom_intervention_required",
         "custom_equipment_replacement_pending", "custom_under_investigation"
       ];
-      
+
       checkFields.forEach(field => {
         if (typeof finalPayload[field] === 'boolean') {
-            finalPayload[field] = finalPayload[field] ? 1 : 0;
+          finalPayload[field] = finalPayload[field] ? 1 : 0;
         }
       });
 
@@ -352,7 +352,7 @@ export default function EditLisIncidentRecordPage() {
 
     } catch (err: any) {
       console.error("Save Error:", err);
-      toast.error("Failed to save record", { description: err.message, duration: Infinity});
+      toast.error("Failed to save record", { description: err.message, duration: Infinity });
     } finally {
       setIsSaving(false);
     }
@@ -365,7 +365,7 @@ export default function EditLisIncidentRecordPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={() => router.back()}
-      onFormInit={handleFormInit} 
+      onFormInit={handleFormInit}
       title={`Edit LIS Incident: ${docname}`}
       description="Update operational issues and failures"
       submitLabel={isSaving ? "Saving..." : "Update Record"}

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { renameDocument } from "@/lib/services";
 
 // API base URL
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 // ----------------------
 // 1. Types
@@ -117,128 +117,128 @@ export default function ParameterCategoryDetailPage() {
   // ----------------------
   // Submit handler
   // ----------------------
- const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-  if (!isDirty) {
-    toast.info("No changes to save.");
-    return;
-  }
+  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+    if (!isDirty) {
+      toast.info("No changes to save.");
+      return;
+    }
 
-  if (!record) {
-    toast.error("Record not loaded. Cannot save.", { duration: Infinity });
-    return;
-  }
+    if (!record) {
+      toast.error("Record not loaded. Cannot save.", { duration: Infinity });
+      return;
+    }
 
-  if (!apiKey || !apiSecret) {
-    toast.error("Missing API credentials.");
-    return;
-  }
+    if (!apiKey || !apiSecret) {
+      toast.error("Missing API credentials.");
+      return;
+    }
 
-  setIsSaving(true);
+    setIsSaving(true);
 
-  try {
-    let currentDocname = docname;
+    try {
+      let currentDocname = docname;
 
-    /* ------------ RENAME LOGIC ------------ */
-    const newParameterCategoryName = data.parameter_category;
+      /* ------------ RENAME LOGIC ------------ */
+      const newParameterCategoryName = data.parameter_category;
 
-    if (
-      newParameterCategoryName &&
-      newParameterCategoryName !== record.parameter_category &&
-      newParameterCategoryName !== record.name
-    ) {
-      try {
-        await renameDocument(
-          apiKey,
-          apiSecret,
-          doctypeName,
-          record.name,
-          newParameterCategoryName
-        );
+      if (
+        newParameterCategoryName &&
+        newParameterCategoryName !== record.parameter_category &&
+        newParameterCategoryName !== record.name
+      ) {
+        try {
+          await renameDocument(
+            apiKey,
+            apiSecret,
+            doctypeName,
+            record.name,
+            newParameterCategoryName
+          );
 
-        currentDocname = newParameterCategoryName; // ✅ IMPORTANT
+          currentDocname = newParameterCategoryName; // ✅ IMPORTANT
 
-        setRecord((prev) =>
-          prev
-            ? {
+          setRecord((prev) =>
+            prev
+              ? {
                 ...prev,
                 name: newParameterCategoryName,
                 parameter_category: newParameterCategoryName,
               }
-            : null
-        );
+              : null
+          );
 
-        router.replace(
-          `/maintenance/doctype/parameter-category/${newParameterCategoryName}`
-        );
-      } catch (renameError: any) {
-        console.error("Rename error:", renameError);
-        toast.error("Failed to rename document", {
-          description:
-            renameError.response?.data?.message || renameError.message,
-        });
-        setIsSaving(false);
-        return;
+          router.replace(
+            `/maintenance/doctype/parameter-category/${newParameterCategoryName}`
+          );
+        } catch (renameError: any) {
+          console.error("Rename error:", renameError);
+          toast.error("Failed to rename document", {
+            description:
+              renameError.response?.data?.message || renameError.message,
+          });
+          setIsSaving(false);
+          return;
+        }
       }
+
+      /* ------------ CLEAN PAYLOAD ------------ */
+      const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
+
+      const allFields = formTabs.flatMap((tab) => tab.fields);
+      const nonDataFields = new Set<string>();
+
+      allFields.forEach((field) => {
+        if (
+          field.type === "Section Break" ||
+          field.type === "Column Break" ||
+          field.type === "Button" ||
+          field.type === "Read Only"
+        ) {
+          nonDataFields.add(field.name);
+        }
+      });
+
+      const finalPayload: Record<string, any> = {};
+      for (const key in payload) {
+        if (!nonDataFields.has(key)) {
+          finalPayload[key] = payload[key];
+        }
+      }
+
+      finalPayload.modified = record.modified;
+      finalPayload.docstatus = record.docstatus;
+
+      /* ------------ UPDATE ------------ */
+      const resp = await axios.put(
+        `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(currentDocname)}`, // ✅ FIXED
+        finalPayload,
+        {
+          headers: {
+            Authorization: `token ${apiKey}:${apiSecret}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        }
+      );
+
+      toast.success("Changes saved!");
+
+      if (resp.data?.data) {
+        setRecord(resp.data.data);
+      }
+
+      router.push(`/maintenance/doctype/parameter-category/${currentDocname}`); // ✅ FIXED
+    } catch (err: any) {
+      console.error("Save error:", err);
+      console.log("Full server error:", err.response?.data);
+      toast.error("Failed to save", {
+        description: err.response?.data?.message || err.message,
+        duration: Infinity,
+      });
+    } finally {
+      setIsSaving(false);
     }
-
-    /* ------------ CLEAN PAYLOAD ------------ */
-    const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
-
-    const allFields = formTabs.flatMap((tab) => tab.fields);
-    const nonDataFields = new Set<string>();
-
-    allFields.forEach((field) => {
-      if (
-        field.type === "Section Break" ||
-        field.type === "Column Break" ||
-        field.type === "Button" ||
-        field.type === "Read Only"
-      ) {
-        nonDataFields.add(field.name);
-      }
-    });
-
-    const finalPayload: Record<string, any> = {};
-    for (const key in payload) {
-      if (!nonDataFields.has(key)) {
-        finalPayload[key] = payload[key];
-      }
-    }
-
-    finalPayload.modified = record.modified;
-    finalPayload.docstatus = record.docstatus;
-
-    /* ------------ UPDATE ------------ */
-    const resp = await axios.put(
-      `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(currentDocname)}`, // ✅ FIXED
-      finalPayload,
-      {
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: true,
-      }
-    );
-
-    toast.success("Changes saved!");
-
-    if (resp.data?.data) {
-      setRecord(resp.data.data);
-    }
-
-    router.push(`/maintenance/doctype/parameter-category/${currentDocname}`); // ✅ FIXED
-  } catch (err: any) {
-    console.error("Save error:", err);
-    console.log("Full server error:", err.response?.data);
-    toast.error("Failed to save", {
-      description: err.response?.data?.message || err.message,
-      duration: Infinity,
-    });
-  } finally {
-    setIsSaving(false);
-  }
-};
+  };
 
   const handleCancel = () => router.back();
 

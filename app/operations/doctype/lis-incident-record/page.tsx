@@ -24,11 +24,11 @@ import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { getApiMessages} from "@/lib/utils";
+import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL
-const API_BASE_URL = "http://103.219.1.138:4412";
+const API_BASE_URL = "http://103.219.3.169:2223";
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -250,7 +250,7 @@ export default function LisIncidentRecordPage() {
 
         if (errorMessages.length > 0) {
           // Show error messages from server
-          toast.error("Failed to delete records", { 
+          toast.error("Failed to delete records", {
             description: <FrappeErrorDisplay messages={errorMessages} />,
             duration: Infinity
           });
@@ -264,14 +264,14 @@ export default function LisIncidentRecordPage() {
       fetchRows();
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
-      
+
       const messages = getApiMessages(
         null,
         err,
         "Records deleted successfully",
         "Failed to delete records"
       );
-      
+
       toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsDeleting(false);
@@ -396,14 +396,14 @@ export default function LisIncidentRecordPage() {
                 <tr
                   key={row.name}
                   onClick={() => handleCardClick(row.name)}
-                  style={{ 
+                  style={{
                     cursor: "pointer",
                     backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
                   }}
                 >
                   {/* 🟢 Row Checkbox */}
-                  <td 
-                    style={{ textAlign: "center" }} 
+                  <td
+                    style={{ textAlign: "center" }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <input
@@ -474,7 +474,7 @@ export default function LisIncidentRecordPage() {
           <h2>{title}</h2>
           <p>Incident records with workflow_state, priority, and reporter</p>
         </div>
-        
+
         {/* Header Action Switch */}
         {selectedIds.size > 0 ? (
           <BulkActionBar
@@ -611,11 +611,10 @@ export default function LisIncidentRecordPage() {
                   {SORT_OPTIONS.map((option) => (
                     <button
                       key={option.key}
-                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                        sortConfig.key === option.key
+                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${sortConfig.key === option.key
                           ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
                           : "text-gray-700 dark:text-gray-200"
-                      }`}
+                        }`}
                       onClick={() => {
                         setSortConfig((prev) => ({ ...prev, key: option.key }));
                         setIsSortMenuOpen(false);

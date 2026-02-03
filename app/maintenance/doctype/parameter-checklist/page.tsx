@@ -14,7 +14,7 @@ import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 import { Plus, List, LayoutGrid } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412";
+const API_BASE_URL = "http://103.219.3.169:2223";
 
 /* ── Debounce Hook ─────────────────────────────── */
 function useDebounce<T>(value: T, delay: number): T {
@@ -51,7 +51,7 @@ export default function ParameterChecklistListPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-   const title = "Parameter Checklist";
+  const title = "Parameter Checklist";
 
   /* ── Search ─────────────────────────────────── */
   const filteredRecords = React.useMemo(() => {
@@ -187,10 +187,10 @@ export default function ParameterChecklistListPage() {
   const getFieldsForRecord = (
     record: ParameterChecklist
   ): RecordCardField[] => [
-    { label: "Parameter", value: record.parameter || "-" },
-    { label: "Monitoring Type", value: record.monitoring_type || "-" },
-    { label: "Asset Category", value: record.asset_category || "-" },
-  ];
+      { label: "Parameter", value: record.parameter || "-" },
+      { label: "Monitoring Type", value: record.monitoring_type || "-" },
+      { label: "Asset Category", value: record.asset_category || "-" },
+    ];
 
   /* ── Views ───────────────────────────────────── */
   const renderListView = () => (
@@ -305,36 +305,36 @@ export default function ParameterChecklistListPage() {
       </div>
 
       <div
-             className="search-filter-section"
-             style={{
-               display: "flex",
-               justifyContent: "space-between",
-               alignItems: "center",
-               marginTop: "1rem",
-             }}
-           >
-             <div style={{ display: "flex", gap: "8px" }}>
-               <input
-                 type="text"
-                 placeholder={`Search ${title}...`}
-                 className="form-control"
-                 style={{ width: 240 }}
-                 value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
-               />
-             </div>
-     
-             <div className="view-switcher">
-               <button
-                 className="btn btn--outline btn--sm flex items-center justify-center"
-                 onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
-                 aria-label="Toggle view"
-                 title={view === "grid" ? "List view" : "Grid view"}
-               >
-                 {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
-               </button>
-             </div>
-           </div>
+        className="search-filter-section"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: "1rem",
+        }}
+      >
+        <div style={{ display: "flex", gap: "8px" }}>
+          <input
+            type="text"
+            placeholder={`Search ${title}...`}
+            className="form-control"
+            style={{ width: 240 }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="view-switcher">
+          <button
+            className="btn btn--outline btn--sm flex items-center justify-center"
+            onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
+            aria-label="Toggle view"
+            title={view === "grid" ? "List view" : "Grid view"}
+          >
+            {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
 
       <div className="view-container">
         {view === "grid" ? renderGridView() : renderListView()}

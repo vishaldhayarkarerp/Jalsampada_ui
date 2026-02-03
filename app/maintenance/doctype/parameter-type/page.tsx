@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────── */
-const API_BASE_URL = "http://103.219.1.138:4412";
+const API_BASE_URL = "http://103.219.3.169:2223";
 const DOCTYPE = "Parameter Type";
 
 /* ── Debounce Hook ─────────────────────────────── */
@@ -216,11 +216,11 @@ export default function ParameterTypeListPage() {
   const getFieldsForRecord = (
     record: ParameterType
   ): RecordCardField[] => [
-    {
-      label: "Parameter Type",
-      value: record.parameter_type || "-",
-    },
-  ];
+      {
+        label: "Parameter Type",
+        value: record.parameter_type || "-",
+      },
+    ];
 
   const currentSortLabel =
     SORT_OPTIONS.find((o) => o.key === sortConfig.key)?.label ??

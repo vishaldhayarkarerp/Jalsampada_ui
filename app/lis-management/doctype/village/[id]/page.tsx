@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import axios from "axios";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 const DOCTYPE = "WRD Village";
 
 // Interface matching your child table
@@ -93,7 +93,7 @@ export default function VillageDetailPage() {
         defaultValue:
           f.name in village
             ? // @ts-ignore
-              village[f.name as keyof VillageData]
+            village[f.name as keyof VillageData]
             : f.defaultValue,
       }));
 
@@ -154,7 +154,7 @@ export default function VillageDetailPage() {
                 options: [
                   { label: "Functional", value: "Functional" },
                   { label: "Non-Functional", value: "Non-Functional" },
-                  { label: "Abandoned", value: "Abandoned" },                
+                  { label: "Abandoned", value: "Abandoned" },
                 ]
               },
               {

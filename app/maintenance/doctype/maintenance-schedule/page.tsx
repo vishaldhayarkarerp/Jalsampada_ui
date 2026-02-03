@@ -14,7 +14,7 @@ import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 import { Plus, List, LayoutGrid } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412";
+const API_BASE_URL = "http://103.219.3.169:2223";
 
 /* ── Debounce Hook ─────────────────────────────── */
 function useDebounce<T>(value: T, delay: number): T {
@@ -184,9 +184,9 @@ export default function MaintenanceScheduleListPage() {
   const getFieldsForRecord = (
     record: MaintenanceSchedule
   ): RecordCardField[] => [
-    { label: "Asset Name", value: record.asset_name || "-" },
-    { label: "Maintenance Team", value: record.maintenance_team || "-" },
-  ];
+      { label: "Asset Name", value: record.asset_name || "-" },
+      { label: "Maintenance Team", value: record.maintenance_team || "-" },
+    ];
 
   /* ── Views ───────────────────────────────────── */
   const renderListView = () => (

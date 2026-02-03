@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* -------------------------------------------------
    1. Repair Work Requirement interface
@@ -117,7 +117,7 @@ export default function RepairWorkRequirementDetailPage() {
                 defaultValue:
                     f.name in record
                         ? // @ts-ignore - safe because we match the interface
-                          record[f.name as keyof RepairWorkRequirementData]
+                        record[f.name as keyof RepairWorkRequirementData]
                         : f.defaultValue,
             }));
 
@@ -144,7 +144,7 @@ export default function RepairWorkRequirementDetailPage() {
                             { sourceField: "lis_name", targetField: "lis_name" }
                         ],
                         required: true,
-                        
+
                     },
 
                     // Work Requirement & Date
@@ -162,7 +162,7 @@ export default function RepairWorkRequirementDetailPage() {
                         type: "Date",
                         defaultValue: "Today",
                         required: true,
-                        
+
                     },
 
                     {
@@ -182,7 +182,7 @@ export default function RepairWorkRequirementDetailPage() {
                             targetDoctype: "Employee",
                             targetField: "designation"
                         }
-                        
+
                     },
 
                     // Repair Work Details Table
@@ -193,21 +193,22 @@ export default function RepairWorkRequirementDetailPage() {
                         type: "Table",
                         columns: [
                             { name: "sr_no", label: "Sr. No.", type: "Data" },
-                            { name: "asset_id", label: "Asset ID", type: "Link", linkTarget: "Asset",
-                              filters: (getValues: (name: string) => any) => {
-                                const parentLisName = getValues("parent.lis_name");
-                                const parentStage = getValues("parent.stage");
-                                
-                                const filters: any = {};
-                                if (parentLisName) {
-                                  filters.custom_lis_name = parentLisName;
+                            {
+                                name: "asset_id", label: "Asset ID", type: "Link", linkTarget: "Asset",
+                                filters: (getValues: (name: string) => any) => {
+                                    const parentLisName = getValues("parent.lis_name");
+                                    const parentStage = getValues("parent.stage");
+
+                                    const filters: any = {};
+                                    if (parentLisName) {
+                                        filters.custom_lis_name = parentLisName;
+                                    }
+                                    if (parentStage) {
+                                        filters.custom_stage_no = parentStage;
+                                    }
+
+                                    return filters;
                                 }
-                                if (parentStage) {
-                                  filters.custom_stage_no = parentStage;
-                                }
-                                
-                                return filters;
-                              }
                             },
                             {
                                 name: "asset_name",

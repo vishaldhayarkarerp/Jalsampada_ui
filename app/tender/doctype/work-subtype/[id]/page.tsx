@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* -------------------------------------------------
    1. Work Subtype data interface
@@ -76,8 +76,8 @@ export default function WorkSubtypeDetailPage() {
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-            ? "Unauthorized"
-            : `Failed to load ${doctypeName}`
+              ? "Unauthorized"
+              : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -100,7 +100,7 @@ export default function WorkSubtypeDetailPage() {
         defaultValue:
           f.name in record
             ? // @ts-ignore
-              record[f.name as keyof WorkSubtypeData]
+            record[f.name as keyof WorkSubtypeData]
             : f.defaultValue,
       }));
 
@@ -218,7 +218,8 @@ export default function WorkSubtypeDetailPage() {
 
       toast.error("Failed to save", {
         description: serverMessage,
-       duration: Infinity});
+        duration: Infinity
+      });
     } finally {
       setIsSaving(false);
     }

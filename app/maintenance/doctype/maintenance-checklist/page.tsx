@@ -14,7 +14,7 @@ import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 import { Plus, List, LayoutGrid } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412";
+const API_BASE_URL = "http://103.219.3.169:2223";
 
 /* ── Debounce Hook ─────────────────────────────── */
 function useDebounce<T>(value: T, delay: number): T {
@@ -190,11 +190,11 @@ export default function MaintenanceChecklistListPage() {
   const getFieldsForRecord = (
     record: ParameterChecklist
   ): RecordCardField[] => [
-    { label: "LIS Name", value: record.lis_name || "-" },
-    { label: "Stage", value: record.stage || "-" },
-    { label: "Asset Category", value: record.asset_category || "-" },
-    { label: "Monitoring Type", value: record.monitoring_type || "-" },
-  ];
+      { label: "LIS Name", value: record.lis_name || "-" },
+      { label: "Stage", value: record.stage || "-" },
+      { label: "Asset Category", value: record.asset_category || "-" },
+      { label: "Monitoring Type", value: record.monitoring_type || "-" },
+    ];
 
   /* ── Views ───────────────────────────────────── */
   const renderListView = () => (

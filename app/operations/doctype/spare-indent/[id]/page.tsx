@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
 import { fetchAssetsFromLisAndStage, fetchItemDetails } from "../services";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 const DOCTYPE_NAME = "Material Request";
 
 export default function SpareIndentDetailPage() {
@@ -351,7 +351,7 @@ export default function SpareIndentDetailPage() {
                 payload.items = payload.items.map((item: any, index: number) => {
                     // Remove temporary UI fields
                     const { id, stage, name: tempName, ...rest } = item;
-                    
+
                     // Add proper child table fields
                     return {
                         ...rest,

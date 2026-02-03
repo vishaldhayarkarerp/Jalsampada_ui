@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { renameDocument } from "@/lib/services";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* -------------------------------------------------
    1. Work Type data
@@ -239,7 +239,8 @@ export default function RecordDetailPage() {
 
       toast.error("Failed to save", {
         description: serverMessage,
-       duration: Infinity});
+        duration: Infinity
+      });
     } finally {
       setIsSaving(false);
     }

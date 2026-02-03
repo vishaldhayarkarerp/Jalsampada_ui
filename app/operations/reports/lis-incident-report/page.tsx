@@ -8,7 +8,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 // --- API Configuration ---
-const API_BASE_URL = "http://103.219.1.138:4412/";
+const API_BASE_URL = "http://103.219.3.169:2223/";
 const REPORT_API_PATH = "api/method/frappe.desk.query_report.run";
 const REPORT_NAME = "LIS Incident Report";
 
@@ -82,7 +82,7 @@ export default function LISIncidentReportPage() {
   const [reportData, setReportData] = useState<ReportData[]>([]);
   const [filteredData, setFilteredData] = useState<ReportData[]>([]);
   const [apiFields, setApiFields] = useState<ReportField[]>([]);
-  
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -263,8 +263,8 @@ export default function LISIncidentReportPage() {
       const summaryY = 30;
       pdf.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB')}`, margin, summaryY);
       pdf.text(`Total Records: ${filteredData.length}`, margin, summaryY + 7);
-      
-      const filtersApplied = Object.values(filters).filter(v => v).length > 0 
+
+      const filtersApplied = Object.values(filters).filter(v => v).length > 0
         ? Object.entries(filters).filter(([_, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ')
         : 'None';
       pdf.text(`Filters Applied: ${filtersApplied}`, margin, summaryY + 14);
@@ -279,18 +279,18 @@ export default function LISIncidentReportPage() {
         filteredData.forEach(row => {
           const value = row[col.fieldname];
           let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
-          
+
           // Strip HTML tags for PDF width calculation
           if (col.isHtml && typeof displayValue === 'string') {
             displayValue = displayValue.replace(/<[^>]*>?/gm, '');
           }
-          
+
           const textWidth = pdf.getStringUnitWidth(displayValue) * pdf.getFontSize();
           if (textWidth > maxWidth) {
             maxWidth = textWidth;
           }
         });
-        let colWidth = maxWidth / pdf.internal.scaleFactor; 
+        let colWidth = maxWidth / pdf.internal.scaleFactor;
         colWidth = Math.max(minColumnWidth, Math.min(maxColumnWidth, colWidth));
         columnWidths.push(colWidth);
       });
@@ -304,7 +304,7 @@ export default function LISIncidentReportPage() {
       let currentY = summaryY + 25;
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
-      
+
       // Calculate header heights first
       let headerMaxHeight = 0;
       columnConfig.forEach((col, index) => {
@@ -355,7 +355,7 @@ export default function LISIncidentReportPage() {
           pdf.setFont('helvetica', 'bold');
           pdf.setFillColor(240, 240, 240);
           pdf.rect(margin, currentY - 5, usableWidth, headerMaxHeight + 5, 'F');
-          
+
           pdf.setTextColor(0, 0, 0);
           columnConfig.forEach((col, index) => {
             const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
@@ -368,7 +368,7 @@ export default function LISIncidentReportPage() {
 
           pdf.setDrawColor(200, 200, 200);
           pdf.line(margin, currentY + headerMaxHeight + 3, pageWidth - margin, currentY + headerMaxHeight + 3);
-          
+
           pdf.setFontSize(7);
           pdf.setFont('helvetica', 'normal');
           currentY += headerMaxHeight + 8;
@@ -387,20 +387,20 @@ export default function LISIncidentReportPage() {
           const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
           const value = row[col.fieldname];
           let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
-          
+
           // Strip HTML tags for PDF
           if (col.isHtml && typeof displayValue === 'string') {
             displayValue = displayValue.replace(/<[^>]*>?/gm, '');
           }
-          
+
           // Apply formatter if available
           if (col.formatter) {
             displayValue = col.formatter(value);
           }
-          
+
           const textLines = pdf.splitTextToSize(displayValue, finalColumnWidths[index] - 4);
           const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
-          
+
           if (textHeight > rowMaxHeight) {
             rowMaxHeight = textHeight;
           }
@@ -412,17 +412,17 @@ export default function LISIncidentReportPage() {
           const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
           const value = row[col.fieldname];
           let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
-          
+
           // Strip HTML tags for PDF
           if (col.isHtml && typeof displayValue === 'string') {
             displayValue = displayValue.replace(/<[^>]*>?/gm, '');
           }
-          
+
           // Apply formatter if available
           if (col.formatter) {
             displayValue = col.formatter(value);
           }
-          
+
           const textLines = pdf.splitTextToSize(displayValue, finalColumnWidths[index] - 4);
           pdf.text(textLines, x + 2, currentY);
         });
@@ -508,15 +508,15 @@ export default function LISIncidentReportPage() {
           >
             <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
           </button>
-          
-            <div className="export-buttons flex gap-2 ml-2">
-                <button className="btn btn--outline" onClick={handleExportCSV}>
-                    <i className="fas fa-file-csv"></i> CSV
-                </button>
-                <button className="btn btn--danger" onClick={handleExportPDF}>
-                    <i className="fas fa-file-pdf"></i> PDF
-                </button>
-            </div>
+
+          <div className="export-buttons flex gap-2 ml-2">
+            <button className="btn btn--outline" onClick={handleExportCSV}>
+              <i className="fas fa-file-csv"></i> CSV
+            </button>
+            <button className="btn btn--danger" onClick={handleExportPDF}>
+              <i className="fas fa-file-pdf"></i> PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -561,54 +561,54 @@ export default function LISIncidentReportPage() {
             />
           </div>
 
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">LIS Name</label>
-                <LinkInput
-                    value={filters.custom_lis}
-                    onChange={(value) => handleFilterChange("custom_lis", value)}
-                    placeholder="Select LIS..."
-                    linkTarget="Lift Irrigation Scheme"
-                    className="w-full relative"
-                />
-            </div>
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">Stage No</label>
-                <LinkInput
-                    value={filters.custom_stage}
-                    onChange={(value) => handleFilterChange("custom_stage", value)}
-                    placeholder="Select Stage..."
-                    linkTarget="Stage No"
-                    className="w-full relative"
-                    
-                />
-            </div>
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">Asset</label>
-                <LinkInput
-                    value={filters.asset}
-                    onChange={(value) => handleFilterChange("asset", value)}
-                    placeholder="Select Asset..."
-                    linkTarget="Asset"
-                    className="w-full relative"
-                />
-            </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">LIS Name</label>
+            <LinkInput
+              value={filters.custom_lis}
+              onChange={(value) => handleFilterChange("custom_lis", value)}
+              placeholder="Select LIS..."
+              linkTarget="Lift Irrigation Scheme"
+              className="w-full relative"
+            />
+          </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">Stage No</label>
+            <LinkInput
+              value={filters.custom_stage}
+              onChange={(value) => handleFilterChange("custom_stage", value)}
+              placeholder="Select Stage..."
+              linkTarget="Stage No"
+              className="w-full relative"
+
+            />
+          </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">Asset</label>
+            <LinkInput
+              value={filters.asset}
+              onChange={(value) => handleFilterChange("asset", value)}
+              placeholder="Select Asset..."
+              linkTarget="Asset"
+              className="w-full relative"
+            />
+          </div>
 
 
-            <div className="form-group z-[50]">
-                <label className="text-sm font-medium mb-1 block">Status</label>
-                <select 
-                    className="form-control w-full"
-                    value={filters.status}
-                    onChange={(e) => handleFilterChange("status", e.target.value)}
-                >
-                    <option value="">All Status</option>
-                    <option value="Open">Open</option>
-                    <option value="Closed">Closed</option>
-                    <option value="Replied">Replied</option>
-                    <option value="On Hold">On Hold</option>
-                    <option value="Resolved">Resolved</option>
-                </select>
-            </div>
+          <div className="form-group z-[50]">
+            <label className="text-sm font-medium mb-1 block">Status</label>
+            <select
+              className="form-control w-full"
+              value={filters.status}
+              onChange={(e) => handleFilterChange("status", e.target.value)}
+            >
+              <option value="">All Status</option>
+              <option value="Open">Open</option>
+              <option value="Closed">Closed</option>
+              <option value="Replied">Replied</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </div>
         </div>
 
         {/* Table Section */}

@@ -17,7 +17,7 @@ import { Image as ImageIcon } from "lucide-react";
 // Import Auth Context
 import { useAuth } from "@/context/AuthContext";
 
-const FRAPPE_BASE_URL = "http://103.219.1.138:4412";
+const FRAPPE_BASE_URL = "http://103.219.3.169:2223";
 const API_BASE_URL = `${FRAPPE_BASE_URL}/api/resource`;
 
 interface AssetData {
@@ -81,7 +81,7 @@ export default function AssetDetailPage() {
         setAsset(resp.data.data);
       } catch (err: any) {
         console.error("API Error:", err);
-        
+
         const messages = getApiMessages(
           null,
           err,
@@ -93,7 +93,7 @@ export default function AssetDetailPage() {
             return "Failed to load asset details";
           }
         );
-        
+
         if (!messages.success) {
           setError(messages.message);
         }
@@ -142,7 +142,7 @@ export default function AssetDetailPage() {
       }
     } catch (err) {
       console.error(err);
-      
+
       const messages = getApiMessages(
         null,
         err,
@@ -153,7 +153,7 @@ export default function AssetDetailPage() {
           return "Failed to generate QR code";
         }
       );
-      
+
       if (!messages.success) {
         toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
@@ -181,7 +181,7 @@ export default function AssetDetailPage() {
       }
     } catch (err) {
       console.error(err);
-      
+
       const messages = getApiMessages(
         null,
         err,
@@ -193,7 +193,7 @@ export default function AssetDetailPage() {
           return "Failed to open PDF";
         }
       );
-      
+
       if (!messages.success) {
         toast.error(messages.message, { description: messages.description, duration: Infinity });
       }

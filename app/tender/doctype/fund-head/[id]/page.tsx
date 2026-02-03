@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* -------------------------------------------------
    1. Fund Head data interface
@@ -75,8 +75,8 @@ export default function FundHeadDetailPage() {
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-            ? "Unauthorized"
-            : `Failed to load ${doctypeName}`
+              ? "Unauthorized"
+              : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -99,7 +99,7 @@ export default function FundHeadDetailPage() {
         defaultValue:
           f.name in record
             ? // @ts-ignore
-              record[f.name as keyof FundHeadData]
+            record[f.name as keyof FundHeadData]
             : f.defaultValue,
       }));
 
@@ -194,9 +194,9 @@ export default function FundHeadDetailPage() {
       }
 
       // Return appropriate status based on docstatus
-      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" : 
-                        resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
-      
+      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" :
+        resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
+
       router.push(`/tender/doctype/fund-head/${docname}`);
       return { status: savedStatus };
     } catch (err: any) {
@@ -211,7 +211,8 @@ export default function FundHeadDetailPage() {
 
       toast.error("Failed to save", {
         description: serverMessage,
-       duration: Infinity});
+        duration: Infinity
+      });
     } finally {
       setIsSaving(false);
     }

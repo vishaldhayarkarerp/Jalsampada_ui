@@ -27,7 +27,7 @@ import {
 // Use RHF hooks for the custom editor component
 import { useFormContext, useFieldArray } from "react-hook-form";
 
-const FRAPPE_BASE_URL = "http://103.219.1.138:4412";
+const FRAPPE_BASE_URL = "http://103.219.3.169:2223";
 const API_BASE_URL = `${FRAPPE_BASE_URL}/api/resource`;
 const API_METHOD_URL = `${FRAPPE_BASE_URL}/api/method`;
 
