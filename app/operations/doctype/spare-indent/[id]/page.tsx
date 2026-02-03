@@ -186,7 +186,7 @@ export default function SpareIndentDetailPage() {
                             { name: "item_name", label: "Item Name", type: "Data", readOnly: true },
                             { name: "schedule_date", label: "Required By", type: "Date", required: true },
                             { name: "description", label: "Description", type: "Text" },
-                            { name: "qty", label: "Quantity", type: "Float", required: true },
+                            { name: "qty", label: "Quantity", type: "Float", required: true, precision: 2 },
                             { name: "uom", label: "UOM", type: "Link", linkTarget: "UOM" },
                             { name: "warehouse", label: "Target Warehouse", type: "Link", linkTarget: "Warehouse" },
                             { name: "rate", label: "Rate", type: "Currency", precision: 2 },
@@ -450,12 +450,17 @@ export default function SpareIndentDetailPage() {
                 const fieldUpdates: Record<string, any> = {
                     item_name: message.item_name ?? "",
                     description: message.description ?? "",
-                    qty: message.qty ?? 1,
                     uom: message.uom ?? "",
                     warehouse: message.warehouse ?? "",
                     rate: message.rate ?? 0,
                     amount: message.amount ?? 0,
                 };
+
+                // Only set qty if API returns a value (don't overwrite user input with default)
+                if (message.qty !== undefined && message.qty !== null) {
+                    fieldUpdates.qty = message.qty;
+                }
+
                 Object.entries(fieldUpdates).forEach(([fieldName, fieldValue]) => {
                     formMethods.setValue(`items.${rowIndex}.${fieldName}`, fieldValue, { shouldDirty: true });
                 });
