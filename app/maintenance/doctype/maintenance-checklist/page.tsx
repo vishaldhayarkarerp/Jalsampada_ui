@@ -52,15 +52,28 @@ export default function MaintenanceChecklistListPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
+  const [lisNameFilter, setLisNameFilter] = React.useState("");
+  const [stageFilter, setStageFilter] = React.useState("");
+  const [assetCategoryFilter, setAssetCategoryFilter] = React.useState("");
+
+  const [lisNameOptions, setLisNameOptions] = React.useState<string[]>([]);
+  const [stageOptions, setStageOptions] = React.useState<string[]>([]);
+  const [assetCategoryOptions, setAssetCategoryOptions] = React.useState<string[]>([]);
+
   const title = "Maintenance Checklist";
 
-  /* ── Search ─────────────────────────────────── */
+  /* ── Search & Filter ─────────────────────────────── */
   const filteredRecords = React.useMemo(() => {
-    if (!debouncedSearch) return records;
-    return records.filter((r) =>
-      r.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-    );
-  }, [records, debouncedSearch]);
+    return records.filter((r) => {
+      const matchesSearch = !debouncedSearch || 
+        r.name.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchesLisName = !lisNameFilter || r.lis_name === lisNameFilter;
+      const matchesStage = !stageFilter || r.stage === stageFilter;
+      const matchesAssetCategory = !assetCategoryFilter || r.asset_category === assetCategoryFilter;
+      
+      return matchesSearch && matchesLisName && matchesStage && matchesAssetCategory;
+    });
+  }, [records, debouncedSearch, lisNameFilter, stageFilter, assetCategoryFilter]);
 
   /* ── Selection ───────────────────────────────── */
   const {
@@ -116,6 +129,15 @@ export default function MaintenanceChecklistListPage() {
       }));
 
       setRecords(mapped);
+
+      // Extract unique values for filter dropdowns
+      const uniqueLisNames = [...new Set(mapped.map(r => r.lis_name).filter((val): val is string => Boolean(val)))];
+      const uniqueStages = [...new Set(mapped.map(r => r.stage).filter((val): val is string => Boolean(val)))];
+      const uniqueAssetCategories = [...new Set(mapped.map(r => r.asset_category).filter((val): val is string => Boolean(val)))];
+
+      setLisNameOptions(uniqueLisNames);
+      setStageOptions(uniqueStages);
+      setAssetCategoryOptions(uniqueAssetCategories);
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(
@@ -319,7 +341,7 @@ export default function MaintenanceChecklistListPage() {
           marginTop: "1rem",
         }}
       >
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
           <input
             type="text"
             placeholder={`Search ${title}...`}
@@ -328,6 +350,48 @@ export default function MaintenanceChecklistListPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          
+          <select
+            className="form-control"
+            style={{ width: 180 }}
+            value={lisNameFilter}
+            onChange={(e) => setLisNameFilter(e.target.value)}
+          >
+            <option value="">All LIS Names</option>
+            {lisNameOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="form-control"
+            style={{ width: 150 }}
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
+          >
+            <option value="">All Stages</option>
+            {stageOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="form-control"
+            style={{ width: 180 }}
+            value={assetCategoryFilter}
+            onChange={(e) => setAssetCategoryFilter(e.target.value)}
+          >
+            <option value="">All Asset Categories</option>
+            {assetCategoryOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="view-switcher">
