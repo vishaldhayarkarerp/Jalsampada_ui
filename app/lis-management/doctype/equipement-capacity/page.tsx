@@ -14,10 +14,14 @@ import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 import { TimeAgo } from "@/components/TimeAgo";
-import { Plus, List, LayoutGrid, Clock } from "lucide-react";
+import { Plus, List, LayoutGrid, Clock, Loader2 } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
+
+// 🟢 CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
 
 // ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -54,7 +58,12 @@ export default function DoctypePage() {
 
   const [capacities, setCapacities] = React.useState<EquipementCapacity[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+  
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0);    // 🟢 NEW: Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -68,6 +77,9 @@ export default function DoctypePage() {
       capacity.equipement_capacity.toLowerCase().includes(debouncedSearch.toLowerCase())
     );
   }, [capacities, debouncedSearch]);
+  
+  // 🟢 Use filtered capacities for display but original capacities for pagination count
+  const displayCapacities = filteredCapacities;
 
   // 🟢 1. Initialize Selection Hook
   const {
@@ -76,66 +88,89 @@ export default function DoctypePage() {
     handleSelectAll,
     clearSelection,
     isAllSelected
-  } = useSelection(filteredCapacities, "name");
+  } = useSelection(displayCapacities, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  /* -------------------------------------------------
-  3. FETCH
-  ------------------------------------------------- */
-  const fetchCapacities = React.useCallback(async () => {
-    if (!isInitialized) return;
-    if (!isAuthenticated || !apiKey || !apiSecret) {
-      setLoading(false);
-      return;
-    }
+  // ── 🟢 Fetch Logic (Refactored for Pagination and Total Count) ───────────────────
+  const fetchCapacities = React.useCallback(
+    async (start = 0, isReset = false) => {
+      if (!isInitialized) return;
+      if (!isAuthenticated || !apiKey || !apiSecret) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
+        }
 
-      const params = {
-        fields: JSON.stringify([
-          "name",
-          "equipement_capacity", // Fetch the field
-          "modified"
-        ]),
-        limit_page_length: "20",
-        order_by: "creation desc"
-      };
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
+        const filters: any[] = [];
+        if (debouncedSearch) filters.push(["Equipement Capacity", "name", "like", `%${debouncedSearch}%`]);
 
-      // 🟢 Append /api/resource manually
-      const resp = await axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
-        params,
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-        },
-        withCredentials: true,
-      });
+        const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
+        
+        // Parallel requests for Data and Total Count
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
+            params: {
+              fields: JSON.stringify(["name", "equipement_capacity", "modified"]),
+              limit_start: start,
+              limit_page_length: limit,
+              order_by: "creation desc",
+              filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+            },
+            headers: commonHeaders,
+            withCredentials: true,
+          }),
+          // Only fetch count during initial load or filter change
+          isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+            params: { doctype: doctypeName, filters: filters.length > 0 ? JSON.stringify(filters) : undefined },
+            headers: commonHeaders,
+          }) : Promise.resolve(null)
+        ]);
 
-      const raw = resp.data?.data ?? [];
-      const mapped: EquipementCapacity[] = raw.map((r: any) => ({
-        name: r.name,
-        equipement_capacity: r.equipement_capacity ?? r.name, // Use field, fallback to name
-        modified: r.modified,
-      }));
+        const raw = dataResp.data?.data ?? [];
+        const mapped: EquipementCapacity[] = raw.map((r: any) => ({
+          name: r.name,
+          equipement_capacity: r.equipement_capacity ?? r.name,
+          modified: r.modified,
+        }));
 
-      setCapacities(mapped);
-    } catch (err: any) {
-      console.error("API error:", err);
-      setError(
-        err.response?.status === 403
-          ? "Unauthorized – check API key/secret"
-          : `Failed to fetch ${doctypeName}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
+        if (isReset) {
+          setCapacities(mapped);
+          if (countResp) setTotalCount(countResp.data.message);
+        } else {
+          setCapacities((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
+
+      } catch (err: any) {
+        console.error("API error:", err);
+        if (isReset) setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch equipment capacities");
+      } finally {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, doctypeName]
+  );
 
   React.useEffect(() => {
-    fetchCapacities();
+    fetchCapacities(0, true);
   }, [fetchCapacities]);
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchCapacities(capacities.length, false);
+    }
+  };
 
   // 🟢 2. Handle Bulk Delete
   const handleBulkDelete = async () => {
@@ -180,7 +215,7 @@ export default function DoctypePage() {
       // If no error messages, proceed with success
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
-      fetchCapacities(); // Refresh list
+      fetchCapacities(0, true);
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
       
@@ -229,14 +264,18 @@ export default function DoctypePage() {
             </th>
             <th>Equipement Capacity</th>
             <th>ID</th>
-            <th className="text-right pr-4" style={{ width: "100px" }}>
-              <Clock className="w-4 h-4 mr-1 float-right" />
+            <th className="text-right pr-4" style={{ width: "120px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                   <><span>{displayCapacities.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                 )}
+              </div>
             </th>
           </tr>
         </thead>
         <tbody>
-          {filteredCapacities.length ? (
-            filteredCapacities.map((capacity) => {
+          {displayCapacities.length ? (
+            displayCapacities.map((capacity) => {
               const isSelected = selectedIds.has(capacity.name);
               return (
                 <tr
@@ -284,8 +323,8 @@ export default function DoctypePage() {
   ------------------------------------------------- */
   const renderGridView = () => (
     <div className="equipment-grid">
-      {filteredCapacities.length ? (
-        filteredCapacities.map((capacity) => (
+      {displayCapacities.length ? (
+        displayCapacities.map((capacity) => (
           <RecordCard
             key={capacity.name}
             title={capacity.equipement_capacity} // Show capacity
@@ -385,8 +424,15 @@ export default function DoctypePage() {
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+        {hasMore && displayCapacities.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button onClick={handleLoadMore} disabled={isLoadingMore} className="btn btn--secondary flex items-center gap-2 px-6 py-2" style={{ minWidth: "140px" }}>
+              {isLoadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : "Load More"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

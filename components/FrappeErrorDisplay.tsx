@@ -48,12 +48,28 @@ const DOCTYPE_MODULE_MAP: Record<string, string> = {
   "prapan-suchi": "tender",
   "work-subtype": "tender",
   "work-type": "tender",
+
+  // Maintenance
+  "maintenance-checklist": "maintenance",
+  "maintenance-log": "maintenance",
+  "maintenance-schedule": "maintenance",
+  "device-type": "maintenance",
+  "parameter-category": "maintenance",
+  "parameter-checklist": "maintenance",
+  "parameter-type": "maintenance",
 };
 
-// 🟢 MAP: Map Frappe doctype names to Next.js route names
+//  MAP: Map Frappe doctype names to Next.js route names
 const FRAPPE_TO_ROUTE_MAP: Record<string, string> = {
   "log-sheet": "logsheet",
   // Add any other Frappe -> route name mappings here
+  "maintenance-checklist": "maintenance-checklist",
+  "maintenance-log": "maintenance-log",
+  "maintenance-schedule": "maintenance-schedule",
+  "device-type": "device-type",
+  "parameter-category": "parameter-category",
+  "parameter-checklist": "parameter-checklist",
+  "parameter-type": "parameter-type",
 };
 
 interface FrappeErrorDisplayProps {
@@ -109,7 +125,10 @@ export function FrappeErrorDisplay({ messages }: FrappeErrorDisplayProps) {
                                   "log-sheet", "gate-operation-logbook", "repair-work-requirement",
                                   "spare-indent", "lis-incident-record",
                                   "draft-tender-paper", "fund-head", "prapan-suchi",
-                                  "work-subtype", "work-type"].includes(routeDoctypeSlug) ||
+                                  "work-subtype", "work-type",
+                                  // Maintenance doctypes
+                                  "maintenance-checklist", "maintenance-log", "maintenance-schedule",
+                                  "device-type", "parameter-category", "parameter-checklist", "parameter-type"].includes(routeDoctypeSlug) ||
                                   ["lift-irrigation-scheme", "stage-no", "lis-phases", 
                                   "asset", "asset-category", "equipement-capacity", 
                                   "equipement-model", "equipment-make", "rating",
@@ -123,7 +142,10 @@ export function FrappeErrorDisplay({ messages }: FrappeErrorDisplayProps) {
                                   "log-sheet", "gate-operation-logbook", "repair-work-requirement",
                                   "spare-indent", "lis-incident-record",
                                   "draft-tender-paper", "fund-head", "prapan-suchi",
-                                  "work-subtype", "work-type"].includes(frappeDoctypeSlug);
+                                  "work-subtype", "work-type",
+                                  // Maintenance doctypes
+                                  "maintenance-checklist", "maintenance-log", "maintenance-schedule",
+                                  "device-type", "parameter-category", "parameter-checklist", "parameter-type"].includes(frappeDoctypeSlug);
            
            if (hasDynamicRoute) {
              internalLink = `/${moduleName}/doctype/${routeDoctypeSlug}/${docName}`;

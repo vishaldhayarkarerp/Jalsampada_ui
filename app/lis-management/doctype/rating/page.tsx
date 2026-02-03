@@ -15,6 +15,7 @@ import {
   ArrowDownWideNarrow,
   Check,
   Clock,
+  Loader2,
 } from "lucide-react";
 
 // New Imports for Bulk Delete
@@ -28,6 +29,10 @@ import { TimeAgo } from "@/components/TimeAgo";
 
 // Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
+
+// CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -70,7 +75,12 @@ export default function RatingPage() {
 
   const [rows, setRows] = React.useState<RatingRow[]>([]);
   const [view, setView] = React.useState<ViewMode>("list"); // default LIST
-  const [loading, setLoading] = React.useState(true);
+
+  // Loading & Pagination States
+  const [loading, setLoading] = React.useState(true); // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true); // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0); // Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -84,6 +94,9 @@ export default function RatingPage() {
       (row.rating !== undefined && row.rating !== null && String(row.rating).toLowerCase().includes(debouncedSearch.toLowerCase()))
     );
   }, [rows, debouncedSearch]);
+
+  // Use filtered rows for display but original rows for pagination count
+  const displayRows = filteredRows;
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
@@ -100,7 +113,7 @@ export default function RatingPage() {
     handleSelectAll,
     clearSelection,
     isAllSelected
-  } = useSelection(filteredRows, "name");
+  } = useSelection(displayRows, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
 
@@ -115,58 +128,89 @@ export default function RatingPage() {
   }, []);
 
   /* -------------------------------------------------
-     3. FETCH RATINGS (only name, rating, modified)
+     3. FETCH RATINGS (Refactored for Pagination and Total Count)
      ------------------------------------------------- */
-  const fetchEntries = React.useCallback(async () => {
-    if (!isInitialized) return;
-    if (!isAuthenticated || !apiKey || !apiSecret) {
-      setLoading(false);
-      return;
-    }
+  const fetchEntries = React.useCallback(
+    async (start = 0, isReset = false) => {
+      if (!isInitialized) return;
+      if (!isAuthenticated || !apiKey || !apiSecret) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const params: any = {
-        fields: JSON.stringify([
-          "name",
-          "rating",
-          "modified",
-        ]),
-        limit_page_length: "20",
-        order_by: "modified desc",
-      };
-
-      // Append /api/resource manually
-      const resp = await axios.get(
-        `${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`,
-        {
-          params,
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-          withCredentials: true,
+      try {
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
         }
-      );
 
-      const raw = resp.data?.data ?? [];
-      const mapped: RatingRow[] = raw.map((r: any) => ({
-        name: r.name,
-        rating: r.rating,
-        modified: r.modified,
-      }));
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
+        const filters: any[] = [];
+        if (debouncedSearch) filters.push(["Rating", "name", "like", `%${debouncedSearch}%`]);
 
-      setRows(mapped);
-    } catch (err: any) {
-      console.error("API error:", err);
-      setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
-    } finally {
-      setLoading(false);
-    }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
+        const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
+
+        // Parallel requests for Data and Total Count
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(
+            `${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`,
+            {
+              params: {
+                fields: JSON.stringify(["name", "rating", "modified"]),
+                limit_start: start,
+                limit_page_length: limit,
+                order_by: "modified desc",
+                filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+              },
+              headers: commonHeaders,
+              withCredentials: true,
+            }
+          ),
+          // Only fetch count during initial load or filter change
+          isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+            params: { doctype: doctypeName, filters: filters.length > 0 ? JSON.stringify(filters) : undefined },
+            headers: commonHeaders,
+          }) : Promise.resolve(null)
+        ]);
+
+        const raw = dataResp.data?.data ?? [];
+        const mapped: RatingRow[] = raw.map((r: any) => ({
+          name: r.name,
+          rating: r.rating,
+          modified: r.modified,
+        }));
+
+        if (isReset) {
+          setRows(mapped);
+          if (countResp) setTotalCount(countResp.data.message);
+        } else {
+          setRows((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
+
+      } catch (err: any) {
+        console.error("API error:", err);
+        if (isReset) setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
+      } finally {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]
+  );
 
   React.useEffect(() => {
-    fetchEntries();
+    fetchEntries(0, true);
   }, [fetchEntries]);
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchEntries(rows.length, false);
+    }
+  };
 
   // Handle Bulk Delete
   const handleBulkDelete = async () => {
@@ -200,7 +244,7 @@ export default function RatingPage() {
 
         if (errorMessages.length > 0) {
           // Show error messages from server
-          toast.error("Failed to delete records", { 
+          toast.error("Failed to delete records", {
             description: <FrappeErrorDisplay messages={errorMessages} />,
             duration: Infinity
           });
@@ -211,17 +255,17 @@ export default function RatingPage() {
       // If no error messages, proceed with success
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
-      fetchEntries(); // Refresh list
+      fetchEntries(0, true);
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
-      
+
       const messages = getApiMessages(
         null,
         err,
         "Records deleted successfully",
         "Failed to delete records"
       );
-      
+
       toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsDeleting(false);
@@ -232,7 +276,7 @@ export default function RatingPage() {
      4. SORTING LOGIC
      ------------------------------------------------- */
   const sortedRows = React.useMemo(() => {
-    const sortable = [...filteredRows];
+    const sortable = [...displayRows];
     sortable.sort((a, b) => {
       const aValue = String(a[sortConfig.key] ?? "");
       const bValue = String(b[sortConfig.key] ?? "");
@@ -240,7 +284,7 @@ export default function RatingPage() {
       return sortConfig.direction === "asc" ? compare : -compare;
     });
     return sortable;
-  }, [filteredRows, sortConfig]);
+  }, [displayRows, sortConfig]);
 
   const requestSort = (key: keyof RatingRow) => {
     let direction: SortDirection = "asc";
@@ -308,7 +352,11 @@ export default function RatingPage() {
               style={{ cursor: "pointer", minWidth: 200 }}
               onClick={() => requestSort("modified")}
             >
-              <Clock className="w-4 h-4 mr-1 float-right" />
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{displayRows.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
+              </div>
             </th>
           </tr>
         </thead>
@@ -359,8 +407,8 @@ export default function RatingPage() {
 
   const renderGridView = () => (
     <div className="equipment-grid">
-      {filteredRows.length ? (
-        filteredRows.map((row) => (
+      {displayRows.length ? (
+        displayRows.map((row) => (
           <RecordCard
             key={row.name}
             title={row.name}
@@ -375,14 +423,14 @@ export default function RatingPage() {
     </div>
   );
 
-  if (loading && filteredRows.length === 0)
+  if (loading && displayRows.length === 0)
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
         Loading ratings...
       </div>
     );
 
-  if (error && filteredRows.length === 0)
+  if (error && displayRows.length === 0)
     return (
       <div className="module active" style={{ padding: "2rem" }}>
         {error}
@@ -396,8 +444,8 @@ export default function RatingPage() {
           <h2>{title}</h2>
           <p>Ratings list</p>
         </div>
-        
-        {/* 🟢 3. Header Action Switch */}
+
+        {/* 3. Header Action Switch */}
         {selectedIds.size > 0 ? (
           <BulkActionBar
             selectedCount={selectedIds.size}
@@ -435,7 +483,7 @@ export default function RatingPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             aria-label="Search Rating"
           />
-         
+
         </div>
 
         {/* Right: Sort Pill + View Switcher */}
@@ -518,8 +566,15 @@ export default function RatingPage() {
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+        {hasMore && displayRows.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button onClick={handleLoadMore} disabled={isLoadingMore} className="btn btn--secondary flex items-center gap-2 px-6 py-2" style={{ minWidth: "140px" }}>
+              {isLoadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : "Load More"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
