@@ -8,6 +8,15 @@ import { useAuth } from "@/context/AuthContext";
 import { Controller, useForm } from "react-hook-form";
 import { LinkField } from "@/components/LinkField";
 import Link from "next/link";
+
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+import { getApiMessages} from "@/lib/utils";
+import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 import {
   Search,
   Plus,
@@ -17,15 +26,8 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
+  Clock,
 } from "lucide-react";
-
-// 🟢 New Imports for Bulk Delete
-import { useSelection } from "@/hooks/useSelection";
-import { BulkActionBar } from "@/components/BulkActionBar";
-import { bulkDeleteRPC } from "@/api/rpc";
-import { toast } from "sonner";
-import { getApiMessages} from "@/lib/utils";
-import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -366,6 +368,9 @@ export default function GateOperationLogbookPage() {
             >
               Gate Operation
             </th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -398,12 +403,15 @@ export default function GateOperationLogbookPage() {
                   <td style={{ minWidth: 140 }}>{row.stage || "—"}</td>
                   <td style={{ minWidth: 120 }}>{row.gate_no || "—"}</td>
                   <td style={{ minWidth: 180 }}>{row.gate_operation || "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={row.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>

@@ -15,6 +15,7 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
+  Clock,
 } from "lucide-react";
 
 // 🟢 New Imports for Bulk Delete
@@ -24,6 +25,7 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -91,7 +93,7 @@ export default function ItemPage() {
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
-  // 🟢 1. Initialize Selection Hook
+  // New Imports for Bulk Delete
   const {
     selectedIds,
     handleSelectOne,
@@ -147,7 +149,7 @@ export default function ItemPage() {
         });
       }
 
-      // 🟢 Append /api/resource manually
+      // Append /api/resource manually
       const resp = await axios.get(
         `${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`,
         {
@@ -180,7 +182,7 @@ export default function ItemPage() {
     fetchItems();
   }, [fetchItems]);
 
-  // 🟢 2. Handle Bulk Delete
+  // New Imports for Bulk Delete
   const handleBulkDelete = async () => {
     const count = selectedIds.size;
     if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
@@ -312,7 +314,7 @@ export default function ItemPage() {
       >
         <thead>
           <tr>
-            {/* 🟢 Header Checkbox */}
+            {/* Header Checkbox */}
             <th style={{ width: "40px", textAlign: "center" }}>
               <input
                 type="checkbox"
@@ -345,6 +347,9 @@ export default function ItemPage() {
             >
               Status
             </th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -376,12 +381,15 @@ export default function ItemPage() {
                   <td style={{ minWidth: 220 }}>{row.item_name || "—"}</td>
                   <td style={{ minWidth: 180 }}>{row.item_group || "—"}</td>
                   <td style={{ minWidth: 140 }}>{row.status || "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={row.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
