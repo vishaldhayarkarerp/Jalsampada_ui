@@ -33,7 +33,7 @@ const masterDoctypes: Doctype[] = [
 
 const transactionDoctypes: Doctype[] = [
   // Add transaction doctypes here as needed
-  { name: "transaction-1", title: "Asset Interchange", icon: Database },
+  { name: "doctype/asset-interchange", title: "Asset Interchange", icon: Database },
 ];
 const reportDoctypes: Doctype[] = [
   // Add transaction doctypes here as needed
