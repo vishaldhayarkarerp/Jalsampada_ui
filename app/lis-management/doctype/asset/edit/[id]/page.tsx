@@ -626,18 +626,34 @@ export default function RecordDetailPage() {
                     {
                         name: "custom_current_linked_asset",
                         label: "Current Linked Motor/Pump",
-                        type: "Read Only"
+                        type: "Link",
+                        linkTarget: "Asset",
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        filters: (getValue) => {
+                            const filters: Record<string, any> = {};
+                            const lisPhase = getValue("custom_lis_phase");
+                            const stageNo = getValue("custom_stage_no");
+                            const lisName = getValue("custom_lis_name");
+
+                            if (lisPhase) filters.custom_lis_phase = lisPhase;
+                            if (stageNo) filters.custom_stage_no = stageNo;
+                            if (lisName) filters.custom_lis_name = lisName;
+
+                            return filters;
+                        },
+                        referenceDoctype: "Asset",
+                        doctype: "Asset",
                     },
                     {
                         name: "custom_linked_asset_no",
                         label: "Linked Asset No",
-                        type: "Read Only",
+                        type: "Data",
                         fetchFrom: { sourceField: "custom_current_linked_asset", targetDoctype: "Asset", targetField: "custom_asset_no" }
                     },
                     {
                         name: "custom_interchange_date",
                         label: "Interchange Date",
-                        type: "Read Only"
+                        type: "Date"
                     },
                     { name: "section_purchase", label: "Purchase Details", type: "Section Break" },
                     {
