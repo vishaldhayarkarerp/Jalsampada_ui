@@ -13,7 +13,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { Plus, List, LayoutGrid, Clock } from "lucide-react";
 
 // 🟢 Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -40,6 +41,7 @@ interface Contractor {
   email_address: string;
   phone: string;
   city: string;
+  modified?: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -106,6 +108,7 @@ export default function ContractorListPage() {
           "email_address",
           "phone",
           "city",
+          "modified",
         ]),
         limit_page_length: "50",
         order_by: "creation desc",
@@ -242,6 +245,9 @@ export default function ContractorListPage() {
             <th>Email</th>
             <th>Phone</th>
             <th>City</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -281,12 +287,15 @@ export default function ContractorListPage() {
                   <td>{record.email_address}</td>
                   <td>{record.phone}</td>
                   <td>{record.city}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={record.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>

@@ -15,7 +15,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { Plus, List, LayoutGrid, Clock } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -41,6 +42,7 @@ interface Expenditure {
   bill_amount?: number | string;
   tender_number?: string;
   lift_irrigation_scheme?: string;
+  modified?: string;
 }
 
 interface LisOption {
@@ -152,6 +154,7 @@ export default function DoctypePage() {
           "bill_amount",
           "tender_number",
           "lift_irrigation_scheme",
+          "modified",
         ]),
         limit_page_length: "20",
         order_by: "creation desc",
@@ -174,6 +177,7 @@ export default function DoctypePage() {
         bill_amount: r.bill_amount ?? "",
         tender_number: r.tender_number ?? "",
         lift_irrigation_scheme: r.lift_irrigation_scheme ?? "",
+        modified: r.modified ?? "",
       }));
 
       setRecords(mapped);
@@ -291,6 +295,9 @@ export default function DoctypePage() {
             <th>Bill Amount</th>
             <th>Tender Number</th>
             <th>LIS Scheme</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -324,12 +331,15 @@ export default function DoctypePage() {
                   <td>{record.bill_amount}</td>
                   <td>{record.tender_number}</td>
                   <td>{record.lift_irrigation_scheme}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={record.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={9} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
