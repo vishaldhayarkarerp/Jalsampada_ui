@@ -1,8 +1,7 @@
 module.exports = {
   apps: [{
     name: 'jalsampada',
-    script: 'node',
-    args: '.next/standalone/server.js',
+    script: './.next/standalone/server.js',
     cwd: '/home/erpadmin/bench-dev-jalsampada/apps/Jalsampada_ui',
     instances: 1,
     exec_mode: 'fork',
@@ -11,7 +10,7 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
       PORT: 2225,
-      HOSTNAME: '103.219.3.169'
+      HOSTNAME: '0.0.0.0'
     },
     error_file: '/home/erpadmin/bench-dev-jalsampada/apps/Jalsampada_ui/logs/err.log',
     out_file: '/home/erpadmin/bench-dev-jalsampada/apps/Jalsampada_ui/logs/out.log',
