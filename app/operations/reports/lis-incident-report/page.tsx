@@ -36,7 +36,7 @@ type ColumnConfig = {
   fieldname: string;
   label: string;
   width: string;
-  isHtml?: boolean; // Flag to identify HTML content
+  isHtml?: boolean;
   formatter?: (value: any) => string;
 };
 
@@ -66,13 +66,12 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, string> = {
   workflow_state: "180px",
   priority: "100px",
   issue_type: "120px",
-  description: "350px", // Wider for content
+  description: "350px",
   first_responded_on: "180px",
-  resolution_details: "350px", // Wider for content
+  resolution_details: "350px",
   opening_date: "120px",
 };
 
-// Fields that contain HTML and need special rendering
 const HTML_FIELDS = ["description", "resolution_details"];
 
 export default function LISIncidentReportPage() {
@@ -94,6 +93,35 @@ export default function LISIncidentReportPage() {
     asset: "",
     status: "",
   });
+
+  // --- Dependent Filters Logic ---
+  
+  // 1. Filter Stage No based on LIS Name
+  const stageFilters = useMemo(() => {
+    if (filters.custom_lis) {
+      // 'lis_name' is the fieldname in the "Stage No" doctype
+      return { lis_name: filters.custom_lis };
+    }
+    return undefined;
+  }, [filters.custom_lis]);
+
+  // 2. Filter Asset based on LIS Name AND Stage No
+  const assetFilters = useMemo(() => {
+    const depFilters: Record<string, string> = {};
+    
+    if (filters.custom_lis) {
+      // 'custom_lis_name' is the fieldname in the "Asset" doctype
+      depFilters["custom_lis_name"] = filters.custom_lis;
+    }
+    
+    if (filters.custom_stage) {
+      // 'custom_stage_no' is the fieldname in the "Asset" doctype
+      depFilters["custom_stage_no"] = filters.custom_stage;
+    }
+
+    return Object.keys(depFilters).length > 0 ? depFilters : undefined;
+  }, [filters.custom_lis, filters.custom_stage]);
+
 
   // --- Configuration ---
   const columnConfig = useMemo((): ColumnConfig[] => {
@@ -118,8 +146,6 @@ export default function LISIncidentReportPage() {
   }
 
   // --- Actions ---
-
-  // Memoized fetch function
   const fetchReportData = useCallback(async (currentFilters: Filters) => {
     if (!isInitialized) return;
     if (!isAuthenticated || !apiKey || !apiSecret) {
@@ -131,7 +157,6 @@ export default function LISIncidentReportPage() {
     setError(null);
 
     try {
-      // 1. Clean filters (remove empty strings)
       const cleanedFilters: Record<string, string> = {};
       Object.entries(currentFilters).forEach(([key, value]) => {
         if (value && value.trim() !== "") {
@@ -139,13 +164,11 @@ export default function LISIncidentReportPage() {
         }
       });
 
-      // 2. Prepare URL Params
       const params = new URLSearchParams({
         report_name: REPORT_NAME,
         filters: JSON.stringify(cleanedFilters)
       });
 
-      // 3. Call Standard Report API
       const response = await fetch(
         `${API_BASE_URL}${REPORT_API_PATH}?${params.toString()}`,
         {
@@ -186,8 +209,6 @@ export default function LISIncidentReportPage() {
 
 
   // --- Effects ---
-
-  // Auto-refresh when filters change (Debounced 500ms)
   useEffect(() => {
     if (!isInitialized || !isAuthenticated) return;
 
@@ -200,7 +221,6 @@ export default function LISIncidentReportPage() {
 
 
   // --- Event Handlers ---
-
   const handleExportCSV = () => {
     if (filteredData.length === 0) return;
 
@@ -209,13 +229,11 @@ export default function LISIncidentReportPage() {
       return columnConfig.map(col => {
         let val = row[col.fieldname];
 
-        // Strip HTML tags for CSV export cleanliness
         if (col.isHtml && typeof val === 'string') {
           val = val.replace(/<[^>]*>?/gm, '');
         }
 
         val = val === null || val === undefined ? "" : String(val);
-        // CSV Escaping
         if (val.includes(",") || val.includes("\n") || val.includes('"')) {
           val = `"${val.replace(/"/g, '""')}"`;
         }
@@ -249,15 +267,12 @@ export default function LISIncidentReportPage() {
       const usableWidth = pageWidth - (margin * 2);
       const usableHeight = pageHeight - (margin * 2);
 
-      // Set font
       pdf.setFont('helvetica');
 
-      // Title
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
       pdf.text('LIS Incident Report', pageWidth / 2, 20, { align: 'center' });
 
-      // Summary information
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
       const summaryY = 30;
@@ -269,7 +284,6 @@ export default function LISIncidentReportPage() {
         : 'None';
       pdf.text(`Filters Applied: ${filtersApplied}`, margin, summaryY + 14);
 
-      // Calculate column widths based on content
       const columnWidths: number[] = [];
       const minColumnWidth = 20;
       const maxColumnWidth = usableWidth / 4;
@@ -280,7 +294,6 @@ export default function LISIncidentReportPage() {
           const value = row[col.fieldname];
           let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
           
-          // Strip HTML tags for PDF width calculation
           if (col.isHtml && typeof displayValue === 'string') {
             displayValue = displayValue.replace(/<[^>]*>?/gm, '');
           }
@@ -295,17 +308,14 @@ export default function LISIncidentReportPage() {
         columnWidths.push(colWidth);
       });
 
-      // Normalize column widths to fit usableWidth
       const totalCalculatedWidth = columnWidths.reduce((sum, width) => sum + width, 0);
       const scaleFactor = usableWidth / totalCalculatedWidth;
       const finalColumnWidths = columnWidths.map(width => width * scaleFactor);
 
-      // Table headers
       let currentY = summaryY + 25;
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
       
-      // Calculate header heights first
       let headerMaxHeight = 0;
       columnConfig.forEach((col, index) => {
         const text = col.label;
@@ -316,11 +326,9 @@ export default function LISIncidentReportPage() {
         }
       });
 
-      // Draw header background
       pdf.setFillColor(240, 240, 240);
       pdf.rect(margin, currentY - 5, usableWidth, headerMaxHeight + 5, 'F');
 
-      // Draw headers with text wrapping
       pdf.setTextColor(0, 0, 0);
       columnConfig.forEach((col, index) => {
         const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
@@ -331,11 +339,9 @@ export default function LISIncidentReportPage() {
         pdf.text(textLines, x + 2, currentY - 5 + yOffset);
       });
 
-      // Draw horizontal line after headers
       pdf.setDrawColor(200, 200, 200);
       pdf.line(margin, currentY + headerMaxHeight + 3, pageWidth - margin, currentY + headerMaxHeight + 3);
 
-      // Table data
       pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
       currentY += headerMaxHeight + 8;
@@ -344,13 +350,11 @@ export default function LISIncidentReportPage() {
       const maxRowsPerPage = Math.floor((usableHeight - currentY) / 10);
 
       filteredData.forEach((row, rowIndex) => {
-        // Check if we need a new page
         if (rowsOnPage >= maxRowsPerPage) {
           pdf.addPage();
           currentY = margin + 10;
           rowsOnPage = 0;
 
-          // Redraw headers on new page
           pdf.setFontSize(8);
           pdf.setFont('helvetica', 'bold');
           pdf.setFillColor(240, 240, 240);
@@ -374,13 +378,11 @@ export default function LISIncidentReportPage() {
           currentY += headerMaxHeight + 8;
         }
 
-        // Alternating row background
         if (rowIndex % 2 === 1) {
           pdf.setFillColor(249, 249, 249);
           pdf.rect(margin, currentY - 4, usableWidth, 8, 'F');
         }
 
-        // Draw row data with text wrapping
         let rowMaxHeight = 0;
 
         columnConfig.forEach((col, index) => {
@@ -388,12 +390,10 @@ export default function LISIncidentReportPage() {
           const value = row[col.fieldname];
           let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
           
-          // Strip HTML tags for PDF
           if (col.isHtml && typeof displayValue === 'string') {
             displayValue = displayValue.replace(/<[^>]*>?/gm, '');
           }
           
-          // Apply formatter if available
           if (col.formatter) {
             displayValue = col.formatter(value);
           }
@@ -406,19 +406,16 @@ export default function LISIncidentReportPage() {
           }
         });
 
-        // Draw all cells with proper height
         pdf.setTextColor(0, 0, 0);
         columnConfig.forEach((col, index) => {
           const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
           const value = row[col.fieldname];
           let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
           
-          // Strip HTML tags for PDF
           if (col.isHtml && typeof displayValue === 'string') {
             displayValue = displayValue.replace(/<[^>]*>?/gm, '');
           }
           
-          // Apply formatter if available
           if (col.formatter) {
             displayValue = col.formatter(value);
           }
@@ -427,7 +424,6 @@ export default function LISIncidentReportPage() {
           pdf.text(textLines, x + 2, currentY);
         });
 
-        // Draw cell borders
         pdf.setDrawColor(200, 200, 200);
         let xPos = margin;
         finalColumnWidths.forEach((width, index) => {
@@ -470,7 +466,6 @@ export default function LISIncidentReportPage() {
       return "-";
     }
 
-    // Render HTML content safely
     if (col.isHtml) {
       return (
         <div
@@ -533,10 +528,6 @@ export default function LISIncidentReportPage() {
           </div>
         )}
 
-        {/* Z-Index Fix: 
-            Added relative and z-[60] to the parent grid, and high z-index to individual form groups 
-            to ensure LinkInput dropdowns appear ABOVE the sticky table header below.
-        */}
         <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
           <div className="form-group z-[50]">
             <label className="text-sm font-medium mb-1 block">From Date</label>
@@ -545,8 +536,8 @@ export default function LISIncidentReportPage() {
               className="form-control w-full"
               placeholder="DD-MM-YYYY"
               style={{ textTransform: "uppercase" }}
-              value={filters.to_date}
-              onChange={(e) => handleFilterChange("to_date", e.target.value)}
+              value={filters.from_date}
+              onChange={(e) => handleFilterChange("from_date", e.target.value)}
             />
           </div>
           <div className="form-group z-[50]">
@@ -571,6 +562,8 @@ export default function LISIncidentReportPage() {
                     className="w-full relative"
                 />
             </div>
+            
+            {/* UPDATED: Added filters prop to Stage No */}
             <div className="form-group z-[50]">
                 <label className="text-sm font-medium mb-1 block">Stage No</label>
                 <LinkInput
@@ -578,10 +571,13 @@ export default function LISIncidentReportPage() {
                     onChange={(value) => handleFilterChange("custom_stage", value)}
                     placeholder="Select Stage..."
                     linkTarget="Stage No"
+                    filters={stageFilters}
                     className="w-full relative"
                     
                 />
             </div>
+            
+            {/* UPDATED: Added filters prop to Asset */}
             <div className="form-group z-[50]">
                 <label className="text-sm font-medium mb-1 block">Asset</label>
                 <LinkInput
@@ -589,6 +585,7 @@ export default function LISIncidentReportPage() {
                     onChange={(value) => handleFilterChange("asset", value)}
                     placeholder="Select Asset..."
                     linkTarget="Asset"
+                    filters={assetFilters}
                     className="w-full relative"
                 />
             </div>
