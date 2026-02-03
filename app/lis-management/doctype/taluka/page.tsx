@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import { RecordCard } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { TimeAgo } from "@/components/TimeAgo";
 import {
   Search,
   Plus,
   List,
   LayoutGrid,
   Loader2,
+  Clock,
 } from "lucide-react";
 
 // 🟢 CONFIG
@@ -92,6 +94,9 @@ export default function TalukaListPage() {
             <th className="text-left p-3">Taluka</th>
             <th className="text-left p-3">District</th>
             <th className="text-left p-3">ID</th>
+            <th className="text-right p-3" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -101,11 +106,14 @@ export default function TalukaListPage() {
                 <td className="p-3 font-medium">{row.taluka}</td>
                 <td className="p-3">{row.district}</td>
                 <td className="p-3 text-muted-foreground text-sm">{row.name}</td>
+                <td className="p-3 text-right">
+                  <TimeAgo date={row.modified} />
+                </td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan={3} className="text-center p-8 text-muted-foreground">
+              <td colSpan={4} className="text-center p-8 text-muted-foreground">
                 No talukas found.
               </td>
             </tr>

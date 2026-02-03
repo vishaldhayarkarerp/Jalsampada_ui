@@ -13,7 +13,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { Plus, List, LayoutGrid, Clock } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -38,6 +39,7 @@ function useDebounce<T>(value: T, delay: number): T {
 interface EquipementModel {
   name: string;
   equipement_model: string;
+  modified?: string;
 }
 
 /* -------------------------------------------------
@@ -95,7 +97,8 @@ export default function DoctypePage() {
       const params = {
         fields: JSON.stringify([
           "name",
-          "equipement_model" // Fetch the field
+          "equipement_model", // Fetch the field
+          "modified"
         ]),
         limit_page_length: "20",
         order_by: "creation desc"
@@ -114,6 +117,7 @@ export default function DoctypePage() {
       const mapped: EquipementModel[] = raw.map((r: any) => ({
         name: r.name,
         equipement_model: r.equipement_model ?? r.name, // Use field, fallback to name
+        modified: r.modified,
       }));
 
       setModels(mapped);
@@ -225,6 +229,9 @@ export default function DoctypePage() {
             </th>
             <th>Equipement Model</th>
             <th>ID</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -254,12 +261,15 @@ export default function DoctypePage() {
                   </td>
                   <td>{model.equipement_model}</td>
                   <td>{model.name}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={model.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={3} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
                 {!loading && "No records found."}
               </td>
             </tr>

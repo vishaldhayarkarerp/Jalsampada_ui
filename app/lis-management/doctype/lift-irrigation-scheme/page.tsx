@@ -13,8 +13,9 @@ import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { Plus, List, LayoutGrid, Clock } from "lucide-react";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -39,6 +40,7 @@ function useDebounce<T>(value: T, delay: number): T {
 interface LiftIrrigationScheme {
   name: string;
   lis_name: string;
+  modified?: string;
 }
 
 /* -------------------------------------------------
@@ -95,7 +97,8 @@ export default function DoctypePage() {
       const params = {
         fields: JSON.stringify([
           "name",
-          "lis_name"
+          "lis_name",
+          "modified"
         ]),
         limit_page_length: "20",
         order_by: "creation desc"
@@ -114,6 +117,7 @@ export default function DoctypePage() {
       const mapped: LiftIrrigationScheme[] = raw.map((r: any) => ({
         name: r.name,
         lis_name: r.lis_name ?? r.name,
+        modified: r.modified,
       }));
 
       setSchemes(mapped);
@@ -206,64 +210,74 @@ export default function DoctypePage() {
   5. LIST VIEW
   ------------------------------------------------- */
   const renderListView = () => (
-    <div className="stock-table-container">
-      <table className="stock-table">
-        <thead>
-          <tr>
-            {/* 🟢 Header Checkbox */}
-            <th style={{ width: "40px", textAlign: "center" }}>
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={handleSelectAll}
-                style={{ cursor: "pointer", width: "16px", height: "16px" }}
-              />
-            </th>
-            <th>LIS Name</th>
-            <th>ID</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredSchemes.length ? (
-            filteredSchemes.map((scheme) => {
-              const isSelected = selectedIds.has(scheme.name);
-              return (
-                <tr
-                  key={scheme.name}
-                  onClick={() => handleCardClick(scheme.name)}
-                  style={{
-                    cursor: "pointer",
-                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
-                  }}
+  <div className="stock-table-container">
+    <table className="stock-table">
+      <thead>
+        <tr>
+          {/* 1. Checkbox */}
+          <th style={{ width: "40px", textAlign: "center" }}>
+            <input
+              type="checkbox"
+              checked={isAllSelected}
+              onChange={handleSelectAll}
+              style={{ cursor: "pointer", width: "16px", height: "16px" }}
+            />
+          </th>
+          {/* 2. Primary Data */}
+          <th>LIS Name</th>
+          <th>ID</th>
+          {/* 3. Timestamp (Far Right) */}
+          <th className="text-right pr-4" style={{ width: "100px" }}>
+            <Clock className="w-4 h-4 mr-1 float-right" />
+            
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {filteredSchemes.length ? (
+          filteredSchemes.map((scheme) => {
+            const isSelected = selectedIds.has(scheme.name);
+            return (
+              <tr
+                key={scheme.name}
+                onClick={() => handleCardClick(scheme.name)}
+                style={{
+                  cursor: "pointer",
+                  backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                }}
+              >
+                <td
+                  style={{ textAlign: "center" }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {/* 🟢 Row Checkbox */}
-                  <td
-                    style={{ textAlign: "center" }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleSelectOne(scheme.name)}
-                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
-                    />
-                  </td>
-                  <td>{scheme.lis_name}</td>
-                  <td>{scheme.name}</td>
-                </tr>
-              );
-            })
-          ) : (
-            <tr>
-              <td colSpan={3} style={{ textAlign: "center", padding: "32px" }}>
-                No records found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleSelectOne(scheme.name)}
+                    style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                  />
+                </td>
+                <td>{scheme.lis_name}</td>
+                <td>{scheme.name}</td>
+                {/* Right-aligned timestamp snippet */}
+                <td className="text-right">
+                  <TimeAgo date={scheme.modified} />
+                </td>
+              </tr>
+            );
+          })
+        ) : (
+          <tr>
+            {/* Updated colSpan to 4 to cover all columns */}
+            <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
+              No records found.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+);
 
   /* -------------------------------------------------
   6. GRID VIEW

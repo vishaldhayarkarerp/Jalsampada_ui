@@ -14,17 +14,19 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
+  Clock,
 } from "lucide-react";
 
-// 🟢 New Imports for Bulk Delete
+// New Imports for Bulk Delete
 import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { getApiMessages} from "@/lib/utils";
+import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 
-// 🟢 Changed: Point to Root URL (Required for RPC calls)
+// Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
 
 // --- Debounce Hook ---
@@ -91,7 +93,7 @@ export default function RatingPage() {
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
-  // 🟢 1. Initialize Selection Hook
+  // New Imports for Bulk Delete
   const {
     selectedIds,
     handleSelectOne,
@@ -136,7 +138,7 @@ export default function RatingPage() {
         order_by: "modified desc",
       };
 
-      // 🟢 Append /api/resource manually
+      // Append /api/resource manually
       const resp = await axios.get(
         `${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`,
         {
@@ -166,7 +168,7 @@ export default function RatingPage() {
     fetchEntries();
   }, [fetchEntries]);
 
-  // 🟢 2. Handle Bulk Delete
+  // Handle Bulk Delete
   const handleBulkDelete = async () => {
     const count = selectedIds.size;
     if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
@@ -281,7 +283,7 @@ export default function RatingPage() {
       >
         <thead>
           <tr>
-            {/* 🟢 Header Checkbox */}
+            {/* Header Checkbox */}
             <th style={{ width: "40px", textAlign: "center" }}>
               <input
                 type="checkbox"
@@ -306,7 +308,7 @@ export default function RatingPage() {
               style={{ cursor: "pointer", minWidth: 200 }}
               onClick={() => requestSort("modified")}
             >
-              Last Updated
+              <Clock className="w-4 h-4 mr-1 float-right" />
             </th>
           </tr>
         </thead>
@@ -323,7 +325,7 @@ export default function RatingPage() {
                     backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
                   }}
                 >
-                  {/* 🟢 Row Checkbox */}
+                  {/* Row Checkbox */}
                   <td
                     style={{ textAlign: "center" }}
                     onClick={(e) => e.stopPropagation()}
@@ -337,7 +339,9 @@ export default function RatingPage() {
                   </td>
                   <td style={{ minWidth: 160 }}>{row.name}</td>
                   <td style={{ minWidth: 160 }}>{row.rating ?? "—"}</td>
-                  <td style={{ minWidth: 200 }}>{row.modified ?? "—"}</td>
+                  <td style={{ minWidth: 200, textAlign: "right" }}>
+                    <TimeAgo date={row.modified} />
+                  </td>
                 </tr>
               );
             })

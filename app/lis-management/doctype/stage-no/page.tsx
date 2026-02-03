@@ -15,7 +15,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages} from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { Plus, List, LayoutGrid, Clock } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.1.138:4412";
@@ -42,6 +43,7 @@ interface StageNo {
   stage_no: string;
   lis_name?: string;
   lis_phase?: string;
+  modified?: string;
 }
 
 interface LisOption {
@@ -178,7 +180,8 @@ export default function DoctypePage() {
           "name",
           "stage_no",
           "lis_name",
-          "lis_phase"
+          "lis_phase",
+          "modified"
         ]),
         limit_page_length: "20",
         order_by: "creation desc"
@@ -199,6 +202,7 @@ export default function DoctypePage() {
         stage_no: r.stage_no ?? r.name,
         lis_name: r.lis_name ?? "—",
         lis_phase: r.lis_phase ?? "—",
+        modified: r.modified,
       }));
 
       setStages(mapped);
@@ -315,6 +319,9 @@ export default function DoctypePage() {
             <th>LIS Name</th>
             <th>LIS Phase</th>
             <th>ID</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -346,12 +353,15 @@ export default function DoctypePage() {
                   <td>{stage.lis_name}</td>
                   <td>{stage.lis_phase}</td>
                   <td>{stage.name}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={stage.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
