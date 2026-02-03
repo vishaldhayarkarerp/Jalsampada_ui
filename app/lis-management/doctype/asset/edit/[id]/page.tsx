@@ -63,6 +63,11 @@ interface AssetData {
     maintenance_required?: 0 | 1;
     custom_previous_hours?: number;
     custom_condition?: string;
+    custom_pump_status?: string;
+    custom_start_datetime?: string;
+    custom_hours_before_system?: number;
+    custom_cumulative_hours?: number;
+    custom_current_hours?: number;
     docstatus: 0 | 1 | 2;
     modified: string;
     additional_asset_cost?: number;
@@ -695,6 +700,13 @@ export default function RecordDetailPage() {
                         name: "custom_description", label: "Description", type: "Long Text",
                         displayDependsOn: "custom_condition=='Under Repair'",
                     },
+                    { name: "pump_motor_status", label: "Logbook Pump/Motor Status", type: "Section Break" },
+                    { name: "custom_pump_status", label: "Pump Status", type: "Select", options: [{ label: "Running", value: "Running" }, { label: "Stopped", value: "Stopped" }] },
+                    { name: "custom_start_datetime", label: "Asset Start Date and Time", type: "Date" },
+                    { name: "custom_hours_before_system", label: "Hours Before System", type: "Float", precision: 2 },
+                    { name: "custom_cumulative_hours", label: "Cumulative Hours", type: "Float", precision: 2 },
+                    { name: "custom_previous_hours", label: "Total Previous Running Hours", type: "Float", precision: 2 },
+                    { name: "custom_current_hours", label: "Current Hours", type: "Float", precision: 2 },
                     { name: "section_specifications", label: "Specification of Asset", type: "Section Break" },
                     {
                         name: "custom_asset_specifications",
@@ -755,7 +767,7 @@ export default function RecordDetailPage() {
             const boolFields = [
                 "is_existing_asset", "is_composite_asset", "is_composite_component",
                 "calculate_depreciation", "is_fully_depreciated",
-                "maintenance_required", "comprehensive_insurance",
+                "maintenance_required", "comprehensive_insurance", "custom_obsolete",
             ];
             boolFields.forEach((f) => {
                 if (f in finalPayload) finalPayload[f] = finalPayload[f] ? 1 : 0;
@@ -765,7 +777,8 @@ export default function RecordDetailPage() {
                 "gross_purchase_amount", "additional_asset_cost", "total_asset_cost",
                 "asset_quantity", "opening_accumulated_depreciation",
                 "opening_number_of_booked_depreciations", "value_after_depreciation",
-                "custom_previous_hours", "insured_value"
+                "custom_previous_hours", "insured_value", "custom_hours_before_system",
+                "custom_cumulative_hours", "custom_current_hours"
             ];
             numericFields.forEach((f) => {
                 finalPayload[f] = Number(finalPayload[f]) || 0;

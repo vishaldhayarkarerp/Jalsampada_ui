@@ -189,7 +189,13 @@ export default function NewRecordPage() {
             displayDependsOn: "custom_condition=='Under Repair'"
 
           },
-
+          { name: "pump_motor_status", label: "Logbook Pump/Motor Status", type: "Section Break" },
+          { name: "custom_pump_status", label: "Pump Status", type: "Select", options: [{ label: "Running", value: "Running" }, { label: "Stopped", value: "Stopped" }], defaultValue: getValue("custom_pump_status") },
+          { name: "custom_start_datetime", label: "Asset Start Date and Time", type: "Date", defaultValue: getValue("custom_start_datetime") },
+          { name: "custom_hours_before_system", label: "Hours Before System", type: "Float", defaultValue: getValue("custom_hours_before_system") },
+          { name: "custom_cumulative_hours", label: "Cumulative Hours", type: "Float", defaultValue: getValue("custom_cumulative_hours") },
+          { name: "custom_previous_hours", label: "Total Previous Running Hours", type: "Float", defaultValue: getValue("custom_previous_hours") },
+          { name: "custom_current_hours", label: "Current Hours", type: "Float", defaultValue: getValue("custom_current_hours") },
           { name: "section_specifications", label: "Specification of Asset", type: "Section Break" },
           {
             name: "custom_asset_specifications",
