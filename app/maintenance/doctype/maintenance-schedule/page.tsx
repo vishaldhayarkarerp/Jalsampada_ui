@@ -30,7 +30,7 @@ interface MaintenanceSchedule {
   maintenance_team?: string;
   creation?: string;
   modified?: string;
-  custom_lis?: string;      // 🟢 Corrected field name
+  custom_lis?: string;
   custom_stage?: string;
 }
 
@@ -50,15 +50,18 @@ export default function MaintenanceScheduleListPage() {
   const [totalCount, setTotalCount] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
 
+  // 🟢 1. Add asset_name to form default values
   const { control, watch } = useForm({
     defaultValues: {
-      custom_lis: "",      // 🟢 Corrected field name
+      custom_lis: "",
       custom_stage: "",
+      asset_name: "", // Added
     },
   });
 
   const selectedLis = watch("custom_lis");
   const selectedStage = watch("custom_stage");
+  const selectedAsset = watch("asset_name"); // Added
 
   const title = "Maintenance Schedule";
 
@@ -91,15 +94,17 @@ export default function MaintenanceScheduleListPage() {
 
         const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
         
-        // 🟢 Build Filters
+        // 🟢 2. Build Filters
         const filters: any[] = [];
         
         if (selectedLis) {
-          // 🟢 Use "custom_lis" (not custom_lis_name)
           filters.push(["Asset Maintenance", "custom_lis", "=", selectedLis]);
         }
         if (selectedStage) {
           filters.push(["Asset Maintenance", "custom_stage", "=", selectedStage]);
+        }
+        if (selectedAsset) {
+          filters.push(["Asset Maintenance", "asset_name", "=", selectedAsset]);
         }
 
         const commonHeaders = {
@@ -107,7 +112,6 @@ export default function MaintenanceScheduleListPage() {
         };
 
         const [dataResp, countResp] = await Promise.all([
-          // 🟢 Encode doctypeName to handle space in "Asset Maintenance"
           axios.get(`${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`, {
             params: {
               fields: JSON.stringify([
@@ -116,7 +120,7 @@ export default function MaintenanceScheduleListPage() {
                 "maintenance_team",
                 "creation",
                 "modified",
-                "custom_lis",    // 🟢 Fetch correct field
+                "custom_lis",
                 "custom_stage"
               ]),
               limit_start: start,
@@ -127,7 +131,6 @@ export default function MaintenanceScheduleListPage() {
             headers: commonHeaders,
             withCredentials: true,
           }),
-          // Only fetch count during initial load or filter change
           isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
             params: { 
               doctype: doctypeName, 
@@ -144,7 +147,7 @@ export default function MaintenanceScheduleListPage() {
           maintenance_team: r.maintenance_team ?? "",
           creation: r.creation ?? "",
           modified: r.modified ?? "",
-          custom_lis: r.custom_lis,    // 🟢 Map correct field
+          custom_lis: r.custom_lis,
           custom_stage: r.custom_stage,
         }));
 
@@ -170,7 +173,8 @@ export default function MaintenanceScheduleListPage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, selectedLis, selectedStage]
+    // 🟢 Add dependencies
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, selectedLis, selectedStage, selectedAsset]
   );
 
   React.useEffect(() => {
@@ -263,7 +267,6 @@ export default function MaintenanceScheduleListPage() {
             </th>
             <th>ID</th>
             <th>Asset Name</th>
-            {/* 🟢 Table Columns */}
             <th>LIS Name</th>
             <th>Stage</th>
             <th>Maintenance Team</th>
@@ -311,7 +314,6 @@ export default function MaintenanceScheduleListPage() {
                   </td>
                   <td>{r.name}</td>
                   <td>{r.asset_name}</td>
-                  {/* 🟢 Render Data */}
                   <td>{r.custom_lis || "—"}</td>
                   <td>{r.custom_stage || "—"}</td>
                   <td>{r.maintenance_team}</td>
@@ -384,12 +386,11 @@ export default function MaintenanceScheduleListPage() {
 
       <div className="search-filter-section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", gap: "8px" }}>
         
-        {/* 🟢 Filters */}
         <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
           <div style={{ minWidth: "200px" }}>
             <Controller
               control={control}
-              name="custom_lis" // Corrected name
+              name="custom_lis"
               render={({ field: { value } }) => (
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <LinkField
@@ -426,6 +427,36 @@ export default function MaintenanceScheduleListPage() {
                       placeholder: "Filter by Stage",
                       defaultValue: value,
                       filterMapping: [{ sourceField: "custom_lis", targetField: "lis_name" }]
+                    }}
+                    error={null}
+                    className="[&>label]:hidden"
+                  />
+                </div>
+              )}
+            />
+          </div>
+
+          {/* 🟢 3. Asset Name Filter */}
+          <div style={{ minWidth: "200px" }}>
+            <Controller
+              control={control}
+              name="asset_name"
+              render={({ field: { value } }) => (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <LinkField
+                    control={control}
+                    field={{
+                      name: "asset_name",
+                      label: "",
+                      type: "Link",
+                      linkTarget: "Asset",
+                      placeholder: "Filter by Asset",
+                      defaultValue: value,
+                      // Filter assets based on LIS and Stage if selected
+                      filterMapping: [
+                        { sourceField: "custom_lis", targetField: "custom_lis_name" },
+                        { sourceField: "custom_stage", targetField: "custom_stage_no" }
+                      ]
                     }}
                     error={null}
                     className="[&>label]:hidden"
