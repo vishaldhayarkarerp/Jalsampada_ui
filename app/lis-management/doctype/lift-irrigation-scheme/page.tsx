@@ -13,11 +13,16 @@ import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { Plus, List, LayoutGrid, Clock, Loader2 } from "lucide-react";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.3.169:2223";
+
+// 🟢 CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
 
 // ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -39,6 +44,7 @@ function useDebounce<T>(value: T, delay: number): T {
 interface LiftIrrigationScheme {
   name: string;
   lis_name: string;
+  modified?: string;
 }
 
 /* -------------------------------------------------
@@ -53,19 +59,28 @@ export default function DoctypePage() {
 
   const [schemes, setSchemes] = React.useState<LiftIrrigationScheme[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+  
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0);    // 🟢 NEW: Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Filter schemes client-side for instant results
   const filteredSchemes = React.useMemo(() => {
-    if (!searchTerm) return schemes;
+    if (!debouncedSearch) return schemes;
     return schemes.filter(scheme =>
-      scheme.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      scheme.lis_name.toLowerCase().includes(searchTerm.toLowerCase())
+      scheme.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      scheme.lis_name.toLowerCase().includes(debouncedSearch.toLowerCase())
     );
-  }, [schemes, searchTerm]);
+  }, [schemes, debouncedSearch]);
+  
+  // 🟢 Use filtered schemes for display but original schemes for pagination count
+  const displaySchemes = filteredSchemes;
 
   // 🟢 1. Initialize Selection Hook
   const {
@@ -74,64 +89,89 @@ export default function DoctypePage() {
     handleSelectAll,
     clearSelection,
     isAllSelected
-  } = useSelection(filteredSchemes, "name");
+  } = useSelection(displaySchemes, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  /* -------------------------------------------------
-  3. FETCH
-  ------------------------------------------------- */
-  const fetchSchemes = React.useCallback(async () => {
-    if (!isInitialized) return;
-    if (!isAuthenticated || !apiKey || !apiSecret) {
-      setLoading(false);
-      return;
-    }
+  // ── 🟢 Fetch Logic (Refactored for Pagination and Total Count) ───────────────────
+  const fetchSchemes = React.useCallback(
+    async (start = 0, isReset = false) => {
+      if (!isInitialized) return;
+      if (!isAuthenticated || !apiKey || !apiSecret) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
+        }
 
-      const params = {
-        fields: JSON.stringify([
-          "name",
-          "lis_name"
-        ]),
-        limit_page_length: "20",
-        order_by: "creation desc"
-      };
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
+        const filters: any[] = [];
+        if (debouncedSearch) filters.push(["Lift Irrigation Scheme", "name", "like", `%${debouncedSearch}%`]);
 
-      // 🟢 Append /api/resource manually
-      const resp = await axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
-        params,
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-        },
-        withCredentials: true,
-      });
+        const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
+        
+        // Parallel requests for Data and Total Count
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
+            params: {
+              fields: JSON.stringify(["name", "lis_name", "modified"]),
+              limit_start: start,
+              limit_page_length: limit,
+              order_by: "creation desc",
+              filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+            },
+            headers: commonHeaders,
+            withCredentials: true,
+          }),
+          // Only fetch count during initial load or filter change
+          isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+            params: { doctype: doctypeName, filters: filters.length > 0 ? JSON.stringify(filters) : undefined },
+            headers: commonHeaders,
+          }) : Promise.resolve(null)
+        ]);
 
-      const raw = resp.data?.data ?? [];
-      const mapped: LiftIrrigationScheme[] = raw.map((r: any) => ({
-        name: r.name,
-        lis_name: r.lis_name ?? r.name,
-      }));
+        const raw = dataResp.data?.data ?? [];
+        const mapped: LiftIrrigationScheme[] = raw.map((r: any) => ({
+          name: r.name,
+          lis_name: r.lis_name ?? r.name,
+          modified: r.modified,
+        }));
 
-      setSchemes(mapped);
-    } catch (err: any) {
-      console.error("API error:", err);
-      setError(
-        err.response?.status === 403
-          ? "Unauthorized – check API key/secret"
-          : `Failed to fetch ${doctypeName}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [apiKey, apiSecret, isAuthenticated, isInitialized, doctypeName]);
+        if (isReset) {
+          setSchemes(mapped);
+          if (countResp) setTotalCount(countResp.data.message);
+        } else {
+          setSchemes((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
+
+      } catch (err: any) {
+        console.error("API error:", err);
+        if (isReset) setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch lift irrigation schemes");
+      } finally {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, doctypeName]
+  );
 
   React.useEffect(() => {
-    fetchSchemes();
+    fetchSchemes(0, true);
   }, [fetchSchemes]);
+  
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchSchemes(schemes.length, false);
+    }
+  };
 
   // 🟢 2. Handle Bulk Delete (UPDATED with Server Message Parsing)
   const handleBulkDelete = async () => {
@@ -171,7 +211,7 @@ export default function DoctypePage() {
 
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
-      fetchSchemes(); // Refresh list
+      fetchSchemes(0, true);
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
 
@@ -206,72 +246,85 @@ export default function DoctypePage() {
   5. LIST VIEW
   ------------------------------------------------- */
   const renderListView = () => (
-    <div className="stock-table-container">
-      <table className="stock-table">
-        <thead>
-          <tr>
-            {/* 🟢 Header Checkbox */}
-            <th style={{ width: "40px", textAlign: "center" }}>
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={handleSelectAll}
-                style={{ cursor: "pointer", width: "16px", height: "16px" }}
-              />
+  <div className="stock-table-container">
+    <table className="stock-table">
+      <thead>
+        <tr>
+          {/* 1. Checkbox */}
+          <th style={{ width: "40px", textAlign: "center" }}>
+            <input
+              type="checkbox"
+              checked={isAllSelected}
+              onChange={handleSelectAll}
+              style={{ cursor: "pointer", width: "16px", height: "16px" }}
+            />
+          </th>
+          {/* 2. Primary Data */}
+          <th>LIS Name</th>
+          <th>ID</th>
+          {/* 3. Timestamp (Far Right) */}
+          <th className="text-right pr-4" style={{ width: "120px" }}>
+            <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                   <><span>{displaySchemes.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                 )}
+              </div>
             </th>
-            <th>LIS Name</th>
-            <th>ID</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredSchemes.length ? (
-            filteredSchemes.map((scheme) => {
-              const isSelected = selectedIds.has(scheme.name);
-              return (
-                <tr
-                  key={scheme.name}
-                  onClick={() => handleCardClick(scheme.name)}
-                  style={{
-                    cursor: "pointer",
-                    backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
-                  }}
+        </tr>
+      </thead>
+      <tbody>
+        {displaySchemes.length ? (
+          displaySchemes.map((scheme) => {
+            const isSelected = selectedIds.has(scheme.name);
+            return (
+              <tr
+                key={scheme.name}
+                onClick={() => handleCardClick(scheme.name)}
+                style={{
+                  cursor: "pointer",
+                  backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
+                }}
+              >
+                <td
+                  style={{ textAlign: "center" }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {/* 🟢 Row Checkbox */}
-                  <td
-                    style={{ textAlign: "center" }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleSelectOne(scheme.name)}
-                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
-                    />
-                  </td>
-                  <td>{scheme.lis_name}</td>
-                  <td>{scheme.name}</td>
-                </tr>
-              );
-            })
-          ) : (
-            <tr>
-              <td colSpan={3} style={{ textAlign: "center", padding: "32px" }}>
-                No records found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleSelectOne(scheme.name)}
+                    style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                  />
+                </td>
+                <td>{scheme.lis_name}</td>
+                <td>{scheme.name}</td>
+                {/* Right-aligned timestamp snippet */}
+                <td className="text-right">
+                  <TimeAgo date={scheme.modified} />
+                </td>
+              </tr>
+            );
+          })
+        ) : (
+          <tr>
+            {/* Updated colSpan to 4 to cover all columns */}
+            <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
+              No records found.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+);
 
   /* -------------------------------------------------
   6. GRID VIEW
   ------------------------------------------------- */
   const renderGridView = () => (
     <div className="equipment-grid">
-      {filteredSchemes.length ? (
-        filteredSchemes.map((scheme) => (
+      {displaySchemes.length ? (
+        displaySchemes.map((scheme) => (
           <RecordCard
             key={scheme.name}
             title={scheme.lis_name}
@@ -370,8 +423,15 @@ export default function DoctypePage() {
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+        {hasMore && displaySchemes.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button onClick={handleLoadMore} disabled={isLoadingMore} className="btn btn--secondary flex items-center gap-2 px-6 py-2" style={{ minWidth: "140px" }}>
+              {isLoadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : "Load More"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -15,7 +15,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay"; // Assuming you have sonner installed (or use your preferred toast)
-import { Plus } from "lucide-react"; // Optional: if you want to use Lucide icons for consistency
+import { Plus, List, LayoutGrid, Loader2 } from "lucide-react"; // Optional: if you want to use Lucide icons for consistency
+import { TimeAgo } from "@/components/TimeAgo";
 
 const API_BASE_URL = "http://103.219.3.169:2223"; // 🟢 Changed: Removed /api/resource so RPC helper can append /api/method
 
@@ -38,6 +39,7 @@ interface Tender {
   status?: string;           // from custom_tender_status
   tender_name?: string;      // from custom_prapan_suchi
   lis_name?: string;          // from custom_lis_name
+  modified?: string;
 }
 
 interface LisOption {
@@ -55,6 +57,7 @@ export default function DoctypePage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [totalCount, setTotalCount] = React.useState(0);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -144,6 +147,7 @@ export default function DoctypePage() {
           "custom_tender_status",
           "custom_prapan_suchi",
           "custom_lis_name",
+          "modified",
         ]),
         limit_page_length: 20,
         order_by: "creation desc",
@@ -158,15 +162,25 @@ export default function DoctypePage() {
         withCredentials: true,
       });
 
+      // Get total count
+      const countResp = await axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+        params: { doctype: doctypeName },
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        },
+      });
+
       const raw = resp.data?.data ?? [];
       const mapped: Tender[] = raw.map((r: any) => ({
         name: r.name,
         status: r.custom_tender_status ?? "",
         tender_name: r.custom_prapan_suchi ?? "",
         lis_name: r.custom_lis_name ?? "",
+        modified: r.modified,
       }));
 
       setTenders(mapped);
+      setTotalCount(countResp.data.message || 0);
     } catch (err: any) {
       console.error("API error", err);
       setError(
@@ -300,6 +314,13 @@ export default function DoctypePage() {
             <th>Prapan Suchi</th>
             <th>LIS</th>
             <th>Status</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                   <><span>{filteredTenders.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                 )}
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -331,12 +352,15 @@ export default function DoctypePage() {
                   <td>{t.tender_name}</td>
                   <td>{t.lis_name}</td>
                   <td>{t.status}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={t.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>

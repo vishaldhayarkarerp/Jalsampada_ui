@@ -15,7 +15,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { Plus, List, LayoutGrid, Loader2 } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -41,6 +42,7 @@ interface Expenditure {
   bill_amount?: number | string;
   tender_number?: string;
   lift_irrigation_scheme?: string;
+  modified?: string;
 }
 
 interface LisOption {
@@ -54,10 +56,11 @@ export default function DoctypePage() {
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
   const doctypeName = "Expenditure";
 
-  const [records, setRecords] = React.useState<Expenditure[]>([]);
+  const [rows, setRows] = React.useState<Expenditure[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [totalCount, setTotalCount] = React.useState(0);
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
@@ -73,23 +76,23 @@ export default function DoctypePage() {
   const selectedLis = watch("lis_name");
 
   // Filter records client-side for instant results
-  const filteredRecords = React.useMemo(() => {
-    let filtered = records;
+  const filteredRows = React.useMemo(() => {
+    let filtered = rows;
 
     if (debouncedSearch) {
-      filtered = filtered.filter(record =>
-        record.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      filtered = filtered.filter(row =>
+        row.name.toLowerCase().includes(debouncedSearch.toLowerCase())
       );
     }
 
     if (selectedLis) {
       filtered = filtered.filter(
-        record => record.lift_irrigation_scheme === selectedLis
+        row => row.lift_irrigation_scheme === selectedLis
       );
     }
 
     return filtered;
-  }, [records, debouncedSearch, selectedLis]);
+  }, [rows, debouncedSearch, selectedLis]);
 
   // 🟢 1. Initialize Selection Hook
   const {
@@ -98,7 +101,7 @@ export default function DoctypePage() {
     handleSelectAll,
     clearSelection,
     isAllSelected
-  } = useSelection(filteredRecords, "name");
+  } = useSelection(filteredRows, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
 
@@ -152,6 +155,7 @@ export default function DoctypePage() {
           "bill_amount",
           "tender_number",
           "lift_irrigation_scheme",
+          "modified",
         ]),
         limit_page_length: "20",
         order_by: "creation desc",
@@ -166,6 +170,14 @@ export default function DoctypePage() {
         withCredentials: true,
       });
 
+      // Get total count
+      const countResp = await axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+        params: { doctype: doctypeName },
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        },
+      });
+
       const raw = resp.data?.data ?? [];
       const mapped: Expenditure[] = raw.map((r: any) => ({
         name: r.name,
@@ -174,9 +186,11 @@ export default function DoctypePage() {
         bill_amount: r.bill_amount ?? "",
         tender_number: r.tender_number ?? "",
         lift_irrigation_scheme: r.lift_irrigation_scheme ?? "",
+        modified: r.modified ?? "",
       }));
 
-      setRecords(mapped);
+      setRows(mapped);
+      setTotalCount(countResp.data.message || 0);
     } catch (err: any) {
       console.error("API error:", err);
       setError(
@@ -291,11 +305,18 @@ export default function DoctypePage() {
             <th>Bill Amount</th>
             <th>Tender Number</th>
             <th>LIS Scheme</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{filteredRows.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
-          {filteredRecords.length ? (
-            filteredRecords.map((record) => {
+          {filteredRows.length ? (
+            filteredRows.map((record) => {
               const isSelected = selectedIds.has(record.name);
               return (
                 <tr
@@ -324,12 +345,15 @@ export default function DoctypePage() {
                   <td>{record.bill_amount}</td>
                   <td>{record.tender_number}</td>
                   <td>{record.lift_irrigation_scheme}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={record.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={9} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -341,8 +365,8 @@ export default function DoctypePage() {
 
   const renderGridView = () => (
     <div className="equipment-grid">
-      {filteredRecords.length ? (
-        filteredRecords.map((record) => (
+      {filteredRows.length ? (
+        filteredRows.map((record: Expenditure) => (
           <RecordCard
             key={record.name}
             title={record.name} // ID

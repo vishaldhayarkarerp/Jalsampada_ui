@@ -69,14 +69,23 @@ export function TableMultiSelect({ control, field, error, className, filters = {
             });
 
             const raw = (resp.data.data || []) as { name: string }[];
-            setOptions(raw.map((r) => ({ value: r.name, label: r.name })));
+            const currentValue = control._formValues[field.name] || [];
+            const selectedLabels = currentValue.map((item: any) => {
+                if (typeof item === 'string') return item;
+                if (item?.stage) return item.stage;
+                if (item?.asset) return item.asset;
+                if (item?.name) return item.name;
+                return JSON.stringify(item);
+            });
+            const filteredOptions = raw.filter((r) => !selectedLabels.includes(r.name));
+            setOptions(filteredOptions.map((r) => ({ value: r.name, label: r.name })));
         } catch (e) {
             console.error("TableMultiSelect search error:", e);
             setOptions([]);
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated, apiKey, apiSecret, field.linkTarget, filters, getQuery]);
+    }, [isAuthenticated, apiKey, apiSecret, field.linkTarget, filters, getQuery, control, field.name]);
 
     const debouncedSearch = React.useCallback((term: string) => {
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);

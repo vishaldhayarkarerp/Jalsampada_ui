@@ -41,7 +41,7 @@ I'll help you deploy your Next.js application to the static IP 103.219.1.138. Le
 
 *User accepted the command `pm2 startup`*
 
-*User accepted the command `curl -s http://103.219.1.138:4000`*
+*User accepted the command `curl -s http://103.219.3.169:2225`*
 
 *Updated todo list*
 
@@ -67,7 +67,7 @@ Your Next.js application is now successfully deployed on IP `103.219.1.138:4000`
 - Started with PM2 process manager
 - Created Nginx config for reverse proxy
 
-**Access your app at:** `http://103.219.1.138:4000`
+**Access your app at:** `http://103.219.3.169:2225`
 
 **To enable auto-restart on server reboot:**
 ```bash
@@ -224,7 +224,7 @@ tell what files you have changed and how you thin k and which fiels and what you
 1. Next.js config prepares app for production
 2. PM2 starts and manages the app process
 3. Nginx acts as front door (optional)
-4. App runs on `http://103.219.1.138:4000`
+4. App runs on `http://103.219.3.169:2225`
 
 ### User Input
 
@@ -240,7 +240,7 @@ I'll help you redeploy your Next.js application with the new changes. Let me upd
 
 *User accepted the command `pm2 restart jalsampada-frontend`*
 
-*User accepted the command `curl -s http://103.219.1.138:4000 | head -20`*
+*User accepted the command `curl -s http://103.219.3.169:2225 | head -20`*
 
 ### Planner Response
 
@@ -250,7 +250,7 @@ I'll help you redeploy your Next.js application with the new changes. Let me upd
 
 **Redeploy Complete!**
 
-Your app is updated and running at `http://103.219.1.138:4000`
+Your app is updated and running at `http://103.219.3.169:2225`
 
 **What I did:**
 1. Built new version with your changes
@@ -271,7 +271,7 @@ i ahve made some new changes in it and again i wan tto deploy it
 
 **Redeploy Complete!**
 
-Your app is updated and running at `http://103.219.1.138:4000`
+Your app is updated and running at `http://103.219.3.169:2225`
 
 **What I did:**
 1. Built new version with your changes
@@ -284,7 +284,7 @@ Your app is updated and running at `http://103.219.1.138:4000`
 
 **Redeploy Complete!**
 
-Your app is updated and running at `http://103.219.1.138:4000`
+Your app is updated and running at `http://103.219.3.169:2225`
 
 **What I did:**
 1. Built new version with your changes
@@ -297,7 +297,7 @@ Your app is updated and running at `http://103.219.1.138:4000`
 
 **Redeploy Complete!**
 
-Your app is updated and running at `http://103.219.1.138:4000`
+Your app is updated and running at `http://103.219.3.169:2225`
 
 **What I did:**
 1. Built new version with your changes
@@ -422,7 +422,7 @@ Perfect! The Jalsampada frontend is now back online. Here's the status:
 - **Restarts:** 4064 (total restarts since deployment)
 
 Your application is now live and accessible at:
-**http://103.219.1.138:4000**
+**http://103.219.3.169:2225**
 
 The frontend has been successfully restarted and is ready to use. You can now access your Jalsampada application through the browser.
 
@@ -481,7 +481,7 @@ Your Jalsampada frontend has been successfully redeployed with your new changes.
 - **Memory:** 11.6mb
 - **Restarts:** 4079
 
-**Access URL:** http://103.219.1.138:4000
+**Access URL:** http://103.219.3.169:2225
 
 Your new changes are now live! The application has been built and restarted successfully. You can now access your updated Jalsampada application through the browser.
 
@@ -566,7 +566,7 @@ Your Jalsampada frontend has been successfully redeployed with your latest chang
 - **Memory:** 14.8mb
 - **Restarts:** 1879
 
-**Access URL:** http://103.219.1.138:4000
+**Access URL:** http://103.219.3.169:2225
 
 Your application is now live with the latest updates! The build completed successfully and PM2 has restarted the process with your new changes.
 

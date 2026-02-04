@@ -6,6 +6,15 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+import { getApiMessages} from "@/lib/utils";
+import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 import {
   Search,
   Plus,
@@ -15,15 +24,8 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
+  Clock,
 } from "lucide-react";
-
-// 🟢 New Imports for Bulk Delete
-import { useSelection } from "@/hooks/useSelection";
-import { BulkActionBar } from "@/components/BulkActionBar";
-import { bulkDeleteRPC } from "@/api/rpc";
-import { toast } from "sonner";
-import { getApiMessages } from "@/lib/utils";
-import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -319,6 +321,9 @@ export default function WarehousePage() {
               Type
             </th>
             <th>Account</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -352,12 +357,15 @@ export default function WarehousePage() {
                   <td>{w.company || "—"}</td>
                   <td>{w.warehouse_type || "—"}</td>
                   <td>{w.account || "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={w.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={9} style={{ textAlign: "center", padding: "32px" }}>
                 No store location found.
               </td>
             </tr>

@@ -13,7 +13,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { Plus, List, LayoutGrid, Loader2 } from "lucide-react";
 
 // 🟢 Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -40,6 +41,7 @@ interface Contractor {
   email_address: string;
   phone: string;
   city: string;
+  modified?: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -53,6 +55,7 @@ export default function ContractorListPage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [totalCount, setTotalCount] = React.useState(0);
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -106,6 +109,7 @@ export default function ContractorListPage() {
           "email_address",
           "phone",
           "city",
+          "modified",
         ]),
         limit_page_length: "50",
         order_by: "creation desc",
@@ -122,8 +126,17 @@ export default function ContractorListPage() {
         }
       );
 
+      // Get total count
+      const countResp = await axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+        params: { doctype: doctypeName },
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        },
+      });
+
       const raw = resp.data?.data ?? [];
       setRecords(raw);
+      setTotalCount(countResp.data.message || 0);
     } catch (err: any) {
       console.error("API error:", err);
       setError(
@@ -242,6 +255,13 @@ export default function ContractorListPage() {
             <th>Email</th>
             <th>Phone</th>
             <th>City</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{filteredRecords.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -281,12 +301,15 @@ export default function ContractorListPage() {
                   <td>{record.email_address}</td>
                   <td>{record.phone}</td>
                   <td>{record.city}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={record.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>

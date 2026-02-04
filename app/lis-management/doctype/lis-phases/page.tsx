@@ -14,15 +14,35 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { Plus, List, LayoutGrid, Clock, Loader2 } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.3.169:2223";
+
+// 🟢 CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
+
+// ── Debounce Hook ────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 interface LISPhase {
     name: string; // 🟢 Added name (ID) for deletion
     lis_phase: string;
     lis_name: string;
+    modified?: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -35,19 +55,28 @@ export default function DoctypePage() {
 
     const [records, setRecords] = React.useState<LISPhase[]>([]);
     const [view, setView] = React.useState<ViewMode>("list");
-    const [loading, setLoading] = React.useState(true);
+    
+    // 🟢 Loading & Pagination States
+    const [loading, setLoading] = React.useState(true);       // Full page load
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+    const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+    const [totalCount, setTotalCount] = React.useState(0);    // 🟢 NEW: Total count of records
     const [error, setError] = React.useState<string | null>(null);
     const [searchTerm, setSearchTerm] = React.useState("");
+    const debouncedSearch = useDebounce(searchTerm, 300);
 
     const filteredRecords = React.useMemo(() => {
-        if (!searchTerm) return records;
+        if (!debouncedSearch) return records;
         return records.filter(
             (r) =>
-                r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                r.lis_phase.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                r.lis_name.toLowerCase().includes(searchTerm.toLowerCase())
+                r.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                r.lis_phase.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                r.lis_name.toLowerCase().includes(debouncedSearch.toLowerCase())
         );
-    }, [records, searchTerm]);
+    }, [records, debouncedSearch]);
+    
+    // 🟢 Use filtered records for display but original records for pagination count
+    const displayRecords = filteredRecords;
 
     // 🟢 1. Initialize Selection Hook
     const {
@@ -56,61 +85,96 @@ export default function DoctypePage() {
         handleSelectAll,
         clearSelection,
         isAllSelected
-    } = useSelection(filteredRecords, "name");
+    } = useSelection(displayRecords, "name");
 
     const [isDeleting, setIsDeleting] = React.useState(false);
 
-    // ── Fetch Logic ────────────────────────────────────────────────
-    const fetchData = React.useCallback(async () => {
-        if (!isInitialized) return;
-        if (!isAuthenticated || !apiKey || !apiSecret) {
-            setLoading(false);
-            return;
-        }
+    // ── 🟢 Fetch Logic (Refactored for Pagination and Total Count) ───────────────────
+    const fetchData = React.useCallback(
+        async (start = 0, isReset = false) => {
+            if (!isInitialized) return;
+            if (!isAuthenticated || !apiKey || !apiSecret) {
+                setLoading(false);
+                return;
+            }
 
-        try {
-            setLoading(true);
-            setError(null);
+            try {
+                if (isReset) {
+                    setLoading(true);
+                    setError(null);
+                } else {
+                    setIsLoadingMore(true);
+                }
 
-            const params = {
-                fields: JSON.stringify([
-                    "name", // 🟢 Ensure we fetch the ID
-                    "lis_phase",
-                    "lis_name"
-                ]),
-                order_by: "creation desc",
-                limit_page_length: 20
-            };
+                const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
+                const filters: any[] = [];
+                if (debouncedSearch) filters.push(["LIS Phases", "name", "like", `%${debouncedSearch}%`]);
 
-            // 🟢 Append /api/resource manually
-            const resp = await axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
-                params,
-                headers: {
-                    Authorization: `token ${apiKey}:${apiSecret}`,
-                },
-                withCredentials: true,
-            });
+                const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
+                
+                // Parallel requests for Data and Total Count
+                const [dataResp, countResp] = await Promise.all([
+                    axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
+                        params: {
+                            fields: JSON.stringify(["name", "lis_phase", "lis_name", "modified"]),
+                            limit_start: start,
+                            limit_page_length: limit,
+                            order_by: "creation desc",
+                            filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+                        },
+                        headers: commonHeaders,
+                        withCredentials: true,
+                    }),
+                    // Only fetch count during initial load or filter change
+                    isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+                        params: { doctype: doctypeName, filters: filters.length > 0 ? JSON.stringify(filters) : undefined },
+                        headers: commonHeaders,
+                    }) : Promise.resolve(null)
+                ]);
 
-            const data = resp.data?.data ?? [];
+                const data = dataResp.data?.data ?? [];
 
-            setRecords(
-                data.map((r: any) => ({
-                    name: r.name,
-                    lis_phase: r.lis_phase,
-                    lis_name: r.lis_name,
-                }))
-            );
-        } catch (err: any) {
-            console.error("Fetch error:", err);
-            setError("Failed to fetch LIS Phases");
-        } finally {
-            setLoading(false);
-        }
-    }, [apiKey, apiSecret, isAuthenticated, isInitialized]);
+                if (isReset) {
+                    setRecords(
+                        data.map((r: any) => ({
+                            name: r.name,
+                            lis_phase: r.lis_phase,
+                            lis_name: r.lis_name,
+                            modified: r.modified,
+                        }))
+                    );
+                    if (countResp) setTotalCount(countResp.data.message);
+                } else {
+                    setRecords((prev) => [...prev, ...data.map((r: any) => ({
+                        name: r.name,
+                        lis_phase: r.lis_phase,
+                        lis_name: r.lis_name,
+                        modified: r.modified,
+                    }))]);
+                }
+
+                setHasMore(data.length === limit);
+
+            } catch (err: any) {
+                console.error("Fetch error:", err);
+                if (isReset) setError("Failed to fetch LIS Phases");
+            } finally {
+                setLoading(false);
+                setIsLoadingMore(false);
+            }
+        },
+        [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, doctypeName]
+    );
 
     React.useEffect(() => {
-        fetchData();
+        fetchData(0, true);
     }, [fetchData]);
+
+    const handleLoadMore = () => {
+        if (!isLoadingMore && hasMore) {
+            fetchData(records.length, false);
+        }
+    };
 
     // 🟢 2. Handle Bulk Delete
     const handleBulkDelete = async () => {
@@ -155,7 +219,7 @@ export default function DoctypePage() {
             // If no error messages, proceed with success
             toast.success(`Successfully deleted ${count} records.`);
             clearSelection();
-            fetchData(); // Refresh list
+            fetchData(0, true);
         } catch (err: any) {
             console.error("Bulk Delete Error:", err);
 
@@ -199,11 +263,18 @@ export default function DoctypePage() {
                         <th>LIS Phase</th>
                         <th>LIS Scheme</th>
                         <th>ID</th>
+                        <th className="text-right pr-4" style={{ width: "120px" }}>
+                            <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                                   <><span>{displayRecords.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                                 )}
+                              </div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
-                    {filteredRecords.length ? (
-                        filteredRecords.map((r) => {
+                    {displayRecords.length ? (
+                        displayRecords.map((r) => {
                             const isSelected = selectedIds.has(r.name);
                             return (
                                 <tr
@@ -214,7 +285,7 @@ export default function DoctypePage() {
                                         backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
                                     }}
                                 >
-                                    {/* 🟢 Row Checkbox */}
+                                    {/* Row Checkbox */}
                                     <td
                                         style={{ textAlign: "center" }}
                                         onClick={(e) => e.stopPropagation()}
@@ -229,12 +300,15 @@ export default function DoctypePage() {
                                     <td>{r.lis_phase}</td>
                                     <td>{r.lis_name}</td>
                                     <td>{r.name}</td>
+                                    <td className="text-right pr-4">
+                                        <TimeAgo date={r.modified} />
+                                    </td>
                                 </tr>
                             );
                         })
                     ) : (
                         <tr>
-                            <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
+                            <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
                                 No records found
                             </td>
                         </tr>
@@ -246,8 +320,8 @@ export default function DoctypePage() {
 
     const renderGridView = () => (
         <div className="equipment-grid">
-            {filteredRecords.length ? (
-                filteredRecords.map((r) => (
+            {displayRecords.length ? (
+                displayRecords.map((r) => (
                     <RecordCard
                         key={r.name}
                         title={r.lis_phase}
@@ -331,8 +405,15 @@ export default function DoctypePage() {
                 </button>
             </div>
 
-            <div className="view-container" style={{ marginTop: "0.5rem" }}>
+            <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
                 {view === "grid" ? renderGridView() : renderListView()}
+                {hasMore && displayRecords.length > 0 && (
+                    <div className="mt-6 flex justify-end">
+                        <button onClick={handleLoadMore} disabled={isLoadingMore} className="btn btn--secondary flex items-center gap-2 px-6 py-2" style={{ minWidth: "140px" }}>
+                            {isLoadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : "Load More"}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

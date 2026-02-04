@@ -6,6 +6,15 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
+import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 import {
   Search,
   Plus,
@@ -15,15 +24,8 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
+  Clock,
 } from "lucide-react";
-
-// 🟢 New Imports for Bulk Delete
-import { useSelection } from "@/hooks/useSelection";
-import { BulkActionBar } from "@/components/BulkActionBar";
-import { bulkDeleteRPC } from "@/api/rpc";
-import { toast } from "sonner";
-import { getApiMessages } from "@/lib/utils";
-import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -303,6 +305,9 @@ export default function MaterialRequestPage() {
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("transaction_date")}>
               Transaction Date
             </th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -334,12 +339,15 @@ export default function MaterialRequestPage() {
                   <td>{req.material_request_type || "—"}</td>
                   <td>{req.title || "—"}</td>
                   <td>{req.transaction_date || "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={req.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
                 No Spare Indent found.
               </td>
             </tr>

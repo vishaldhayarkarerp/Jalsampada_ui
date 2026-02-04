@@ -25,6 +25,10 @@ interface MaintenanceLogData {
   completion_date?: string;
   log?: string;
   maintenance_schedule?: string;
+  asset_name?: string;
+  lis?: string;
+  lis_phase?: string;
+  stage?: string;
 }
 
 /* -------------------------------------------------
@@ -84,6 +88,24 @@ export default function NewMaintenanceLogPage() {
             linkTarget: "Asset Maintenance",
             // defaultValue: getValue("asset_maintenance"),
           },
+          {
+            name: "asset_name",
+            label: "Asset",
+            type: "Link",
+            linkTarget: "Asset",
+            filters: (getValue) => {
+              const filters: Record<string, any> = {};
+              const lisName = getValue("lis");
+              const lisPhase = getValue("lis_phase");
+              const stageNo = getValue("stage");
+              
+              if (lisName) filters["lis"] = lisName;
+              if (lisPhase) filters["lis_phase"] = lisPhase;
+              if (stageNo) filters["stage"] = stageNo;
+              
+              return filters;
+            },
+          },
           // {
           //   name: "naming_series",
           //   label: "Series",
@@ -107,6 +129,35 @@ export default function NewMaintenanceLogPage() {
             linkTarget: "Asset",
             displayDependsOn: "maintenance_schedule",
             fetchFrom: { sourceField: "maintenance_schedule", targetDoctype: "Asset", targetField: "asset_name" }
+          },
+
+          { name: "section_break_lis", type: "Section Break", label: "LIS Information" },
+
+          {
+            name: "lis",
+            label: "LIS",
+            type: "Link",
+            linkTarget: "Lift Irrigation Scheme",
+            required: true,
+            defaultValue: getValue("lis"),
+          },
+          {
+            name: "lis_phase",
+            label: "LIS Phase",
+            type: "Link",
+            linkTarget: "LIS Phases",
+            defaultValue: getValue("lis_phase"),
+          },
+          {
+            name: "stage",
+            label: "Stage",
+            type: "Link",
+            linkTarget: "Stage No",
+            required: true,
+            defaultValue: getValue("stage"),
+            filterMapping: [
+              { sourceField: "lis", targetField: "lis_name" }
+            ]
           },
 
           { name: "section_break_1", type: "Section Break", label: "Maintenance Details" },

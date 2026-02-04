@@ -146,26 +146,26 @@ export default function NewRepairWorkRequirementPage() {
               {
                 name: "equipement_model",
                 label: "Equipement Model",
-                type: "Link",
-                linkTarget: "Equipement Model",
+                type: "Data",
+                fetchFrom: { sourceField: "asset_id", targetDoctype: "Asset", targetField: "custom_equipement_model" }
               },
               {
                 name: "equipement_make",
                 label: "Equipement Make",
-                type: "Link",
-                linkTarget: "Equipement Make",
+                type: "Data",
+                fetchFrom: { sourceField: "asset_id", targetDoctype: "Asset", targetField: "custom_equipement_make" }
               },
               {
                 name: "equipement_capacity",
                 label: "Equipement Capacity",
-                type: "Link",
-                linkTarget: "Equipement Capacity",
+                type: "Data",
+                fetchFrom: { sourceField: "asset_id", targetDoctype: "Asset", targetField: "custom_equipement_capacity" }
               },
               {
                 name: "equipement_rating",
                 label: "Equipement Rating",
-                type: "Link",
-                linkTarget: "Rating",
+                type: "Data",
+                fetchFrom: { sourceField: "asset_id", targetDoctype: "Asset", targetField: "custom_equipement_rating" }
               },
               { name: "date_of_commissioning", label: "Date of Commissioning", type: "Date" },
               {
@@ -178,10 +178,10 @@ export default function NewRepairWorkRequirementPage() {
               {
                 name: "present_status",
                 label: "Present Status",
-                type: "Select",
-                options: "Working\nUR\nAbnormal",
+                type: "Data",
+                fetchFrom: { sourceField: "asset_id", targetDoctype: "Asset", targetField: "custom_condition" }
               },
-              { name: "last_overhaul", label: "Last Overhaul/Repair Date", type: "Date" },
+              { name: "last_overhaul", label: "Last Overhaul/Repair Date", type: "Data", fetchFrom: { sourceField: "asset_id", targetDoctype: "Asset", targetField: "custom_last_repair_date" } },
               { name: "ur_date", label: "U/R Date", type: "Date" },
             ],
           },

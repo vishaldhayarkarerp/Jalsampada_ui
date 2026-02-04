@@ -15,7 +15,12 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { Plus, List, LayoutGrid, Loader2 } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+
+// 🟢 CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 20;
+const LOAD_MORE_SIZE = 10;
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -40,6 +45,7 @@ interface PrapanSuchi {
   lis_name?: string;
   type?: string;
   amount?: number | string;
+  modified?: string;
 }
 
 interface LisOption {
@@ -56,7 +62,10 @@ export default function DoctypePage() {
   const [records, setRecords] = React.useState<PrapanSuchi[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  const [hasMore, setHasMore] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [totalCount, setTotalCount] = React.useState(0);
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
@@ -90,6 +99,9 @@ export default function DoctypePage() {
     return filtered;
   }, [records, debouncedSearch, selectedLis]);
 
+  // 🟢 Pagination: Use filtered records for display, but original records for pagination
+  const displayRecords = filteredRecords;
+
   // 🟢 1. Initialize Selection Hook
   const {
     selectedIds,
@@ -97,7 +109,7 @@ export default function DoctypePage() {
     handleSelectAll,
     clearSelection,
     isAllSelected
-  } = useSelection(filteredRecords, "name");
+  } = useSelection(displayRecords, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
 
@@ -128,9 +140,9 @@ export default function DoctypePage() {
   }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
   /* -------------------------------------------------
-  3. FETCH
+  3. FETCH (with pagination)
   ------------------------------------------------- */
-  const fetchRecords = React.useCallback(async () => {
+  const fetchRecords = React.useCallback(async (start = 0, isReset = false) => {
     if (!isInitialized) return;
     if (!isAuthenticated || !apiKey || !apiSecret) {
       setLoading(false);
@@ -138,55 +150,93 @@ export default function DoctypePage() {
     }
 
     try {
-      setLoading(true);
-      setError(null);
+      if (isReset) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setIsLoadingMore(true);
+      }
 
-      const params = {
-        fields: JSON.stringify([
-          "name",
-          "fiscal_year",
-          "lis_name",
-          "type",
-          "amount",
-        ]),
-        limit_page_length: "20",
-        order_by: "creation desc",
-      };
+      const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
+      const filters: any[] = [];
+      if (debouncedSearch) filters.push(["Prapan Suchi", "name", "like", `%${debouncedSearch}%`]);
+      if (selectedLis) filters.push(["Prapan Suchi", "lis_name", "=", selectedLis]);
 
-      // 🟢 Append /api/resource manually
-      const resp = await axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
-        params,
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-        },
-        withCredentials: true,
-      });
+      const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
+      
+      // Parallel requests for Data and Total Count
+      const [dataResp, countResp] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
+          params: {
+            fields: JSON.stringify([
+              "name",
+              "fiscal_year",
+              "lis_name",
+              "type",
+              "amount",
+              "modified",
+            ]),
+            limit_start: start,
+            limit_page_length: limit,
+            order_by: "creation desc",
+            filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+          },
+          headers: commonHeaders,
+          withCredentials: true,
+        }),
+        // Only fetch count during initial load or filter change
+        isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+          params: { 
+            doctype: doctypeName,
+            filters: filters.length > 0 ? JSON.stringify(filters) : undefined
+          },
+          headers: commonHeaders,
+        }) : Promise.resolve(null)
+      ]);
 
-      const raw = resp.data?.data ?? [];
+      const raw = dataResp.data?.data ?? [];
       const mapped: PrapanSuchi[] = raw.map((r: any) => ({
         name: r.name,
         fiscal_year: r.fiscal_year ?? "",
         lis_name: r.lis_name ?? "",
         type: r.type ?? "",
         amount: r.amount ?? "",
+        modified: r.modified ?? "",
       }));
 
-      setRecords(mapped);
+      if (isReset) {
+        setRecords(mapped);
+        if (countResp) setTotalCount(countResp.data.message || 0);
+      } else {
+        setRecords((prev) => [...prev, ...mapped]);
+      }
+
+      setHasMore(mapped.length === limit);
     } catch (err: any) {
       console.error("API error:", err);
-      setError(
-        err.response?.status === 403
-          ? "Unauthorized – check API key/secret"
-          : `Failed to fetch ${doctypeName}`
-      );
+      if (isReset) {
+        setError(
+          err.response?.status === 403
+            ? "Unauthorized – check API key/secret"
+            : `Failed to fetch ${doctypeName}`
+        );
+      }
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
     }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
+  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis]);
 
   React.useEffect(() => {
-    fetchRecords();
+    fetchRecords(0, true);
   }, [fetchRecords]);
+
+  // 🟢 Load More Handler
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchRecords(records.length, false);
+    }
+  };
 
   // 🟢 2. Handle Bulk Delete
   const handleBulkDelete = async () => {
@@ -231,7 +281,7 @@ export default function DoctypePage() {
       // If no error messages, proceed with success
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
-      fetchRecords(); // Refresh list
+      fetchRecords(0, true); // Reset pagination
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
 
@@ -285,11 +335,18 @@ export default function DoctypePage() {
             <th>LIS Name</th>
             <th>Type</th>
             <th>Amount</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{displayRecords.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
-          {filteredRecords.length ? (
-            filteredRecords.map((record) => {
+          {displayRecords.length ? (
+            displayRecords.map((record) => {
               const isSelected = selectedIds.has(record.name);
               return (
                 <tr
@@ -317,12 +374,15 @@ export default function DoctypePage() {
                   <td>{record.lis_name}</td>
                   <td>{record.type}</td>
                   <td>{record.amount}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={record.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -334,8 +394,8 @@ export default function DoctypePage() {
 
   const renderGridView = () => (
     <div className="equipment-grid">
-      {filteredRecords.length ? (
-        filteredRecords.map((record) => (
+      {displayRecords.length ? (
+        displayRecords.map((record) => (
           <RecordCard
             key={record.name}
             title={record.name}
@@ -462,8 +522,20 @@ export default function DoctypePage() {
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+        {hasMore && displayRecords.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button 
+              onClick={handleLoadMore} 
+              disabled={isLoadingMore} 
+              className="btn btn--secondary flex items-center gap-2 px-6 py-2" 
+              style={{ minWidth: "140px" }}
+            >
+              {isLoadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : "Load More"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

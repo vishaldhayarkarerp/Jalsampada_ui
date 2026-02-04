@@ -8,16 +8,6 @@ import { useAuth } from "@/context/AuthContext";
 import { Controller, useForm } from "react-hook-form";
 import { LinkField } from "@/components/LinkField";
 import Link from "next/link";
-import {
-  Search,
-  Plus,
-  List,
-  LayoutGrid,
-  ChevronDown,
-  ArrowUpNarrowWide,
-  ArrowDownWideNarrow,
-  Check
-} from "lucide-react";
 
 // 🟢 New Imports for Bulk Delete
 import { useSelection } from "@/hooks/useSelection";
@@ -26,6 +16,18 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
+import { 
+  Search, 
+  Plus, 
+  List, 
+  LayoutGrid, 
+  ChevronDown, 
+  ArrowUpNarrowWide, 
+  ArrowDownWideNarrow,
+  Check,
+  Clock
+} from "lucide-react";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -332,6 +334,9 @@ export default function GatePage() {
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("stage")}>
               Stage
             </th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -363,12 +368,15 @@ export default function GatePage() {
                   <td>{g.gate || "—"}</td>
                   <td>{g.lis_name || "—"}</td>
                   <td>{g.stage || "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={g.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>

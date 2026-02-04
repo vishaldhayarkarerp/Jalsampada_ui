@@ -16,7 +16,8 @@ import {
   ChevronDown,
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
-  Check
+  Check,
+  Clock,
 } from "lucide-react";
 
 // 🟢 New Imports for Bulk Delete
@@ -26,6 +27,7 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages, parseServerMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -331,6 +333,9 @@ export default function LogbookPage() {
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("lis_name")}>
               LIS
             </th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -379,12 +384,15 @@ export default function LogbookPage() {
                   </td>
                   <td>{l.stop_datetime || "—"}</td>
                   <td>{l.lis_name || "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={l.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>

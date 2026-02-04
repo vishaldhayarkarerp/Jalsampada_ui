@@ -8,6 +8,15 @@ import { useAuth } from "@/context/AuthContext";
 import { Controller, useForm } from "react-hook-form";
 import { LinkField } from "@/components/LinkField";
 import Link from "next/link";
+
+// 🟢 New Imports for Bulk Delete
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
+import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 import {
   Search,
   Plus,
@@ -17,15 +26,8 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
+  Clock,
 } from "lucide-react";
-
-// 🟢 New Imports for Bulk Delete
-import { useSelection } from "@/hooks/useSelection";
-import { BulkActionBar } from "@/components/BulkActionBar";
-import { bulkDeleteRPC } from "@/api/rpc";
-import { toast } from "sonner";
-import { getApiMessages } from "@/lib/utils";
-import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -386,6 +388,9 @@ export default function LisIncidentRecordPage() {
             >
               Stage / Sub Scheme
             </th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -420,12 +425,15 @@ export default function LisIncidentRecordPage() {
                   <td style={{ minWidth: 160 }}>{row.raised_by || "—"}</td>
                   <td style={{ minWidth: 180 }}>{row.custom_lis || "—"}</td>
                   <td style={{ minWidth: 140 }}>{row.custom_stage || "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={row.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={10} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>
@@ -612,8 +620,8 @@ export default function LisIncidentRecordPage() {
                     <button
                       key={option.key}
                       className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${sortConfig.key === option.key
-                          ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
-                          : "text-gray-700 dark:text-gray-200"
+                        ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
+                        : "text-gray-700 dark:text-gray-200"
                         }`}
                       onClick={() => {
                         setSortConfig((prev) => ({ ...prev, key: option.key }));

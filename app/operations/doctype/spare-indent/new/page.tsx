@@ -104,6 +104,12 @@ export default function NewSpareIndentPage() {
             label: "Assets",
             type: "Table MultiSelect",
             linkTarget: "Asset",
+            // 🟢 Filter mapping similar to Frappe backend query
+            filterMapping: [
+              { sourceField: "custom_asset_category", targetField: "asset_category" },
+              { sourceField: "custom_lis_name", targetField: "custom_lis_name" },
+              { sourceField: "custom_stage", targetField: "custom_stage_no" }
+            ],
           },
           { name: "warehouse_section", label: "Items", type: "Section Break" },
           {

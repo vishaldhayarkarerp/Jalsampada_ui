@@ -13,7 +13,8 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { Plus, List, LayoutGrid, Loader2 } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -34,6 +35,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 interface FundHead {
   name: string;
+  modified?: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -47,6 +49,7 @@ export default function FundHeadPage() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [totalCount, setTotalCount] = React.useState(0);
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -85,7 +88,7 @@ export default function FundHeadPage() {
       setError(null);
 
       const params = {
-        fields: JSON.stringify(["name"]),
+        fields: JSON.stringify(["name", "modified"]),
         limit_page_length: "20",
         order_by: "creation desc"
       };
@@ -99,12 +102,22 @@ export default function FundHeadPage() {
         withCredentials: true,
       });
 
+      // Get total count
+      const countResp = await axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+        params: { doctype: doctypeName },
+        headers: {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        },
+      });
+
       const raw = resp.data?.data ?? [];
       const mapped: FundHead[] = raw.map((r: any) => ({
         name: r.name,
+        modified: r.modified,
       }));
 
       setRecords(mapped);
+      setTotalCount(countResp.data.message || 0);
     } catch (err: any) {
       console.error("API error:", err);
       setError(
@@ -209,6 +222,13 @@ export default function FundHeadPage() {
               />
             </th>
             <th>Name</th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{filteredRecords.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -237,12 +257,15 @@ export default function FundHeadPage() {
                     />
                   </td>
                   <td>{record.name}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={record.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={2} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={4} style={{ textAlign: "center", padding: "32px" }}>
                 No records found.
               </td>
             </tr>

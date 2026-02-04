@@ -32,6 +32,10 @@ interface MaintenanceLogData {
   completion_date?: string;
   log?: string;
   asset_maintenance?: string;
+  asset_name?: string;
+  lis?: string;
+  lis_phase?: string;
+  stage?: string;
   docstatus: 0 | 1 | 2;
   modified: string;
 }
@@ -77,6 +81,7 @@ export default function MaintenanceLogDetailPage() {
           }
         );
 
+        console.log("Fetched Maintenance Log data:", resp.data.data);
         setRecord(resp.data.data as MaintenanceLogData);
       } catch (err: any) {
         setError(
@@ -115,6 +120,25 @@ export default function MaintenanceLogDetailPage() {
             linkTarget: "Asset Maintenance",
             defaultValue: getValue("asset_maintenance"),
           },
+          {
+            name: "asset_name",
+            label: "Asset",
+            type: "Link",
+            linkTarget: "Asset",
+            filters: (getValue) => {
+              const filters: Record<string, any> = {};
+              const lisName = getValue("lis");
+              const lisPhase = getValue("lis_phase");
+              const stageNo = getValue("stage");
+              
+              if (lisName) filters["lis"] = lisName;
+              if (lisPhase) filters["lis_phase"] = lisPhase;
+              if (stageNo) filters["stage"] = stageNo;
+              
+              return filters;
+            },
+            defaultValue: getValue("asset_name"),
+          },
           // {
           //   name: "naming_series",
           //   label: "Series",
@@ -139,6 +163,35 @@ export default function MaintenanceLogDetailPage() {
             linkTarget: "Asset",
             displayDependsOn: "maintenance_schedule",
             fetchFrom: { sourceField: "maintenance_schedule", targetDoctype: "Asset", targetField: "asset_name" }
+          },
+
+          { name: "section_break_lis", type: "Section Break", label: "LIS Information" },
+
+          {
+            name: "lis",
+            label: "LIS",
+            type: "Link",
+            linkTarget: "Lift Irrigation Scheme",
+            required: true,
+            defaultValue: getValue("lis"),
+          },
+          {
+            name: "lis_phase",
+            label: "LIS Phase",
+            type: "Link",
+            linkTarget: "LIS Phases",
+            defaultValue: getValue("lis_phase"),
+          },
+          {
+            name: "stage",
+            label: "Stage",
+            type: "Link",
+            linkTarget: "Stage No",
+            required: true,
+            defaultValue: getValue("stage"),
+            filterMapping: [
+              { sourceField: "lis", targetField: "lis_name" }
+            ]
           },
 
           { name: "section_break_1", type: "Section Break", label: "Maintenance Details" },
@@ -275,6 +328,15 @@ export default function MaintenanceLogDetailPage() {
 
     try {
       const payload = JSON.parse(JSON.stringify(data));
+
+      // console.log("Saving Maintenance Log with payload:", payload);
+      // console.log("LIS fields in payload:", {
+      //   lis: payload.lis,
+      //   lis_phase: payload.lis_phase,
+      //   stage: payload.stage
+      // });
+      // console.log("All payload keys:", Object.keys(payload));
+      // console.log("Full payload structure:", JSON.stringify(payload, null, 2));
 
       const finalPayload: Record<string, any> = {
         ...payload,

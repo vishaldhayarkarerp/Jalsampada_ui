@@ -15,6 +15,7 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
+  Clock,
 } from "lucide-react";
 
 // 🟢 New Imports for Bulk Delete
@@ -24,6 +25,7 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
+import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.3.169:2223";
@@ -326,6 +328,9 @@ export default function RepairWorkRequirementPage() {
             >
               Prepared By
             </th>
+            <th className="text-right pr-4" style={{ width: "100px" }}>
+              <Clock className="w-4 h-4 mr-1 float-right" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -358,12 +363,15 @@ export default function RepairWorkRequirementPage() {
                   <td style={{ minWidth: 200 }}>{row.work_requirement_number || "—"}</td>
                   <td style={{ minWidth: 160 }}>{row.stage || "—"}</td>
                   <td style={{ minWidth: 200 }}>{row.prepared_by || "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={row.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
                 No repair work requirements found.
               </td>
             </tr>
