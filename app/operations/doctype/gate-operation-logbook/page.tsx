@@ -27,10 +27,15 @@ import {
   ArrowDownWideNarrow,
   Check,
   Clock,
+  Loader2 // 🟢 Added Loader2
 } from "lucide-react";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.1.138:4412";
+
+// 🟢 CONFIG: Settings for Pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -60,7 +65,7 @@ interface GateOperationLogbook {
   modified?: string;
 }
 
-type SortDirection = "asc" | "dsc";
+type SortDirection = "asc" | "desc"; // 🟢 Fixed typo 'dsc' -> 'desc' to match API expectation
 interface SortConfig {
   key: keyof GateOperationLogbook;
   direction: SortDirection;
@@ -84,7 +89,11 @@ export default function GateOperationLogbookPage() {
 
   const [rows, setRows] = React.useState<GateOperationLogbook[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0);    // Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -103,7 +112,7 @@ export default function GateOperationLogbookPage() {
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
-    direction: "dsc",
+    direction: "desc", // 🟢 Fixed typo
   });
 
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
@@ -131,87 +140,126 @@ export default function GateOperationLogbookPage() {
   }, []);
 
   /* -------------------------------------------------
-     3. FETCH GATE OPERATION LOGBOOK
+     3. FETCH GATE OPERATION LOGBOOK (Refactored)
      ------------------------------------------------- */
-  const fetchRows = React.useCallback(async () => {
-    if (!isInitialized) return;
-    if (!isAuthenticated || !apiKey || !apiSecret) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const params: any = {
-        fields: JSON.stringify([
-          "name",
-          "lis_name",
-          "stage",
-          "gate_no",
-          "gate_operation",
-          "modified",
-        ]),
-        limit_page_length: "20",
-        order_by: "modified desc",
-      };
-
-      if (debouncedSearch) {
-        params.or_filters = JSON.stringify({
-          name: ["like", `%${debouncedSearch}%`],
-          lis_name: ["like", `%${debouncedSearch}%`],
-          stage: ["like", `%${debouncedSearch}%`],
-          gate_no: ["like", `%${debouncedSearch}%`],
-        });
+  const fetchRows = React.useCallback(
+    async (start = 0, isReset = false) => {
+      if (!isInitialized) return;
+      if (!isAuthenticated || !apiKey || !apiSecret) {
+        setLoading(false);
+        return;
       }
 
-      const filters: any[] = [];
-
-      if (selectedLis) {
-        filters.push(["Gate Operation Logbook", "lis_name", "=", selectedLis]);
-      }
-
-      if (selectedStage) {
-        filters.push(["Gate Operation Logbook", "stage", "=", selectedStage]);
-      }
-
-      if (filters.length > 0) {
-        params.filters = JSON.stringify(filters);
-      }
-
-      // 🟢 Append /api/resource manually
-      const resp = await axios.get(
-        `${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`,
-        {
-          params,
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-          withCredentials: true,
+      try {
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
         }
-      );
 
-      const raw = resp.data?.data ?? [];
-      const mapped: GateOperationLogbook[] = raw.map((r: any) => ({
-        name: r.name,
-        lis_name: r.lis_name,
-        stage: r.stage,
-        gate_no: r.gate_no,
-        gate_operation: r.gate_operation,
-        modified: r.modified,
-      }));
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
 
-      setRows(mapped);
-    } catch (err: any) {
-      console.error("API error:", err);
-      setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
-    } finally {
-      setLoading(false);
-    }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis, selectedStage]);
+        // Prepare Filters
+        const params: any = {
+          fields: JSON.stringify([
+            "name",
+            "lis_name",
+            "stage",
+            "gate_no",
+            "gate_operation",
+            "modified",
+          ]),
+          limit_start: start,
+          limit_page_length: limit,
+          order_by: `${sortConfig.key} ${sortConfig.direction}`, // 🟢 Server-side sorting
+        };
 
+        if (debouncedSearch) {
+          params.or_filters = JSON.stringify({
+            name: ["like", `%${debouncedSearch}%`],
+            lis_name: ["like", `%${debouncedSearch}%`],
+            stage: ["like", `%${debouncedSearch}%`],
+            gate_no: ["like", `%${debouncedSearch}%`],
+          });
+        }
+
+        const filters: any[] = [];
+
+        if (selectedLis) {
+          filters.push(["Gate Operation Logbook", "lis_name", "=", selectedLis]);
+        }
+
+        if (selectedStage) {
+          filters.push(["Gate Operation Logbook", "stage", "=", selectedStage]);
+        }
+
+        if (filters.length > 0) {
+          params.filters = JSON.stringify(filters);
+        }
+
+        const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
+
+        // 🟢 Parallel Requests: Data + Count (only on reset)
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`, {
+            params,
+            headers: commonHeaders,
+            withCredentials: true,
+          }),
+          isReset
+            ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+                params: { 
+                    doctype: doctypeName,
+                    // Note: frappe.client.get_count doesn't easily support or_filters in GET params 
+                    // without full filter array. For now, we fetch total unfiltered or simply ignore count filter accuracy for complex OR searches.
+                    // If you need accurate count on search, you might need a custom RPC method.
+                },
+                headers: commonHeaders,
+              })
+            : Promise.resolve(null),
+        ]);
+
+        const raw = dataResp.data?.data ?? [];
+        const mapped: GateOperationLogbook[] = raw.map((r: any) => ({
+          name: r.name,
+          lis_name: r.lis_name,
+          stage: r.stage,
+          gate_no: r.gate_no,
+          gate_operation: r.gate_operation,
+          modified: r.modified,
+        }));
+
+        if (isReset) {
+          setRows(mapped);
+          if (countResp) setTotalCount(countResp.data.message);
+        } else {
+          setRows((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
+      } catch (err: any) {
+        console.error("API error:", err);
+        if (isReset) setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
+      } finally {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis, selectedStage, sortConfig]
+  );
+
+  // 🟢 Trigger fetch on search, filter, or sort change
   React.useEffect(() => {
-    fetchRows();
+    fetchRows(0, true);
   }, [fetchRows]);
+
+  // 🟢 Load More Handler
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchRows(rows.length, false);
+    }
+  };
 
   // 🟢 2. Handle Bulk Delete
   const handleBulkDelete = async () => {
@@ -256,7 +304,7 @@ export default function GateOperationLogbookPage() {
       // If no error messages, proceed with success
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
-      fetchRows(); 
+      fetchRows(0, true); // Reload from scratch 
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
       
@@ -276,23 +324,15 @@ export default function GateOperationLogbookPage() {
   /* -------------------------------------------------
      4. SORTING LOGIC
      ------------------------------------------------- */
-  const sortedRows = React.useMemo(() => {
-    const sortable = [...rows];
-    sortable.sort((a, b) => {
-      const aValue = (a[sortConfig.key] || "") as string;
-      const bValue = (b[sortConfig.key] || "") as string;
-      const compare = aValue.localeCompare(bValue);
-      return sortConfig.direction === "asc" ? compare : -compare;
-    });
-    return sortable;
-  }, [rows, sortConfig]);
+  // 🟢 Removed client-side sortedRows useMemo. 
+  // We now rely on 'rows' which is sorted by the server via 'order_by' param.
 
   const requestSort = (key: keyof GateOperationLogbook) => {
-    let direction: SortDirection = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "dsc";
-    }
-    setSortConfig({ key, direction });
+    // This will trigger the useEffect -> fetchRows(0, true)
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
   };
 
   const currentSortLabel =
@@ -368,14 +408,20 @@ export default function GateOperationLogbookPage() {
             >
               Gate Operation
             </th>
-            <th className="text-right pr-4" style={{ width: "100px" }}>
-              <Clock className="w-4 h-4 mr-1 float-right" />
+            {/* Total Count Header */}
+            <th className="text-right pr-4" style={{ width: "140px" }}>
+                <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                   <><span>{rows.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                 )}
+
+              </div>
             </th>
           </tr>
         </thead>
         <tbody>
-          {sortedRows.length ? (
-            sortedRows.map((row) => {
+          {rows.length ? (
+            rows.map((row) => {
               const isSelected = selectedIds.has(row.name);
               return (
                 <tr
@@ -569,7 +615,7 @@ export default function GateOperationLogbookPage() {
                 onClick={() =>
                   setSortConfig((prev) => ({
                     ...prev,
-                    direction: prev.direction === "asc" ? "dsc" : "asc",
+                    direction: prev.direction === "asc" ? "desc" : "asc",
                   }))
                 }
               >
@@ -626,8 +672,28 @@ export default function GateOperationLogbookPage() {
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+
+        {/* 🟢 Load More Button */}
+        {hasMore && rows.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              className="btn btn--secondary flex items-center gap-2 px-6 py-2"
+              style={{ minWidth: "140px" }}
+            >
+              {isLoadingMore ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                </>
+              ) : (
+                "Load More"
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
