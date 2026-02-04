@@ -1,5 +1,5 @@
 "use client";
-import { Controller } from "react-hook-form";
+import { Controller, useWatch } from "react-hook-form";
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -111,7 +111,10 @@ export interface FormField {
       targetDoctype: string;
       targetField: string;
     };
-    displayDependsOn?: string;
+    displayDependsOn?: 
+  | string 
+  | Record<string, any> 
+  | ((values: Record<string, any>) => boolean);
     filters?: (getValue: (name: string) => any) => Record<string, any>;
   }[];
   action?: () => void;
@@ -121,7 +124,7 @@ export interface FormField {
   patternMessage?: string;
   filters?: (getValue: (name: string) => any) => Record<string, any>;
   filterMapping?: { sourceField: string; targetField: string }[];
-  displayDependsOn?: string;
+  displayDependsOn?: string | Record<string, any>;
   fetchFrom?: {
     sourceField: string;
     targetDoctype: string;
@@ -234,51 +237,48 @@ async function fetchMultipleFieldValues(
 }
 
 function evaluateDisplayDependsOn(
-  condition: string,
-  getValue: (name: string) => any
-): boolean {
-  try {
-    const parts = condition
-      .split(/(\&\&|\|\|)/)
-      .map((c) => c.trim())
-      .filter((c) => c);
-    const conditions = parts.filter((p) => p !== "&&" && p !== "||");
-    const operators = parts.filter((p) => p === "&&" || p === "||");
+  condition: string | Record<string, any>,
+  values: Record<string, any>
+) {
+  if (!condition) return true;
 
-    const results = conditions.map((cond) => {
-      const [field, op, value] = cond.split(/([=!<>]=?)/);
-      if (!field || !op || value === undefined) return true;
+  if (typeof condition === "string") {
+    try {
+      // Replace all identifiers with values['identifier']
+      // Matches any variable-like string in the condition
+      const conditionWithValues = condition.replace(
+        /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g,
+        (_, v) => {
+          // Only replace if it exists in values
+          return v in values ? `values["${v}"]` : v;
+        }
+      );
+      return new Function("values", `return ${conditionWithValues}`)(values);
+    } catch (err) {
+      console.error("Error evaluating displayDependsOn:", condition, err);
+      return true; // fallback to visible if error
+    }
+  }
 
-      const fieldValue = getValue(field.trim());
-      let compareValue: any = value.trim();
+  if (typeof condition === "object") {
+    for (const key in condition) {
+      const expected = condition[key];
 
-      if (compareValue === "true") compareValue = true;
-      else if (compareValue === "false") compareValue = false;
-      else if (/^\d+$/.test(compareValue))
-        compareValue = parseInt(compareValue, 10);
-      else if (/^\d+\.\d+$/.test(compareValue))
-        compareValue = parseFloat(compareValue);
-      else compareValue = compareValue.replace(/^['"]|['"]$/g, "");
-
-      switch (op) {
-        case "==": return fieldValue == compareValue;
-        case "!=": return fieldValue != compareValue;
-        case ">": return (fieldValue ?? 0) > (compareValue ?? 0);
-        case "<": return (fieldValue ?? 0) < (compareValue ?? 0);
-        case ">=": return (fieldValue ?? 0) >= (compareValue ?? 0);
-        case "<=": return (fieldValue ?? 0) <= (compareValue ?? 0);
-        default: return true;
+      if (expected === true) {
+        // Show field if value is truthy
+        if (!values[key]) return false;
+      } else if (expected === false) {
+        // Show field if value is falsy
+        if (values[key]) return false;
+      } else {
+        // Exact match
+        if (values[key] !== expected) return false;
       }
-    });
-
-    return results.reduce((acc, result, i) => {
-      const op = operators[i - 1];
-      return op === "&&" ? acc && result : op === "||" ? acc || result : result;
-    });
-  } catch (e) {
-    console.error("Display depends on error:", condition, e);
+    }
     return true;
   }
+
+  return true;
 }
 
 function buildDynamicFilters(
@@ -491,6 +491,8 @@ export function DynamicForm({
     watch,
     reset,
   } = methods;
+
+  const allValues = useWatch({ control });
 
   React.useEffect(() => {
     if (onFormInit) {
@@ -1674,11 +1676,16 @@ export function DynamicForm({
     );
   };
 
+  
   const renderField = (field: FormField, idx: number) => {
-    const isHidden =
-      field.displayDependsOn &&
-      !evaluateDisplayDependsOn(field.displayDependsOn, watch);
+    // Check if field should be hidden
+    const isHidden = field.displayDependsOn
+      ? !evaluateDisplayDependsOn(field.displayDependsOn, allValues || {})
+      : false;
 
+    if (isHidden) return null; // Do not render hidden fields
+
+    // Field content remains same
     const fieldContent = () => {
       switch (field.type) {
         case "Data":
@@ -1733,7 +1740,6 @@ export function DynamicForm({
           return renderButton(field);
         case "Attach":
           return renderAttachment(field);
-
         case "Custom":
           return (
             <div className="form-group">
@@ -1741,11 +1747,10 @@ export function DynamicForm({
               {field.customElement}
             </div>
           );
-
         case "Section Break":
           return (
             <div
-              className="form-group"
+              key={`${field.name}-${idx}`}
               style={{ gridColumn: "1 / -1", marginTop: 8 }}
             >
               <hr style={{ borderColor: "var(--color-border)" }} />
@@ -1754,22 +1759,13 @@ export function DynamicForm({
             </div>
           );
         case "Column Break":
-          return <div aria-hidden />;
+          return <div key={idx} aria-hidden />;
         default:
           return null;
       }
     };
 
-    const content = fieldContent();
-    if (isHidden && content) {
-      return (
-        <div key={`${field.name}-${idx}`} className="hidden md:col-span-1">
-          {content}
-        </div>
-      );
-    }
-
-    return content;
+    return fieldContent();
   };
 
   // ── RENDER ───────────────────────────────────────────────────────────────
@@ -1970,12 +1966,20 @@ export function DynamicForm({
           </div>
 
           {/* Dynamic grid */}
+          
           <div
-            className={`grid grid-cols-1 gap-x-6 gap-y-0 ${doctype === "Project" ? "md:grid-cols-4" : "md:grid-cols-3"
+            className={`grid grid-cols-1 gap-x-6 gap-y-4 ${doctype === "Project" ? "md:grid-cols-4" : "md:grid-cols-3"
               }`}
             style={{ overflow: "visible" }}
           >
             {activeTabFields.map((field, idx) => {
+              // Check if field should be hidden
+              const isHidden = field.displayDependsOn
+                ? !evaluateDisplayDependsOn(field.displayDependsOn, allValues || {})
+                : false;
+
+              if (isHidden) return null; // Skip rendering the wrapper div entirely
+
               const isWideField =
                 field.type === "Table" ||
                 field.type === "Table MultiSelect" ||

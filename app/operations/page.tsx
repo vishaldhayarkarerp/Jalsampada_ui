@@ -53,6 +53,18 @@ const reportsDoctypes: Doctype[] = [
   { name: "gate-logbook-report", title: "Gate Logbook Report", icon: FileText },
 ];
 
+const stockReportsDoctypes: Doctype[] = [
+  // Reports
+  { name: "stock-register-report", title: "Stock Register", icon: FileText },
+  { name: "stock-balance-report", title: "Stock Balance", icon: FileText },
+  { name: "stock-projected-qty-report", title: "Stock Projected Qty", icon: FileText },
+  { name: "stock-summary-report", title: "Stock Summary", icon: FileText },
+  { name: "stock-ageing-report", title: "Stock Ageing", icon: FileText },
+  { name: "item-price-stock-report", title: "Item Price Stock", icon: FileText },
+  { name: "warehouse-wise-stock-balance-report", title: "Warehouse Wise Stock balance", icon: FileText },
+  { name: "stock-analytics-report", title: "Stock Analytics", icon: FileText },
+];
+
 const operationsDoctypeGroups: DoctypeGroup[] = [
   {
     title: "Master",
@@ -69,6 +81,11 @@ const operationsDoctypeGroups: DoctypeGroup[] = [
   {
     title: "Reports",
     doctypes: reportsDoctypes,
+    basePath: "/operations/reports"
+  },
+  {
+    title: "Stock Reports",
+    doctypes: stockReportsDoctypes,
     basePath: "/operations/reports"
   }
 ];
