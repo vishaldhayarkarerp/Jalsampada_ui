@@ -87,6 +87,7 @@ export interface FormField {
   referenceDoctype?: string;
   doctype?: string;
   required?: boolean;
+  fieldColumns?: number;
   description?: string;
   placeholder?: string;
   options?: string | { label: string; value: string; className?: string }[];
@@ -111,10 +112,10 @@ export interface FormField {
       targetDoctype: string;
       targetField: string;
     };
-    displayDependsOn?: 
-  | string 
-  | Record<string, any> 
-  | ((values: Record<string, any>) => boolean);
+    displayDependsOn?:
+    | string
+    | Record<string, any>
+    | ((values: Record<string, any>) => boolean);
     filters?: (getValue: (name: string) => any) => Record<string, any>;
   }[];
   action?: () => void;
@@ -1826,10 +1827,10 @@ export function DynamicForm({
               {/* Show different buttons based on docstatus and isSubmittable */}
               {isSubmittable && docstatus === 0 && (
                 <>
-                  {/* Draft: Show Submit button */}
+                
                   <button
                     type="button"
-                    className="btn btn--primary"
+                    className="btn btn--primary"  
                     onClick={handleSubmitDocument}
                   >
                     Submit
@@ -1855,8 +1856,8 @@ export function DynamicForm({
                 </>
               )}
 
-              {/* Show Save button for draft documents when there are changes */}
-              {docstatus === 0 && isDirty && (
+              {/* Show Save button only for non-submittable documents (Running) */}
+              {!isSubmittable && docstatus === 0 && isDirty && (
                 <button
                   type="submit"
                   className="btn btn--primary"
@@ -1865,7 +1866,7 @@ export function DynamicForm({
                 </button>
               )}
 
-              {/* 🟢 PREVIOUS / NEXT NAVIGATION GROUP - Always rendered, disabled while loading */}
+              {/* Previous/Next Buttons */}
               <div className="flex items-center gap-1">
                 <Button
                   type="button"
@@ -1966,32 +1967,34 @@ export function DynamicForm({
           </div>
 
           {/* Dynamic grid */}
-          
           <div
-            className={`grid grid-cols-1 gap-x-6 gap-y-4 ${doctype === "Project" ? "md:grid-cols-4" : "md:grid-cols-3"
-              }`}
+            className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4"
             style={{ overflow: "visible" }}
           >
             {activeTabFields.map((field, idx) => {
-              // Check if field should be hidden
               const isHidden = field.displayDependsOn
                 ? !evaluateDisplayDependsOn(field.displayDependsOn, allValues || {})
                 : false;
 
-              if (isHidden) return null; // Skip rendering the wrapper div entirely
+              if (isHidden) return null;
 
-              const isWideField =
-                field.type === "Table" ||
+              const isWideField = field.type === "Table" ||
                 field.type === "Table MultiSelect" ||
                 field.type === "Section Break" ||
                 field.type === "Custom";
 
-              // Decide column span based on doctype + field type
-              const colSpanClass = isWideField
-                ? doctype === "Project" || doctype === "Expenditure"
-                  ? "md:col-span-4"
-                  : "md:col-span-3"
-                : "md:col-span-1";
+              // Determine column span based on field type
+              let colSpanClass = "md:col-span-1"; // Default: 1 column (1/4 width)
+
+              if (isWideField) {
+                colSpanClass = "md:col-span-4"; // Full width (4 columns)
+              } else if (field.fieldColumns === 2) {
+                colSpanClass = "md:col-span-2"; // Half width (2/4)
+              } else if (field.fieldColumns === 3) {
+                colSpanClass = "md:col-span-3"; // 3/4 width
+              } else if (field.fieldColumns === 4) {
+                colSpanClass = "md:col-span-4"; // Full width
+              }
 
               return (
                 <div
@@ -2005,6 +2008,9 @@ export function DynamicForm({
             })}
           </div>
 
+
+          {/* Footer */}
+
           {/* Footer */}
           <hr
             style={{ borderColor: "var(--color-border)", margin: "16px 0" }}
@@ -2013,24 +2019,24 @@ export function DynamicForm({
             {/* Show different buttons based on docstatus and isSubmittable */}
             {isSubmittable && docstatus === 0 && (
               <>
-                {/* Draft: Show Save and Submit buttons */}
-                {isDirty && (
-                  <button
-                    type="submit"
-                    className="btn btn--primary"
-                  >
-                    Save
-                  </button>
-                )}
+                {/* When isSubmittable (Final bill type), only show Submit button */}
                 <button
                   type="button"
-                  className="btn btn--success"
                   onClick={handleSubmitDocument}
                 >
                   Submit
                 </button>
               </>
             )}
+            {!isSubmittable && docstatus === 0 && isDirty && (
+              <button
+                type="submit"
+                className="btn btn--primary"
+              >
+                Save
+              </button>
+            )}
+
             {isSubmittable && docstatus === 1 && (
               <>
                 {/* Submitted: Show Cancel button */}
@@ -2043,21 +2049,12 @@ export function DynamicForm({
                 </button>
               </>
             )}
+
             {isSubmittable && docstatus === 2 && (
               <>
                 {/* Cancelled: No actions allowed */}
                 <span className="text-sm text-gray-500 italic">Document is cancelled and cannot be modified</span>
               </>
-            )}
-
-            {/* For non-submittable documents, just show Save button */}
-            {!isSubmittable && docstatus === 0 && isDirty && (
-              <button
-                type="submit"
-                className="btn btn--primary"
-              >
-                Save
-              </button>
             )}
 
             {/* Show regular cancel button for navigation */}
