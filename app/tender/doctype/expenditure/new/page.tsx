@@ -113,6 +113,7 @@ export default function NewExpenditurePage() {
 
   const doctypeName = "Expenditure";
   const [isSaving, setIsSaving] = React.useState(false);
+  const [billType, setBillType] = React.useState<string>(""); 
 
   // 🟢 NEW: State for work name default value
   const [workName, setWorkName] = React.useState<string>("");
@@ -128,6 +129,7 @@ export default function NewExpenditurePage() {
   }, []);
 
   const [formInstance, setFormInstance] = React.useState<any>(null);
+
 
   React.useEffect(() => {
     if (!formInstance) return;
@@ -178,261 +180,281 @@ export default function NewExpenditurePage() {
   }, [formInstance, apiKey, apiSecret]);
 
   const handleFormInit = React.useCallback((form: any) => {
-    setFormInstance(form);
+  setFormInstance(form);
 
-    let previousBillType: string | undefined;
+  // 1️⃣ Initialize previousBillType
+  let previousBillType: string | undefined;
 
-    // Store the initial bill type value, but only if it's not "Running" due to RA in prev_bill_no
-    const initialBillType = form.getValues('bill_type');
-    const initialPrevBillNo = form.getValues('prev_bill_no');
+  const initialBillType = form.getValues('bill_type') || 'Running';
+  const initialPrevBillNo = form.getValues('prev_bill_no');
 
-    // If current bill type is "Running" but prev_bill_no contains "ra", 
-    // we should assume original value wasn't "Running"
-    if (initialBillType === 'Running' && initialPrevBillNo && typeof initialPrevBillNo === 'string' && /ra/i.test(initialPrevBillNo)) {
-      // Don't store "Running" as previous - it was auto-set
-      previousBillType = 'Select Type'; // Default fallback
-    } else if (initialBillType && initialBillType !== 'Running') {
-      previousBillType = initialBillType;
-    } else {
-      previousBillType = 'Select Type'; // Default fallback
-    }
+  // Initialize billType state for buttons
+  setBillType(initialBillType);
 
-    // Watch the prev_bill_no field and set bill_type accordingly
-    form.watch((value: any, { name }: { name?: string }) => {
-      if (name === 'prev_bill_no' || name === undefined) {
-        const prevBillNo = form.getValues('prev_bill_no');
-        const currentBillType = form.getValues('bill_type');
+  if (initialBillType === 'Running' && initialPrevBillNo && /ra/i.test(initialPrevBillNo)) {
+    previousBillType = 'Select Type';
+  } else if (initialBillType && initialBillType !== 'Running') {
+    previousBillType = initialBillType;
+  } else {
+    previousBillType = 'Select Type';
+  }
 
-        // Check if prev_bill_no contains 'ra' or 'RA' (case-insensitive)
-        if (prevBillNo && typeof prevBillNo === 'string' && /ra/i.test(prevBillNo)) {
-          // Set bill_type to "Running" if it's not already set
-          if (currentBillType !== 'Running') {
-            // Store current value as previous before changing to Running
-            if (currentBillType && currentBillType !== 'Running') {
-              previousBillType = currentBillType;
-            }
-            form.setValue('bill_type', 'Running', { shouldDirty: true });
-          }
-        } else {
-          // If prev_bill_no is empty or doesn't contain 'ra', restore previous bill type
-          if (!prevBillNo || (typeof prevBillNo === 'string' && !/ra/i.test(prevBillNo))) {
-            if (currentBillType === 'Running' && previousBillType) {
-              form.setValue('bill_type', previousBillType, { shouldDirty: true });
-            } else if (!prevBillNo && currentBillType === 'Running' && !previousBillType) {
-              // If no previous value stored, reset to default
-              form.setValue('bill_type', 'Select Type', { shouldDirty: true });
-            }
-          }
+  // 2️⃣ Watch prev_bill_no to auto-set Running if needed
+  form.watch((value: any, { name }: { name?: string }) => {
+    if (name === 'prev_bill_no' || name === undefined) {
+      const prevBillNo = form.getValues('prev_bill_no');
+      const currentBillType = form.getValues('bill_type');
+
+      if (prevBillNo && /ra/i.test(prevBillNo)) {
+        if (currentBillType !== 'Running') {
+          if (currentBillType && currentBillType !== 'Running') previousBillType = currentBillType;
+          form.setValue('bill_type', 'Running', { shouldDirty: true });
+        }
+      } else {
+        // Restore previous type if prev_bill_no no longer contains 'ra'
+        if (currentBillType === 'Running' && previousBillType) {
+          form.setValue('bill_type', previousBillType, { shouldDirty: true });
+        } else if (!prevBillNo && currentBillType === 'Running' && !previousBillType) {
+          form.setValue('bill_type', 'Select Type', { shouldDirty: true });
         }
       }
-    });
-  }, []);
+    }
+  });
 
-  /* -------------------------------------------------
-  4. Form tabs configuration
-  ------------------------------------------------- */
-  const formTabs: TabbedLayout[] = React.useMemo(() => {
-    return [
-      {
-        name: "Details",
-        fields: ([
-          {
-            name: "fiscal_year",
-            label: "Fiscal Year",
-            type: "Link",
-            linkTarget: "Fiscal Year",
-            required: true,
-          },
-          {
-            name: "tender_number",
-            label: "Tender Number",
-            type: "Link",
-            required: true,
-            linkTarget: "Project",
-            filterMapping: [
-              { sourceField: "custom_fiscal_year", targetField: "fiscal_year" }
-            ]
-          },
-          {
-            name: "tender_amount",
-            label: "Tender Amount",
-            type: "Currency",
-            precision: 2,
-            fetchFrom: {
-              sourceField: "tender_number",
-              targetDoctype: "Project",
-              targetField: "custom_tender_amount"
-            }
-          },
-          {
-            name: "posting_date",
-            label: "Bill Date",
-            type: "Date",
-          },
+  // 3️⃣ Watch bill_type to update buttons dynamically
+  form.watch((value: any, { name }: { name?: string }) => {
+    if (name === 'bill_type') {
+      const currentType = form.getValues('bill_type');
+      setBillType(currentType); // this controls DynamicForm buttons
+    }
+  });
+}, []);
 
-          {
-            name: "prev_bill_no",
-            label: "Previous Bill Number",
-            type: "Data",
-          },
-          {
-            name: "bill_number",
-            label: "Bill Number",
-            type: "Data",
-          },
-          {
-            name: "prev_bill_amt",
-            label: "Previous Bill Amount",
-            type: "Currency",
-            precision: 2,
-          },
-          {
-            name: "mb_no",
-            label: "MB No",
-            type: "Data",
-          },
-          {
-            name: "bill_amount",
-            label: "Bill Amount",
-            type: "Currency",
-            required: true,
-            precision: 2,
-          },
+const formTabs: TabbedLayout[] = React.useMemo(() => {
+  return [
+    {
+      name: "Details",
+      fields: [
+        {
+          name: "fiscal_year",
+          label: "Fiscal Year",
+          type: "Link",
+          linkTarget: "Fiscal Year",
+          required: true,
+        },
 
-          {
-            name: "bill_upto",
-            label: "Bill Upto Amount",
-            type: "Currency",
-            precision: 2,
-          },
-          {
-            name: "remaining_amount",
-            label: "Remaining Amount",
-            type: "Currency",
-            precision: 2,
-          },
-          {
-            name: "page_no",
-            label: "Page No",
-            type: "Data",
-          },
-          {
-            name: "bill_type",
-            label: "Bill Type",
-            type: "Select",
-            options: [
-              { label: "Running", value: "Running" },
-              { label: "Final", value: "Final" },
-            ],
-          },
-          {
-            name: "lift_irrigation_scheme",
-            label: "Lift Irrigation Scheme",
-            type: "Link",
-            linkTarget: "Lift Irrigation Scheme",
-            required: true,
-            fetchFrom: {
-              sourceField: "tender_number",
-              targetDoctype: "Project",
-              targetField: "custom_lis_name"
-            }
-          },
-          {
-            name: "stage",
-            label: "Stage/ Sub Scheme",
-            type: "Table MultiSelect",
-            linkTarget: "Stage No",
-            filterMapping: [
-              { sourceField: "lift_irrigation_scheme", targetField: "lis_name" },
-            ],
-            fetchFrom: {
-              sourceField: "tender_number",
-              targetDoctype: "Project",
-              targetField: "custom_stage"
-            }
-          },
-
-          {
-            name: "expenditure_details",
-            label: "Expenditure Details",
-            type: "Table",
-            showDownloadUpload: true,
-            columns: [
-              // 🟢 NEW: Added defaultValue from state
-              { name: "name_of_work", label: "Name of Work", type: "Read Only", defaultValue: workName },
-              {
-                name: "stage",
-                label: "Stage",
-                type: "Link",
-                linkTarget: "Stage No",
-                filters: (getValues: (name: string) => any) => {
-                  // Use 'parent.stage' to access the live parent field value
-                  const parentStage = getValues("parent.stage");
-                  const allowedStages = getAllowedStages({ stage: parentStage });
-                  if (!allowedStages || allowedStages.length === 0) return { name: ["in", []] }; // Return empty filter if no stages
-                  return { name: ["in", allowedStages] };
-                }
-              },
-              { name: "section_interchange", label: "", type: "Section Break" },
-              { name: "work_type", label: "Work Type", type: "Link", linkTarget: "Work Type" },
-              {
-                name: "work_subtype",
-                label: "Work Subtype",
-                type: "Link",
-                linkTarget: "Work Subtype",
-                filterMapping: [{ sourceField: "work_type", targetField: "work_type" }]
-              },
-              { name: "bill_amount", label: "Expenditure Amount", type: "Currency", precision: 2 },
-              { name: "have_asset", label: "Have Asset", type: "Check", displayDependsOn: "work_type==Miscellaneous" },
-              {
-                name: "asset",
-                label: "Asset",
-                type: "Link",
-                linkTarget: "Asset",
-                displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1"
-              },
-              {
-                name: "asset_name",
-                label: "Asset Name",
-                type: "Data",
-                displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
-                fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "asset_name" }
-              },
-              {
-                name: "asset_no",
-                label: "Asset No",
-                type: "Data",
-                displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
-                fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "custom_asset_no" }
-              },
-              { name: "from_date", label: "From Date", type: "Date", displayDependsOn: "work_type==Operation || work_type==Security" },
-              { name: "to_date", label: "To Date", type: "Date", displayDependsOn: "work_type==Operation || work_type==Security" },
-              { name: "tax_amount", label: "Tax Amount", type: "Currency", precision: 2 },
-              { name: "invoice_number", label: "Invoice Number", type: "Data" },
-              { name: "expenditure_date", label: "Invoice Date", type: "Date" },
-              { name: "remarks", label: "Work Details", type: "Text" },
-              { name: "attach", label: "Attach", type: "Attach" },
-              { name: "cb", label: "Column Break", type: "Column Break" },
-              { name: "job_carried_out", label: "Job Carried Out", type: "Long Text", displayDependsOn: "work_type==Repair" },
-              { name: "spare_replaced", label: "Spare Replaced", type: "Long Text", displayDependsOn: "work_type==Repair" },
-            ],
-          },
-
-          {
-            name: "saved_amount",
-            label: "Saved Amount",
-            type: "Currency",
-            precision: 2,
-          },
-          {
-            name: "work_description",
-            label: "Work Description",
-            type: "Long Text",
+        { name: "cb1", label: "", type: "Section Break" },
+        {
+          name: "posting_date",
+          label: "Bill Date",
+          type: "Date",
+          fieldColumns: 1,
+        },
+        {
+          name: "tender_number",
+          label: "Tender Number",
+          type: "Link",
+          required: true,
+          defaultValue: 0,
+          linkTarget: "Project",
+          fieldColumns: 1,
+          filterMapping: [
+            { sourceField: "custom_fiscal_year", targetField: "fiscal_year" }
+          ]
+        },
+        {
+          name: "tender_amount",
+          label: "Tender Amount",
+          type: "Currency",
+          precision: 2,
+          fieldColumns: 1,
+          defaultValue: "0.00",
+          fetchFrom: {
+            sourceField: "tender_number",
+            targetDoctype: "Project",
+            targetField: "custom_tender_amount"
           }
-        ]),
-      }
-    ];
-  }, [workName, getAllowedStages]); // 🟢 NEW: Added workName to dependency array
+        },
+        {
+          name: "lift_irrigation_scheme",
+          label: "Lift Irrigation Scheme",
+          type: "Link",
+          linkTarget: "Lift Irrigation Scheme",
+          required: true,
+          fieldColumns: 1,
+          fetchFrom: {
+            sourceField: "tender_number",
+            targetDoctype: "Project",
+            targetField: "custom_lis_name"
+          }
+        },
+
+        {
+          name: "prev_bill_no",
+          label: "Previous Bill Number",
+          type: "Data",
+          defaultValue: 0,
+          fieldColumns: 1,
+        },
+        {
+          name: "prev_bill_amt",
+          label: "Previous Bill Amount",
+          type: "Currency",
+          precision: 2,
+          defaultValue: "0.00",
+          fieldColumns: 1,
+        },
+        {
+          name: "mb_no",
+          label: "Prev MB No",
+          type: "Data",
+          defaultValue: 0,
+          fieldColumns: 1,
+        },
+        {
+          name: "page_no",
+          label: "Prev Pg No",
+          type: "Data",
+          defaultValue: 0,
+          fieldColumns: 1,
+        },
+
+        {
+          name: "bill_number",
+          label: "Bill Number",
+          type: "Data",
+          defaultValue: "0.00",
+          fieldColumns: 1,
+        },
+        {
+          name: "bill_amount",
+          label: "Bill Amount",
+          type: "Currency",
+          precision: 2,
+          required: true,
+          defaultValue: "0.00",
+          fieldColumns: 1,
+        },
+        {
+          name: "mb_no_new",
+          label: "MB No",
+          type: "Data",
+          defaultValue: 0,
+          fieldColumns: 1,
+        },
+        {
+          name: "page_no_new",
+          label: "Pg No",
+          type: "Data",
+          defaultValue: 0,
+          fieldColumns: 1,
+        },
+
+        {
+          name: "bill_upto",
+          label: "Bill Upto Amount",
+          type: "Currency",
+          precision: 2,
+          defaultValue: "0.00",
+        },
+        {
+          name: "remaining_amount",
+          label: "Bill Remaining",
+          type: "Currency",
+          precision: 2,
+          defaultValue: "0.00",
+        },
+        {
+          name: "bill_type",
+          label: "Bill Type",
+          type: "Select",
+          options: [
+            { label: "Running", value: "Running" },
+            { label: "Final", value: "Final" },
+          ],
+        },
+
+        {
+          name: "expenditure_details",
+          label: "Expenditure Details",
+          type: "Table",
+          showDownloadUpload: true,
+          columns: [
+            { name: "name_of_work", label: "Name of Work", type: "Read Only", defaultValue: workName },
+            {
+              name: "stage",
+              label: "Stage",
+              type: "Link",
+              linkTarget: "Stage No",
+              filters: (getValues: (name: string) => any) => {
+                const parentStage = getValues("parent.stage");
+                const allowedStages = getAllowedStages({ stage: parentStage });
+                if (!allowedStages || allowedStages.length === 0) return { name: ["in", []] };
+                return { name: ["in", allowedStages] };
+              }
+            },
+            { name: "section_interchange", label: "", type: "Section Break" },
+            { name: "work_type", label: "Work Type", type: "Link", linkTarget: "Work Type" },
+            {
+              name: "work_subtype",
+              label: "Work Subtype",
+              type: "Link",
+              linkTarget: "Work Subtype",
+              filterMapping: [{ sourceField: "work_type", targetField: "work_type" }]
+            },
+            { name: "bill_amount", label: "Expenditure Amount", type: "Currency", precision: 2 },
+            { name: "have_asset", label: "Have Asset", type: "Check", displayDependsOn: "work_type==Miscellaneous" },
+            {
+              name: "asset",
+              label: "Asset",
+              type: "Link",
+              linkTarget: "Asset",
+              displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1"
+            },
+            {
+              name: "asset_name",
+              label: "Asset Name",
+              type: "Data",
+              displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1",
+              fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "asset_name" }
+            },
+            {
+              name: "asset_no",
+              label: "Asset No",
+              type: "Data",
+              displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1",
+              fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "custom_asset_no" }
+            },
+            { name: "from_date", label: "From Date", type: "Date", displayDependsOn: "work_type==Operation || work_type==Security" },
+            { name: "to_date", label: "To Date", type: "Date", displayDependsOn: "work_type==Operation || work_type==Security" },
+            { name: "tax_amount", label: "Tax Amount", type: "Currency", precision: 2 },
+            { name: "invoice_number", label: "Invoice Number", type: "Data" },
+            { name: "expenditure_date", label: "Invoice Date", type: "Date" },
+            { name: "remarks", label: "Work Details", type: "Text" },
+            { name: "attach", label: "Attach", type: "Attach" },
+            { name: "cb", label: "Column Break", type: "Column Break" },
+            { name: "job_carried_out", label: "Job Carried Out", type: "Long Text", displayDependsOn: "work_type==Repair" },
+            { name: "spare_replaced", label: "Spare Replaced", type: "Long Text", displayDependsOn: "work_type==Repair" },
+          ],
+        },
+
+        {
+          name: "saved_amount",
+          label: "Saved Amount",
+          type: "Currency",
+          precision: 2,
+          displayDependsOn: {"bill_type": "Final"}
+        },
+        {
+          name: "work_description",
+          label: "Work Description",
+          type: "Long Text",
+        },
+      ],
+    },
+  ];
+}, [workName, getAllowedStages]);
+
 
   /* -------------------------------------------------
   4. SUBMIT – with file uploading for child table
@@ -596,22 +618,102 @@ export default function NewExpenditurePage() {
     }
   };
 
+  /* -------------------------------------------------
+6. Conditional Submit Document feature
+------------------------------------------------- */
+const handleSubmitDocument = async () => {
+  if (!formInstance) return;
+
+  const formData = formInstance.getValues();
+  if (!apiKey || !apiSecret || !isInitialized || !isAuthenticated) {
+    toast.error("Authentication required");
+    return;
+  }
+
+  setIsSaving(true);
+
+  try {
+    // Prepare payload similar to handleSubmit
+    const payload: Record<string, any> = JSON.parse(JSON.stringify(formData));
+
+    // Convert numeric fields
+    const numericFields = [
+      "bill_upto",
+      "remaining_amount",
+      "tender_amount",
+      "prev_bill_amt",
+      "bill_amount",
+      "saved_amount",
+    ];
+    numericFields.forEach((f) => {
+      if (f in payload) payload[f] = Number(payload[f]) || 0;
+    });
+
+    // Child table numeric + boolean conversions
+    if (Array.isArray(payload.expenditure_details)) {
+      payload.expenditure_details = payload.expenditure_details.map((row: any) => ({
+        ...row,
+        bill_amount: Number(row.bill_amount) || 0,
+        have_asset: row.have_asset ? 1 : 0,
+      }));
+    }
+
+    // Set docstatus to 1 (submitted)
+    payload.docstatus = 1;
+
+    const response = await axios.put(
+      `${API_BASE_URL}/Expenditure/${encodeURIComponent(formData.name)}`,
+      payload,
+      {
+        headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+      }
+    );
+
+    toast.success("Document submitted successfully!");
+    // Optionally redirect or reload form
+    const docName = response.data.data.name;
+    if (docName) {
+      router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
+    }
+  } catch (err: any) {
+    console.error(err);
+    toast.error("Failed to submit document");
+  } finally {
+    setIsSaving(false);
+  }
+};
+
   const handleCancel = () => router.back();
 
   /* -------------------------------------------------
   5. RENDER FORM
   ------------------------------------------------- */
   return (
-    <DynamicForm
-      tabs={formTabs}
-      onSubmit={handleSubmit}
-      onCancel={handleCancel}
-      title={`New ${doctypeName}`}
-      description="Create a new expenditure record"
-      submitLabel={isSaving ? "Saving..." : "New Expenditure"}
-      cancelLabel="Cancel"
-      doctype={doctypeName}
-      onFormInit={handleFormInit}
-    />
+<DynamicForm
+  tabs={formTabs}
+  onSubmit={async (data, isDirty) => {
+  if (billType !== "Final") {
+    return await handleSubmit(data, isDirty);
+  }
+  // Do nothing if Final, but return a Promise<void>
+  return Promise.resolve();
+}}
+  onSubmitDocument={billType === "Final" ? handleSubmitDocument : undefined} // Submit only if Final
+  onCancel={handleCancel}
+  title={`New ${doctypeName}`}
+  description="Create a new expenditure record"
+  submitLabel={
+    isSaving
+      ? billType === "Final"
+        ? "Submitting..."
+        : "Saving..."
+      : billType === "Final"
+      ? "Submit"
+      : "Save"
+  }
+  isSubmittable={billType === "Final"}
+  doctype={doctypeName}
+  onFormInit={handleFormInit}
+/>
   );
 }
