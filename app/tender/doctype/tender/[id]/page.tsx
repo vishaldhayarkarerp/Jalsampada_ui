@@ -14,7 +14,7 @@ import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getApiMessages } from "@/lib/utils";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* -------------------------------------------------
    1. Project/Tender data
@@ -260,7 +260,7 @@ export default function RecordDetailPage() {
         type: "Currency",
         required: true,
       },
-      
+
       {
         name: "custom_work_order",
         label: "Work Order",
@@ -515,7 +515,7 @@ export default function RecordDetailPage() {
       if (messages.success) {
         toast.success(messages.message, { description: messages.description });
       } else {
-        toast.error(messages.message, { description: messages.description , duration: Infinity});
+        toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
 
       if (resp.data && resp.data.data) {
@@ -536,32 +536,32 @@ export default function RecordDetailPage() {
         err,
         "Changes saved!",
         "Failed to save",
-          (error) => {
-            // Custom handler for save errors
-            if (error.response?.status === 404) return "Record not found";
-            if (error.response?.status === 403) return "Unauthorized";
-            if (error.response?.status === 417) {
-              // Extract actual validation message from server response
-              const serverMessages = error.response?.data?._server_messages;
-              if (serverMessages) {
-                try {
-                  const parsed = JSON.parse(serverMessages);
-                  if (Array.isArray(parsed) && parsed.length > 0) {
-                    const messageObj = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
-                    return messageObj.message || error.response?.data?.exception || "Validation failed";
-                  }
-                } catch (e) {
-                  console.error("Failed to parse server messages:", e);
+        (error) => {
+          // Custom handler for save errors
+          if (error.response?.status === 404) return "Record not found";
+          if (error.response?.status === 403) return "Unauthorized";
+          if (error.response?.status === 417) {
+            // Extract actual validation message from server response
+            const serverMessages = error.response?.data?._server_messages;
+            if (serverMessages) {
+              try {
+                const parsed = JSON.parse(serverMessages);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  const messageObj = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
+                  return messageObj.message || error.response?.data?.exception || "Validation failed";
                 }
+              } catch (e) {
+                console.error("Failed to parse server messages:", e);
               }
-              return error.response?.data?.exception || "Validation failed - Server cannot meet requirements";
             }
-            return "Failed to save";
+            return error.response?.data?.exception || "Validation failed - Server cannot meet requirements";
           }
+          return "Failed to save";
+        }
       );
 
       if (!messages.success) {
-        toast.error(messages.message, { description: messages.description, duration: Infinity});
+        toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
     } finally {
       setIsSaving(false);
@@ -621,7 +621,7 @@ export default function RecordDetailPage() {
         tabs={formTabs}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
-      doctype={doctypeName}
+        doctype={doctypeName}
 
         title={`Tender : ${record.name}`}
         description={`Update details for record ID ${docname}`}

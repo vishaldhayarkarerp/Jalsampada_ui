@@ -6,7 +6,7 @@ import { LinkInput } from "@/components/LinkInput";
 import { useAuth } from "@/context/AuthContext";
 
 // --- API Configuration ---
-const API_BASE_URL = "http://103.219.1.138:4412/";
+const API_BASE_URL = "http://103.219.3.169:2223/";
 const REPORT_API_PATH = "api/method/frappe.desk.query_report.run";
 const REPORT_NAME = "Tender Level Report";
 
@@ -75,7 +75,7 @@ export default function TenderLevelReport() {
   const [reportData, setReportData] = useState<ReportData[]>([]);
   const [filteredData, setFilteredData] = useState<ReportData[]>([]);
   const [apiFields, setApiFields] = useState<ReportField[]>([]);
-  
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,7 +113,7 @@ export default function TenderLevelReport() {
         if (value === "Completed") colorClass = "bg-green-100 text-green-800";
         else if (value === "Ongoing") colorClass = "bg-blue-100 text-blue-800";
         else if (value === "Cancelled" || value === "Canceled") colorClass = "bg-red-100 text-red-800";
-        
+
         return (
           <span className={`px-2 py-1 rounded-full text-xs font-semibold ${colorClass}`}>
             {value}
@@ -194,7 +194,7 @@ export default function TenderLevelReport() {
       }
 
       const result = await response.json();
-      
+
       if (!result.message) {
         setReportData([]);
         setFilteredData([]);
@@ -244,29 +244,29 @@ export default function TenderLevelReport() {
           case 'custom_prapan_suchi':
             filtered = filtered.filter(row => {
               const prapanSuchi = row.custom_prapan_suchi;
-              return prapanSuchi && 
-                     prapanSuchi.toString().toLowerCase() === value.toLowerCase();
+              return prapanSuchi &&
+                prapanSuchi.toString().toLowerCase() === value.toLowerCase();
             });
             break;
           case 'custom_lis_name':
             filtered = filtered.filter(row => {
               const lisName = row.custom_lis_name;
-              return lisName && 
-                     lisName.toString().toLowerCase() === value.toLowerCase();
+              return lisName &&
+                lisName.toString().toLowerCase() === value.toLowerCase();
             });
             break;
           case 'custom_fiscal_year':
             filtered = filtered.filter(row => {
               const fiscalYear = row.custom_fiscal_year;
-              return fiscalYear && 
-                     fiscalYear.toString().toLowerCase() === value.toLowerCase();
+              return fiscalYear &&
+                fiscalYear.toString().toLowerCase() === value.toLowerCase();
             });
             break;
           case 'custom_tender_status':
             filtered = filtered.filter(row => {
               const status = row.custom_tender_status;
-              return status && 
-                     status.toString().toLowerCase() === value.toLowerCase();
+              return status &&
+                status.toString().toLowerCase() === value.toLowerCase();
             });
             break;
           case 'from_date':
@@ -337,7 +337,7 @@ export default function TenderLevelReport() {
     if (col.formatter) {
       return col.formatter(value, row);
     }
-    
+
     if (value === null || value === undefined || value === "") {
       return "-";
     }
@@ -388,7 +388,7 @@ export default function TenderLevelReport() {
           <h2>Tender Level Report</h2>
           <p>Track detailed status, stages, and amounts of tenders.</p>
         </div>
-        
+
         <div className="flex gap-2">
           <button
             className="btn btn--primary"
@@ -432,9 +432,9 @@ export default function TenderLevelReport() {
           </div>
           <div className="form-group z-[69]">
             <label className="text-sm font-medium mb-1 block">From Date</label>
-            <input 
-              type="date" 
-              className="form-control w-full" 
+            <input
+              type="date"
+              className="form-control w-full"
               placeholder="DD-MM-YYYY"
               style={{ textTransform: "uppercase" }}
               value={filters.from_date}
@@ -443,9 +443,9 @@ export default function TenderLevelReport() {
           </div>
           <div className="form-group z-[68]">
             <label className="text-sm font-medium mb-1 block">To Date</label>
-            <input 
-              type="date" 
-              className="form-control w-full" 
+            <input
+              type="date"
+              className="form-control w-full"
               placeholder="DD-MM-YYYY"
               style={{ textTransform: "uppercase" }}
               value={filters.to_date}
@@ -479,7 +479,7 @@ export default function TenderLevelReport() {
 
           <div className="form-group z-[65]">
             <label className="text-sm font-medium mb-1 block">Tender Status</label>
-            <select 
+            <select
               className="form-control w-full"
               value={filters.custom_tender_status}
               onChange={(e) => handleFilterChange("custom_tender_status", e.target.value)}

@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 interface ItemData {
   name: string;
@@ -89,7 +89,7 @@ export default function ItemDetailPage() {
         defaultValue:
           f.name in item
             ? // @ts-ignore
-              item[f.name as keyof ItemData]
+            item[f.name as keyof ItemData]
             : f.defaultValue,
       }));
 

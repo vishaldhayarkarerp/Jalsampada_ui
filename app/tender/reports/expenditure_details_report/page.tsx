@@ -8,7 +8,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 // --- API Configuration ---
-const API_BASE_URL = "http://103.219.1.138:4412/";
+const API_BASE_URL = "http://103.219.3.169:2223/";
 const REPORT_API_PATH = "api/method/frappe.desk.query_report.run";
 const REPORT_NAME = "Expenditure Details Report";
 
@@ -77,7 +77,7 @@ export default function ExpenditureDetailsReport() {
   const [reportData, setReportData] = useState<ReportData[]>([]);
   const [filteredData, setFilteredData] = useState<ReportData[]>([]);
   const [apiFields, setApiFields] = useState<ReportField[]>([]);
-  
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,7 +113,7 @@ export default function ExpenditureDetailsReport() {
   }
 
   // --- Actions ---
-  
+
   const fetchReportData = useCallback(async (currentFilters: Filters) => {
     if (!isInitialized) return;
     if (!isAuthenticated || !apiKey || !apiSecret) {
@@ -153,11 +153,11 @@ export default function ExpenditureDetailsReport() {
       }
 
       const result = await response.json();
-      
+
       if (!result.message) {
-         setReportData([]);
-         setFilteredData([]);
-         setApiFields([]);
+        setReportData([]);
+        setFilteredData([]);
+        setApiFields([]);
       } else {
         const columns = result.message.columns || [];
         const data = result.message.result || [];
@@ -197,9 +197,9 @@ export default function ExpenditureDetailsReport() {
         let val = row[col.fieldname];
         val = val === null || val === undefined ? "" : String(val);
         // Clean special chars for CSV
-        val = val.replace(/"/g, '""'); 
+        val = val.replace(/"/g, '""');
         if (val.includes(",") || val.includes("\n")) {
-             val = `"${val}"`;
+          val = `"${val}"`;
         }
         return val;
       }).join(",");
@@ -245,8 +245,8 @@ export default function ExpenditureDetailsReport() {
       const summaryY = 30;
       pdf.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB')}`, margin, summaryY);
       pdf.text(`Total Records: ${filteredData.length}`, margin, summaryY + 7);
-      
-      const filtersApplied = Object.values(filters).filter(v => v).length > 0 
+
+      const filtersApplied = Object.values(filters).filter(v => v).length > 0
         ? Object.entries(filters).filter(([_, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ')
         : 'None';
       pdf.text(`Filters Applied: ${filtersApplied}`, margin, summaryY + 14);
@@ -266,7 +266,7 @@ export default function ExpenditureDetailsReport() {
             maxWidth = textWidth;
           }
         });
-        let colWidth = maxWidth / pdf.internal.scaleFactor; 
+        let colWidth = maxWidth / pdf.internal.scaleFactor;
         colWidth = Math.max(minColumnWidth, Math.min(maxColumnWidth, colWidth));
         columnWidths.push(colWidth);
       });
@@ -280,7 +280,7 @@ export default function ExpenditureDetailsReport() {
       let currentY = summaryY + 25;
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
-      
+
       // Calculate header heights first
       let headerMaxHeight = 0;
       columnConfig.forEach((col, index) => {
@@ -331,7 +331,7 @@ export default function ExpenditureDetailsReport() {
           pdf.setFont('helvetica', 'bold');
           pdf.setFillColor(240, 240, 240);
           pdf.rect(margin, currentY - 5, usableWidth, headerMaxHeight + 5, 'F');
-          
+
           pdf.setTextColor(0, 0, 0);
           columnConfig.forEach((col, index) => {
             const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
@@ -344,7 +344,7 @@ export default function ExpenditureDetailsReport() {
 
           pdf.setDrawColor(200, 200, 200);
           pdf.line(margin, currentY + headerMaxHeight + 3, pageWidth - margin, currentY + headerMaxHeight + 3);
-          
+
           pdf.setFontSize(7);
           pdf.setFont('helvetica', 'normal');
           currentY += headerMaxHeight + 8;
@@ -363,15 +363,15 @@ export default function ExpenditureDetailsReport() {
           const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
           const value = row[col.fieldname];
           let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
-          
+
           // Apply formatter if available
           if (col.formatter) {
             displayValue = col.formatter(value);
           }
-          
+
           const textLines = pdf.splitTextToSize(displayValue, finalColumnWidths[index] - 4);
           const textHeight = (textLines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
-          
+
           if (textHeight > rowMaxHeight) {
             rowMaxHeight = textHeight;
           }
@@ -383,12 +383,12 @@ export default function ExpenditureDetailsReport() {
           const x = margin + finalColumnWidths.slice(0, index).reduce((sum, w) => sum + w, 0);
           const value = row[col.fieldname];
           let displayValue = value === null || value === undefined || value === '' ? '-' : String(value);
-          
+
           // Apply formatter if available
           if (col.formatter) {
             displayValue = col.formatter(value);
           }
-          
+
           const textLines = pdf.splitTextToSize(displayValue, finalColumnWidths[index] - 4);
           pdf.text(textLines, x + 2, currentY);
         });
@@ -442,7 +442,7 @@ export default function ExpenditureDetailsReport() {
     const formattedValue = col.formatter ? col.formatter(value) : String(value);
 
     if (isBoldRow) {
-       return <span className="font-bold text-gray-900">{formattedValue}</span>;
+      return <span className="font-bold text-gray-900">{formattedValue}</span>;
     }
 
     return formattedValue;
@@ -455,23 +455,23 @@ export default function ExpenditureDetailsReport() {
           <h2>Expenditure Details Report</h2>
           <p>Track tender expenditures, bills, and work details.</p>
         </div>
-        
+
         <div className="flex gap-2">
-            <button
-                className="btn btn--primary"
-                onClick={() => fetchReportData(filters)}
-                disabled={loading}
-            >
-                <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
+          <button
+            className="btn btn--primary"
+            onClick={() => fetchReportData(filters)}
+            disabled={loading}
+          >
+            <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
+          </button>
+          <div className="export-buttons flex gap-2 ml-2">
+            <button className="btn btn--outline" onClick={handleExportCSV}>
+              <i className="fas fa-file-csv"></i> CSV
             </button>
-            <div className="export-buttons flex gap-2 ml-2">
-                <button className="btn btn--outline" onClick={handleExportCSV}>
-                    <i className="fas fa-file-csv"></i> CSV
-                </button>
-                <button className="btn btn--danger" onClick={handleExportPDF}>
-                    <i className="fas fa-file-pdf"></i> PDF
-                </button>
-            </div>
+            <button className="btn btn--danger" onClick={handleExportPDF}>
+              <i className="fas fa-file-pdf"></i> PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -490,84 +490,84 @@ export default function ExpenditureDetailsReport() {
 
         {/* Filters Grid with Z-Index Handling */}
         <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
-            <div className="form-group z-[70]">
-                <label className="text-sm font-medium mb-1 block">Fiscal Year</label>
-                <LinkInput
-                    value={filters.fiscal_year}
-                    onChange={(value) => handleFilterChange("fiscal_year", value)}
-                    placeholder="Select Year..."
-                    linkTarget="Fiscal Year"
-                    className="w-full relative"
-                />
-            </div>
-            <div className="form-group z-[69]">
-                <label className="text-sm font-medium mb-1 block">From Date</label>
-                <input 
-                    type="date" 
-                    className="form-control w-full" 
-                    value={filters.from_date}
-                    onChange={(e) => handleFilterChange("from_date", e.target.value)}
-                />
-            </div>
-            <div className="form-group z-[68]">
-                <label className="text-sm font-medium mb-1 block">To Date</label>
-                <input 
-                    type="date" 
-                    className="form-control w-full" 
-                    value={filters.to_date}
-                    onChange={(e) => handleFilterChange("to_date", e.target.value)}
-                />
-            </div>
+          <div className="form-group z-[70]">
+            <label className="text-sm font-medium mb-1 block">Fiscal Year</label>
+            <LinkInput
+              value={filters.fiscal_year}
+              onChange={(value) => handleFilterChange("fiscal_year", value)}
+              placeholder="Select Year..."
+              linkTarget="Fiscal Year"
+              className="w-full relative"
+            />
+          </div>
+          <div className="form-group z-[69]">
+            <label className="text-sm font-medium mb-1 block">From Date</label>
+            <input
+              type="date"
+              className="form-control w-full"
+              value={filters.from_date}
+              onChange={(e) => handleFilterChange("from_date", e.target.value)}
+            />
+          </div>
+          <div className="form-group z-[68]">
+            <label className="text-sm font-medium mb-1 block">To Date</label>
+            <input
+              type="date"
+              className="form-control w-full"
+              value={filters.to_date}
+              onChange={(e) => handleFilterChange("to_date", e.target.value)}
+            />
+          </div>
 
-            <div className="form-group z-[67]">
-                <label className="text-sm font-medium mb-1 block">Lift Irrigation Scheme</label>
-                <LinkInput
-                    value={filters.lift_irrigation_scheme}
-                    onChange={(value) => handleFilterChange("lift_irrigation_scheme", value)}
-                    placeholder="Select LIS..."
-                    linkTarget="Lift Irrigation Scheme"
-                    className="w-full relative"
-                />
-            </div>
+          <div className="form-group z-[67]">
+            <label className="text-sm font-medium mb-1 block">Lift Irrigation Scheme</label>
+            <LinkInput
+              value={filters.lift_irrigation_scheme}
+              onChange={(value) => handleFilterChange("lift_irrigation_scheme", value)}
+              placeholder="Select LIS..."
+              linkTarget="Lift Irrigation Scheme"
+              className="w-full relative"
+            />
+          </div>
 
-            {/* Stage Filter - Dependent on LIS */}
-            <div className="form-group z-[65]">
-                <label className="text-sm font-medium mb-1 block">Stage</label>
-                <LinkInput
-                    value={filters.stage}
-                    onChange={(value) => handleFilterChange("stage", value)}
-                    placeholder="Select Stage..."
-                    linkTarget="Stage No"
-                    // Pass current LIS filter to constrain the Stage search
-                    filters={{ lis_name: filters.lift_irrigation_scheme }} 
-                    className="w-full relative"
-                />
-            </div>
+          {/* Stage Filter - Dependent on LIS */}
+          <div className="form-group z-[65]">
+            <label className="text-sm font-medium mb-1 block">Stage</label>
+            <LinkInput
+              value={filters.stage}
+              onChange={(value) => handleFilterChange("stage", value)}
+              placeholder="Select Stage..."
+              linkTarget="Stage No"
+              // Pass current LIS filter to constrain the Stage search
+              filters={{ lis_name: filters.lift_irrigation_scheme }}
+              className="w-full relative"
+            />
+          </div>
 
-            {/* Tender Number Filter - Dependent on LIS */}
-            <div className="form-group z-[64]">
-                <label className="text-sm font-medium mb-1 block">Tender Number</label>
-                <LinkInput
-                    value={filters.tender_number}
-                    onChange={(value) => handleFilterChange("tender_number", value)}
-                    placeholder="Select Tender..."
-                    linkTarget="Project" // Options: "Project" as per JS snippet
-                    // Pass current LIS filter to constrain the Tender search
-                    filters={{ custom_lis_name: filters.lift_irrigation_scheme }}
-                    className="w-full relative"
-                />
-            </div>
+          {/* Tender Number Filter - Dependent on LIS */}
+          <div className="form-group z-[64]">
+            <label className="text-sm font-medium mb-1 block">Tender Number</label>
+            <LinkInput
+              value={filters.tender_number}
+              onChange={(value) => handleFilterChange("tender_number", value)}
+              placeholder="Select Tender..."
+              linkTarget="Project" // Options: "Project" as per JS snippet
+              // Pass current LIS filter to constrain the Tender search
+              filters={{ custom_lis_name: filters.lift_irrigation_scheme }}
+              className="w-full relative"
+            />
+          </div>
 
-            <div className="form-group z-[63]">
-                <label className="text-sm font-medium mb-1 block">Work Type</label>
-                <LinkInput
-                    value={filters.work_type}
-                    onChange={(value) => handleFilterChange("work_type", value)}
-                    placeholder="Select Work Type..."
-                    linkTarget="Work Type"
-                    className="w-full relative"
-                />
-            </div>
+          <div className="form-group z-[63]">
+            <label className="text-sm font-medium mb-1 block">Work Type</label>
+            <LinkInput
+              value={filters.work_type}
+              onChange={(value) => handleFilterChange("work_type", value)}
+              placeholder="Select Work Type..."
+              linkTarget="Work Type"
+              className="w-full relative"
+            />
+          </div>
         </div>
 
         {/* Table Section */}
@@ -586,9 +586,9 @@ export default function ExpenditureDetailsReport() {
             <thead style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "white" }}>
               <tr>
                 {columnConfig.map((column, index) => (
-                  <th 
-                    key={column.fieldname} 
-                    style={{ 
+                  <th
+                    key={column.fieldname}
+                    style={{
                       width: column.width,
                       position: index === 0 ? "sticky" : "static",
                       left: index === 0 ? 0 : "auto",
@@ -615,13 +615,13 @@ export default function ExpenditureDetailsReport() {
                 filteredData.map((row, index) => {
                   const isBoldRow = row.bold === 1;
                   return (
-                    <tr 
-                        key={index} 
-                        className={isBoldRow ? "bg-gray-50 font-bold" : ""}
+                    <tr
+                      key={index}
+                      className={isBoldRow ? "bg-gray-50 font-bold" : ""}
                     >
                       {columnConfig.map((column, columnIndex) => (
-                        <td 
-                          key={`${index}-${column.fieldname}`} 
+                        <td
+                          key={`${index}-${column.fieldname}`}
                           style={{
                             position: columnIndex === 0 ? "sticky" : "static",
                             left: columnIndex === 0 ? 0 : "auto",

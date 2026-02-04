@@ -13,7 +13,7 @@ import axios from "axios";
 import { fetchAssetsFromLisAndStage, fetchItemDetails } from "../services";
 
 // 🟢 CONFIGURATION
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 const DOCTYPE_NAME = "Material Request";
 
 export default function NewSpareIndentPage() {
@@ -275,7 +275,7 @@ export default function NewSpareIndentPage() {
     setIsSaving(true);
     try {
       const payload: Record<string, any> = { ...data, doctype: DOCTYPE_NAME };
-      
+
       // Sanitize and format 'custom_assets' Child Table
       if (Array.isArray(payload.custom_assets)) {
         payload.custom_assets = payload.custom_assets.map((assetItem: any, index: number) => {
@@ -307,7 +307,7 @@ export default function NewSpareIndentPage() {
         payload.items = payload.items.map((item: any, index: number) => {
           // Remove temporary UI fields
           const { id, stage, name: tempName, ...rest } = item;
-          
+
           // Add proper child table fields
           return {
             ...rest,

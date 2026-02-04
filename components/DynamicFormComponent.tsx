@@ -37,7 +37,7 @@ import { PumpStatusToggle } from "./PumpStatusToggle";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn, getApiMessages } from "@/lib/utils";
 
-const DEFAULT_API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const DEFAULT_API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (Unchanged)
@@ -177,7 +177,7 @@ async function fetchFieldValue(
   apiSecret: string
 ): Promise<any> {
   try {
-    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+    const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
     const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
 
     const resp = await axios.get(url, {
@@ -206,7 +206,7 @@ async function fetchMultipleFieldValues(
   apiSecret: string
 ): Promise<Record<string, any>> {
   try {
-    const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+    const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
     const url = `${API_BASE_URL}/${targetDoctype}/${sourceValue}`;
 
     const resp = await axios.get(url, {

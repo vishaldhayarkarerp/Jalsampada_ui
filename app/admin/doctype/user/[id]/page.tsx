@@ -75,7 +75,7 @@ export default function UserDetailPage() {
   const { apiKey, apiSecret, isAuthenticated } = useAuth();
   const params = useParams();
   const id = params.id;
-  
+
   const [user, setUser] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export default function UserDetailPage() {
       setError(null);
 
       const response = await fetch(
-        `http://103.219.1.138:4412/api/resource/User/${id}?fields=["name","email","first_name","last_name","full_name","username","language","time_zone","enabled","mobile_no","phone","user_type","user_image","send_welcome_email","module_profile","desk_theme","search_bar","notifications","list_sidebar","bulk_actions","view_switcher","form_sidebar","timeline","dashboard","mute_sounds","unsubscribed","logout_all_sessions","reset_password_key","last_reset_password_key_generated_on","document_follow_notify","document_follow_frequency","follow_created_documents","follow_commented_documents","follow_liked_documents","follow_assigned_documents","follow_shared_documents","thread_notify","send_me_a_copy","allowed_in_mentions","simultaneous_sessions","login_after","login_before","bypass_restrict_ip_check_if_2fa_enabled","onboarding_status","creation","modified","owner","modified_by","docstatus"]`,
+        `http://103.219.3.169:2223/api/resource/User/${id}?fields=["name","email","first_name","last_name","full_name","username","language","time_zone","enabled","mobile_no","phone","user_type","user_image","send_welcome_email","module_profile","desk_theme","search_bar","notifications","list_sidebar","bulk_actions","view_switcher","form_sidebar","timeline","dashboard","mute_sounds","unsubscribed","logout_all_sessions","reset_password_key","last_reset_password_key_generated_on","document_follow_notify","document_follow_frequency","follow_created_documents","follow_commented_documents","follow_liked_documents","follow_assigned_documents","follow_shared_documents","thread_notify","send_me_a_copy","allowed_in_mentions","simultaneous_sessions","login_after","login_before","bypass_restrict_ip_check_if_2fa_enabled","onboarding_status","creation","modified","owner","modified_by","docstatus"]`,
         {
           headers: {
             'Authorization': `token ${apiKey}:${apiSecret}`,
@@ -133,7 +133,7 @@ export default function UserDetailPage() {
       setError(null);
 
       const response = await fetch(
-        `http://103.219.1.138:4412/api/resource/User/${id}`,
+        `http://103.219.3.169:2223/api/resource/User/${id}`,
         {
           method: 'PUT',
           headers: {
@@ -249,8 +249,8 @@ export default function UserDetailPage() {
         {/* User Image */}
         <div className="flex justify-center mb-6">
           {user.user_image ? (
-            <img 
-              src={`http://103.219.1.138:4412${user.user_image}`}
+            <img
+              src={`http://103.219.3.169:2223${user.user_image}`}
               alt={user.full_name || user.email}
               className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
             />
@@ -264,43 +264,39 @@ export default function UserDetailPage() {
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-8">
-            <button 
+            <button
               onClick={() => setActiveTab('details')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'details' 
-                  ? 'border-blue-500 text-blue-600' 
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'details'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               User Details
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('roles')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'roles' 
-                  ? 'border-blue-500 text-blue-600' 
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'roles'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Roles & Permissions
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('more')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'more' 
-                  ? 'border-blue-500 text-blue-600' 
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'more'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               More Information
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('settings')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'settings' 
-                  ? 'border-blue-500 text-blue-600' 
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'settings'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Settings
             </button>
@@ -549,11 +545,11 @@ export default function UserDetailPage() {
             </div> */}
 
             {/* Allowed Modules */}
-              {/* <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Settings className="inline w-4 h-4 mr-2" />
                 Allowed Modules
               </label> */}
-              {/* <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {/* <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {['Accounts', 'Asset Maintenence', 'Automation', 'Buying', 'CRM', 'Communication', 'Contacts', 'Core', 'Custom', 'Desk', 'EDI', 'ERPNext Integrations', 'Email', 'Geo', 'Integrations', 'LIS Management', 'Maintenance', 'Manufacturing', 'Operations', 'Portal', 'Printing', 'Projects', 'Quality Management', 'Regional', 'Selling', 'Setup', 'Social', 'Stock', 'Subcontracting', 'Support', 'Telephony', 'Tendor', 'Utilities', 'Website', 'Workflow'].map((module) => (
                   <label key={module} className="flex items-center space-x-2">
                     <input
@@ -574,14 +570,14 @@ export default function UserDetailPage() {
                   </label>
                 ))}
               </div> */}
-            
+
           </div>
         )}
 
         {activeTab === 'roles' && (
           <div className="space-y-6">
             <h3 className="text-lg font-medium text-gray-900">Roles & Permissions</h3>
-            
+
             {/* Roles Section */}
             {/* <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
               <h4 className="font-medium text-gray-900 mb-3">Assigned Roles</h4>

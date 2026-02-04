@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 // --- FIX #1: Define the API_BASE_URL ---
-const API_BASE_URL = "http://103.219.1.138:4412//api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223//api/resource";
 
 /* -------------------------------------------------
  1. LIS Data type
@@ -68,7 +68,7 @@ export default function RecordDetailPage() {
         if (!resp.ok) {
           throw new Error(`Failed to load ${doctypeName}`);
         }
-        
+
         const responseData = await resp.json();
         setScheme(responseData.data);
         // ------------------------------------------
@@ -125,12 +125,12 @@ export default function RecordDetailPage() {
   5. SUBMIT (UPDATE - using fetch)
   ------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
-    
+
     if (!isDirty) {
       toast.info("No changes to save.");
       return;
     }
-    
+
     if (!scheme) {
       toast.error("Cannot save, data not loaded.", { duration: Infinity });
       return;
@@ -149,12 +149,12 @@ export default function RecordDetailPage() {
         'Content-Type': 'application/json',
         'Authorization': `token ${apiKey}:${apiSecret}`,
       };
-      
+
       const storedCsrfToken = localStorage.getItem('csrfToken');
       if (storedCsrfToken) {
         headers['X-Frappe-CSRF-Token'] = storedCsrfToken;
       }
-      
+
       const resp = await fetch(`${API_BASE_URL}/${doctypeName}/${docname}`, {
         method: 'PUT',
         headers: headers,
@@ -171,11 +171,11 @@ export default function RecordDetailPage() {
       // -------------------------------------------------
 
       toast.success("Changes saved!");
-      
+
       if (responseData && responseData.data) {
         setScheme(responseData.data);
       }
-      
+
       router.push(`/lis-management/doctype/lift-irrigation-scheme/${docname}`);
 
     } catch (err: any) {
@@ -203,7 +203,7 @@ export default function RecordDetailPage() {
 
     // Prepare data for duplication - exclude fields that should not be copied
     const duplicateData: Record<string, any> = {};
-    
+
     // Fields to exclude from duplication
     const excludeFields = [
       'name', 'naming_series', 'docstatus', 'modified', 'creation',
@@ -219,10 +219,10 @@ export default function RecordDetailPage() {
 
     // Encode the data for URL transmission
     const encodedData = btoa(JSON.stringify(duplicateData));
-    
+
     // Navigate to new page with duplicate data
     router.push(`/lis-management/doctype/lift-irrigation-scheme/new?duplicate=${encodeURIComponent(encodedData)}`);
-    
+
     toast.success("Lift Irrigation Scheme data copied! Creating duplicate...");
   }, [scheme, router]);
 
@@ -285,7 +285,7 @@ export default function RecordDetailPage() {
         doctypeName: doctypeName, // e.g. "Asset" or "Project"
         docName: docname,         // usually params.id
         redirectUrl: "/lis-management/doctype/lift-irrigation-scheme" // The list page to go to
-    }}
+      }}
     />
   );
 }

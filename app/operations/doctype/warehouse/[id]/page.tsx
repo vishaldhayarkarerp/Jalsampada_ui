@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 interface WarehouseData {
   name: string;
@@ -78,7 +78,7 @@ export default function WarehouseDetailPage() {
     fetchWarehouse();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-const formTabs: TabbedLayout[] = React.useMemo(() => {
+  const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!warehouse) return [];
 
     // Helper to auto-populate existing data into the fields
@@ -88,7 +88,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
         defaultValue:
           f.name in warehouse
             ? // @ts-ignore
-              warehouse[f.name as keyof WarehouseData]
+            warehouse[f.name as keyof WarehouseData]
             : f.defaultValue,
       }));
 
@@ -121,7 +121,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
             label: "Disabled",
             type: "Check",
           },
-          
+
           // -- Section: Operations & Transit --
           {
             name: "warehouse_type",

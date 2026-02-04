@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { MaintenanceChecklistMatrix } from "../components/MaintenanceChecklistMatrix";
 
 // API base URL
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 // ----------------------
 // 1. Types
@@ -78,8 +78,8 @@ export default function MaintenanceChecklistDetailPage() {
           err.response?.status === 404
             ? `${doctypeName} not found`
             : err.response?.status === 403
-            ? "Unauthorized"
-            : `Failed to load ${doctypeName}`
+              ? "Unauthorized"
+              : `Failed to load ${doctypeName}`
         );
       } finally {
         setLoading(false);
@@ -107,7 +107,7 @@ export default function MaintenanceChecklistDetailPage() {
       {
         name: "Details",
         fields: fields([
-            { name: "posting_datetime", label: "Posting Datetime", type: "DateTime" },
+          { name: "posting_datetime", label: "Posting Datetime", type: "DateTime" },
           {
             name: "lis_name",
             label: "LIS Name",
@@ -122,8 +122,8 @@ export default function MaintenanceChecklistDetailPage() {
             linkTarget: "Stage No",
             required: true,
             filters: (getValues) => {
-                const lis = getValues("lis_name");
-                return lis ? { "lis_name": lis } : {};
+              const lis = getValues("lis_name");
+              return lis ? { "lis_name": lis } : {};
             }
           },
           {
@@ -147,13 +147,13 @@ export default function MaintenanceChecklistDetailPage() {
             ],
             required: true,
           },
-          
+
           // 🔴 CRITICAL FIX: Add the hidden field so React Hook Form loads the data!
           {
-             name: "checklist_data",
-             label: "Checklist Data",
-             type: "Read Only", // Or "Table" if you want to see the raw table below
-             defaultValue: record.checklist_data || [] 
+            name: "checklist_data",
+            label: "Checklist Data",
+            type: "Read Only", // Or "Table" if you want to see the raw table below
+            defaultValue: record.checklist_data || []
           },
 
           // 🟢 MATRIX UI SECTION
@@ -194,7 +194,7 @@ export default function MaintenanceChecklistDetailPage() {
       // Remove UI-only fields
       delete payload.checklist_ui;
       delete payload.checklist_matrix_section;
-      
+
       delete payload.modified;
       delete payload.creation;
       delete payload.owner;

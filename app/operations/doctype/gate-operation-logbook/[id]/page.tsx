@@ -13,8 +13,8 @@ import { UseFormReturn } from "react-hook-form";
 import { getApiMessages } from "@/lib/utils";
 import axios from "axios";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
-const API_METHOD_URL = "http://103.219.1.138:4412/api/method";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
+const API_METHOD_URL = "http://103.219.3.169:2223/api/method";
 const DOCTYPE_NAME = "Gate Operation Logbook";
 
 /* -------------------------------------------------
@@ -133,11 +133,11 @@ export default function GateOperationLogbookDetailPage() {
                 toast.success(messages.message);
                 setRecord(resp.data.data);
             } else {
-                toast.error(messages.message, { description: messages.description, duration: Infinity});
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
             }
         } catch (err: any) {
             const messages = getApiMessages(null, err, null, "Failed to submit document");
-            toast.error(messages.message, { description: messages.description, duration: Infinity});
+            toast.error(messages.message, { description: messages.description, duration: Infinity });
         } finally {
             setIsSaving(false);
         }
@@ -162,11 +162,11 @@ export default function GateOperationLogbookDetailPage() {
                 toast.success(messages.message);
                 setRecord(resp.data.data);
             } else {
-                toast.error(messages.message, { description: messages.description, duration: Infinity});
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
             }
         } catch (err: any) {
             const messages = getApiMessages(null, err, null, "Failed to cancel document");
-            toast.error(messages.message, { description: messages.description, duration: Infinity});
+            toast.error(messages.message, { description: messages.description, duration: Infinity });
         } finally {
             setIsSaving(false);
         }
@@ -188,7 +188,7 @@ export default function GateOperationLogbookDetailPage() {
                 instruction_reference: record.instruction_reference || "",
                 remark: record.remark || "",
             };
-            
+
             // Use setTimeout to ensure the form is fully initialized
             setTimeout(() => {
                 methods.reset(formData);
@@ -241,12 +241,12 @@ export default function GateOperationLogbookDetailPage() {
                         filterMapping: [
                             {
                                 sourceField: "lis_name",
-                                
+
                                 targetField: "lis_name"
                             }
                         ],
                     },
-                   
+
 
                     {
                         name: "gate_no",
@@ -254,7 +254,7 @@ export default function GateOperationLogbookDetailPage() {
                         type: "Link",
                         linkTarget: "Gate",
                         required: true,
-                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        customSearchUrl: "http://103.219.3.169:2223/api/method/frappe.desk.search.search_link",
                         filters: (getValue) => {
                             const filters: Record<string, any> = {};
                             const stage = getValue("stage");

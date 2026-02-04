@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* -------------------------------------------------
    1. Project/Tender data
@@ -93,7 +93,7 @@ export default function NewTenderPage() {
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     // Details tab (from Fields-1.csv) [file:6]
     const detailsFields: FormField[] = [
-       {
+      {
         name: "custom_fiscal_year",
         label: "Fiscal Year",
         type: "Link",
@@ -152,7 +152,7 @@ export default function NewTenderPage() {
         type: "Currency",
         required: true,
       },
-      
+
       {
         name: "custom_work_order",
         label: "Work Order",
@@ -433,7 +433,7 @@ export default function NewTenderPage() {
       if (messages.success) {
         toast.success(messages.message, { description: messages.description });
       } else {
-        toast.error(messages.message, { description: messages.description, duration: Infinity});
+        toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
 
       // Navigate to the newly created record using name
@@ -480,7 +480,7 @@ export default function NewTenderPage() {
       );
 
       if (!messages.success) {
-        toast.error(messages.message, { description: messages.description, duration: Infinity});
+        toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
     } finally {
       setIsSaving(false);

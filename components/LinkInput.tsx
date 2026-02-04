@@ -5,7 +5,7 @@ import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { Search, Loader2, X } from "lucide-react";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 interface LinkInputOption {
     value: string;
@@ -95,12 +95,12 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
                         label,
                     };
                 });
-                
+
                 // If searching for Prapan Suchi and no results found in work_name, try name field
                 if (linkTarget === "Prapan Suchi" && formattedOptions.length === 0 && term?.trim()) {
                     try {
                         const nameFilters: any[] = [[linkTarget, "name", "like", `%${term.trim()}%`]];
-                        
+
                         // Apply filters from filterMapping for name search
                         Object.entries(filters).forEach(([key, value]) => {
                             if (value != null && value !== "") {
@@ -114,7 +114,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
                                 }
                             }
                         });
-                        
+
                         const nameQuery = nameFilters.length > 0 ? JSON.stringify(nameFilters) : undefined;
                         const nameResponse = await axios.get(`${API_BASE_URL}/${linkTarget}`, {
                             headers: {
@@ -126,7 +126,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
                                 limit_page_length: 20,
                             },
                         });
-                        
+
                         if (nameResponse.data?.data) {
                             formattedOptions = nameResponse.data.data.map((item: any) => {
                                 const label = item.work_name || item.name;
@@ -140,7 +140,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
                         console.log("Fallback search failed:", fallbackError);
                     }
                 }
-                
+
                 setOptions(formattedOptions);
             }
         } catch (error) {
