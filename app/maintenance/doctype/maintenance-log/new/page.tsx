@@ -120,15 +120,14 @@ export default function NewMaintenanceLogPage() {
             label: "Item Code",
             type: "Read Only",
             linkTarget: "Item",
-            displayDependsOn: { asset_maintenance: true }
-            ,fetchFrom: { sourceField: "asset_maintenance", targetDoctype: "Asset Maintenance", targetField: "item_code" }
+            displayDependsOn: "maintenance_schedule", fetchFrom: { sourceField: "asset_maintenance", targetDoctype: "Asset Maintenance", targetField: "item_code" }
           },
           {
             name: "asset_maintenance",
             label: "Asset Name",
             type: "Read Only",
             linkTarget: "Asset",
-            displayDependsOn: { asset_maintenance: true },
+            displayDependsOn: "maintenance_schedule",
             fetchFrom: { sourceField: "maintenance_schedule", targetDoctype: "Asset", targetField: "asset_name" }
           },
 
@@ -176,7 +175,7 @@ export default function NewMaintenanceLogPage() {
             label: "Task Name",
             type: "Read Only",
             defaultValue: getValue("task"),
-            displayDependsOn: { task: true },
+            displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "maintenance_task" }
           },
@@ -185,7 +184,7 @@ export default function NewMaintenanceLogPage() {
             label: "Assign To",
             type: "Read Only",
             defaultValue: getValue("task"),
-            displayDependsOn: { task: true },
+            displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "assign_to_name" }
           },
@@ -194,7 +193,7 @@ export default function NewMaintenanceLogPage() {
             label: "Maintenance Type",
             type: "Read Only",
             defaultValue: getValue("task"),
-            displayDependsOn: { task: true },
+            displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "maintenance_type" }
           },
@@ -203,7 +202,7 @@ export default function NewMaintenanceLogPage() {
             label: "Due Date",
             type: "Read Only",
             defaultValue: getValue("task"),
-            displayDependsOn: { task: true },
+            displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "next_due_date" }
           },
@@ -212,7 +211,7 @@ export default function NewMaintenanceLogPage() {
             label: "Periodicity",
             type: "Read Only",
             defaultValue: getValue("task"),
-           displayDependsOn: { task: true },
+            displayDependsOn: "task",
 
             fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "periodicity" }
           },
@@ -221,7 +220,7 @@ export default function NewMaintenanceLogPage() {
             label: "Description",
             type: "Small Text",
             defaultValue: getValue("task"),
-            displayDependsOn: { task: true },
+            displayDependsOn: "task",
 
              fetchFrom: { sourceField: "task", targetDoctype: "Asset Maintenance Task", targetField: "description" }
 
@@ -259,7 +258,7 @@ export default function NewMaintenanceLogPage() {
             name: "resume",
             label: "Upload Certificate",
             type: "Attach",
-            displayDependsOn: { has_certificate: true },
+            displayDependsOn: "has_certificate == 1",
             requiredDependsOn: "has_certificate",
           },
 
