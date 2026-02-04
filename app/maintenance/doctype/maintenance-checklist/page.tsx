@@ -12,9 +12,15 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { formatTimeAgo } from "@/lib/utils";
+import { Plus, List, LayoutGrid, Loader2 } from "lucide-react";
 
 const API_BASE_URL = "http://103.219.1.138:4412";
+
+// 🟢 CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
 
 /* ── Debounce Hook ─────────────────────────────── */
 function useDebounce<T>(value: T, delay: number): T {
@@ -35,6 +41,8 @@ interface ParameterChecklist {
   stage?: string;
   monitoring_type?: string;
   asset_category?: string;
+  creation?: string;
+  modified?: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -46,7 +54,12 @@ export default function MaintenanceChecklistListPage() {
 
   const [records, setRecords] = React.useState<ParameterChecklist[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+  
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0);    // 🟢 Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -82,77 +95,117 @@ export default function MaintenanceChecklistListPage() {
     handleSelectAll,
     clearSelection,
     isAllSelected,
-  } = useSelection(filteredRecords, "name");
+  } = useSelection(records, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   /* ── Fetch Records ───────────────────────────── */
-  const fetchRecords = React.useCallback(async () => {
-    if (!isInitialized) return;
-    if (!isAuthenticated || !apiKey || !apiSecret) {
-      setLoading(false);
-      return;
-    }
+  const fetchRecords = React.useCallback(
+    async (start = 0, isReset = false) => {
+      if (!isInitialized) return;
+      if (!isAuthenticated || !apiKey || !apiSecret) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const resp = await axios.get(
-        `${API_BASE_URL}/api/resource/${doctypeName}`,
-        {
-          params: {
-            fields: JSON.stringify([
-              "name",
-              "lis_name",
-              "stage",
-              "monitoring_type",
-              "asset_category",
-            ]),
-            limit_page_length: 20,
-            order_by: "creation desc",
-          },
-          headers: {
-            Authorization: `token ${apiKey}:${apiSecret}`,
-          },
-          withCredentials: true,
+      try {
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
         }
-      );
 
-      const raw = resp.data?.data ?? [];
-      const mapped: ParameterChecklist[] = raw.map((r: any) => ({
-        name: r.name,
-        lis_name: r.lis_name ?? "",
-        stage: r.stage ?? "",
-        monitoring_type: r.monitoring_type ?? "",
-        asset_category: r.asset_category ?? "",
-      }));
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
+        const filters: any[] = [];
+        if (debouncedSearch) {
+          filters.push(["Maintenance Checklist", "name", "like", `%${debouncedSearch}%`]);
+          filters.push(["Maintenance Checklist", "lis_name", "like", `%${debouncedSearch}%`]);
+          filters.push(["Maintenance Checklist", "stage", "like", `%${debouncedSearch}%`]);
+          filters.push(["Maintenance Checklist", "monitoring_type", "like", `%${debouncedSearch}%`]);
+          filters.push(["Maintenance Checklist", "asset_category", "like", `%${debouncedSearch}%`]);
+        }
 
-      setRecords(mapped);
+        const commonHeaders = {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        };
 
-      // Extract unique values for filter dropdowns
-      const uniqueLisNames = [...new Set(mapped.map(r => r.lis_name).filter((val): val is string => Boolean(val)))];
-      const uniqueStages = [...new Set(mapped.map(r => r.stage).filter((val): val is string => Boolean(val)))];
-      const uniqueAssetCategories = [...new Set(mapped.map(r => r.asset_category).filter((val): val is string => Boolean(val)))];
+        // Parallel requests for Data and Total Count
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
+            params: {
+              fields: JSON.stringify([
+                "name",
+                "lis_name",
+                "stage",
+                "monitoring_type",
+                "asset_category",
+                "creation",
+                "modified",
+              ]),
+              limit_start: start,
+              limit_page_length: limit,
+              order_by: "creation desc",
+              filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+            },
+            headers: commonHeaders,
+            withCredentials: true,
+          }),
+          // Only fetch count during initial load or filter change
+          isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+            params: { 
+              doctype: doctypeName, 
+              filters: filters.length > 0 ? JSON.stringify(filters) : undefined 
+            },
+            headers: commonHeaders,
+          }) : Promise.resolve(null)
+        ]);
 
-      setLisNameOptions(uniqueLisNames);
-      setStageOptions(uniqueStages);
-      setAssetCategoryOptions(uniqueAssetCategories);
-    } catch (err: any) {
-      console.error("Fetch error:", err);
-      setError(
-        err.response?.status === 403
-          ? "Unauthorized – check API key/secret"
-          : `Failed to fetch ${doctypeName}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
+        const raw = dataResp.data?.data ?? [];
+        const mapped: ParameterChecklist[] = raw.map((r: any) => ({
+          name: r.name,
+          lis_name: r.lis_name ?? "",
+          stage: r.stage ?? "",
+          monitoring_type: r.monitoring_type ?? "",
+          asset_category: r.asset_category ?? "",
+          creation: r.creation ?? "",
+          modified: r.modified ?? "",
+        }));
+
+        if (isReset) {
+          setRecords(mapped);
+          if (countResp) setTotalCount(countResp.data.message);
+        } else {
+          setRecords((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
+      } catch (err: any) {
+        console.error("Fetch error:", err);
+        if (isReset) {
+          setError(
+            err.response?.status === 403
+              ? "Unauthorized – check API key/secret"
+              : `Failed to fetch ${doctypeName}`
+          );
+        }
+      } finally {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]
+  );
 
   React.useEffect(() => {
-    fetchRecords();
+    fetchRecords(0, true);
   }, [fetchRecords]);
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchRecords(records.length, false);
+    }
+  };
 
   /* ── Bulk Delete ─────────────────────────────── */
   const handleBulkDelete = async () => {
@@ -216,6 +269,7 @@ export default function MaintenanceChecklistListPage() {
     { label: "Stage", value: record.stage || "-" },
     { label: "Asset Category", value: record.asset_category || "-" },
     { label: "Monitoring Type", value: record.monitoring_type || "-" },
+    { label: "Created", value: formatTimeAgo(record.creation) },
   ];
 
   /* ── Views ───────────────────────────────────── */
@@ -236,6 +290,13 @@ export default function MaintenanceChecklistListPage() {
             <th>Stage</th>
             <th>Asset Category</th>
             <th>Monitoring Type</th>
+            <th className="text-right pr-4" style={{ width: "120px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                   <><span>{filteredRecords.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                 )}
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -268,12 +329,15 @@ export default function MaintenanceChecklistListPage() {
                   <td>{r.stage}</td>
                   <td>{r.asset_category}</td>
                   <td>{r.monitoring_type}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={r.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: 32 }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: 32 }}>
                 No records found
               </td>
             </tr>
@@ -410,14 +474,24 @@ export default function MaintenanceChecklistListPage() {
         </div>
       </div>
 
-      <div className="view-container">
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+        {hasMore && records.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button 
+              onClick={handleLoadMore} 
+              disabled={isLoadingMore} 
+              className="btn btn--secondary flex items-center gap-2 px-6 py-2" 
+              style={{ minWidth: "140px" }}
+            >
+              {isLoadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : "Load More"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-
 
 
 
