@@ -18,9 +18,22 @@ import {
   ArrowDownWideNarrow,
   Check,
   User,
+  Loader2,
 } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { formatTimeAgo } from "@/lib/utils";
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
+import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
+
+// 🟢 CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
 
 // ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -45,6 +58,7 @@ interface Employee {
   status?: string;
   company?: string;
   image?: string;
+  creation?: string;
   modified?: string;
 }
 
@@ -73,7 +87,12 @@ export default function EmployeeListPage() {
 
   const [employees, setEmployees] = React.useState<Employee[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+  
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0);    // 🟢 Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -111,8 +130,8 @@ export default function EmployeeListPage() {
   }, []);
 
   // ── Fetch Employees ─────────────────────────────────────────────────
-  React.useEffect(() => {
-    const fetchEmployees = async () => {
+  const fetchEmployees = React.useCallback(
+    async (start = 0, isReset = false) => {
       if (!isInitialized) return;
       if (!isAuthenticated || !apiKey || !apiSecret) {
         setLoading(false);
@@ -120,9 +139,14 @@ export default function EmployeeListPage() {
       }
 
       try {
-        setLoading(true);
-        setError(null);
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
+        }
 
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
         const params: any = {
           fields: JSON.stringify([
             "name",
@@ -132,9 +156,11 @@ export default function EmployeeListPage() {
             "status",
             "company",
             "image",
+            "creation",
             "modified",
           ]),
-          limit_page_length: "50",
+          limit_start: start,
+          limit_page_length: limit,
           order_by: `${sortConfig.key} ${sortConfig.direction}`,
         };
 
@@ -153,13 +179,28 @@ export default function EmployeeListPage() {
           params.filters = JSON.stringify(filters);
         }
 
-        const resp = await axios.get(`${API_BASE_URL}/Employee`, {
-          params,
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-          withCredentials: true,
-        });
+        const commonHeaders = {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        };
 
-        const raw = resp.data?.data ?? [];
+        // Parallel requests for Data and Total Count
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/Employee`, {
+            params,
+            headers: commonHeaders,
+            withCredentials: true,
+          }),
+          // Only fetch count during initial load or filter change
+          isReset ? axios.get(`http://103.219.1.138:4412/api/method/frappe.client.get_count`, {
+            params: { 
+              doctype: doctypeName, 
+              filters: filters.length > 0 ? JSON.stringify(filters) : undefined 
+            },
+            headers: commonHeaders,
+          }) : Promise.resolve(null)
+        ]);
+
+        const raw = dataResp.data?.data ?? [];
         const mapped: Employee[] = raw.map((r: any) => ({
           name: r.name,
           employee_name: r.employee_name,
@@ -168,34 +209,44 @@ export default function EmployeeListPage() {
           status: r.status,
           company: r.company,
           image: r.image,
+          creation: r.creation,
           modified: r.modified,
         }));
 
-        setEmployees(mapped);
+        if (isReset) {
+          setEmployees(mapped);
+          if (countResp) setTotalCount(countResp.data.message || 0);
+        } else {
+          setEmployees((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
       } catch (err: any) {
         console.error("API error:", err);
-        setError(
-          err.response?.status === 403 ? "Unauthorized" : "Failed to fetch employees"
-        );
+        if (isReset) {
+          setError(
+            err.response?.status === 403 ? "Unauthorized" : "Failed to fetch employees"
+          );
+        }
       } finally {
         setLoading(false);
+        setIsLoadingMore(false);
       }
-    };
+    },
+    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedDepartment, sortConfig]
+  );
 
-    fetchEmployees();
-  }, [
-    apiKey,
-    apiSecret,
-    isAuthenticated,
-    isInitialized,
-    debouncedSearch,
-    selectedDepartment,
-    sortConfig.key,
-    sortConfig.direction,
-  ]);
+  React.useEffect(() => {
+    fetchEmployees(0, true);
+  }, [fetchEmployees]);
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchEmployees(employees.length, false);
+    }
+  };
 
   // ── Sorting Logic (client-side backup) ──────────────────────────────
-  // Note: We are already sorting via API, but this ensures consistent UI state
   const sortedEmployees = React.useMemo(() => {
     const sortable = [...employees];
     sortable.sort((a, b) => {
@@ -220,12 +271,72 @@ export default function EmployeeListPage() {
   const currentSortLabel =
     SORT_OPTIONS.find((opt) => opt.key === sortConfig.key)?.label || "Sort By";
 
+  // 🟢 Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected,
+  } = useSelection(employees, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // 🟢 Bulk Delete Handler
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Delete ${count} employee records permanently?`)) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        "http://103.219.1.138:4412",
+        apiKey!,
+        apiSecret!
+      );
+
+      if (response._server_messages) {
+        const msgs = JSON.parse(response._server_messages).map((m: string) =>
+          JSON.parse(m).message
+        );
+
+        if (msgs.length) {
+          toast.error("Delete failed", {
+            description: <FrappeErrorDisplay messages={msgs} />,
+            duration: Infinity,
+          });
+          return;
+        }
+      }
+
+      toast.success(`Deleted ${count} employee records`);
+      clearSelection();
+      fetchEmployees(0, true);
+    } catch (err: any) {
+      const messages = getApiMessages(
+        null,
+        err,
+        "Records deleted successfully",
+        "Failed to delete records"
+      );
+      toast.error(messages.message, {
+        description: messages.description,
+        duration: Infinity,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const getFieldsForCard = (e: Employee): RecordCardField[] => {
     const fields: RecordCardField[] = [];
     if (e.designation) fields.push({ label: "Designation", value: e.designation });
     if (e.department) fields.push({ label: "Dept", value: e.department });
     if (e.status) fields.push({ label: "Status", value: e.status });
     if (e.company) fields.push({ label: "Company", value: e.company });
+    if (e.creation) fields.push({ label: "Created", value: formatTimeAgo(e.creation) });
     return fields;
   };
 
@@ -239,6 +350,13 @@ export default function EmployeeListPage() {
       <table className="stock-table">
         <thead>
           <tr>
+            <th style={{ width: 40, textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+              />
+            </th>
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("name")}>
               ID
             </th>
@@ -257,55 +375,76 @@ export default function EmployeeListPage() {
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("company")}>
               Company
             </th>
+            <th className="text-right pr-4" style={{ width: "120px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{employees.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
           {sortedEmployees.length ? (
-            sortedEmployees.map((e) => (
-              <tr
-                key={e.name}
-                onClick={() => handleCardClick(e.name)}
-                style={{ cursor: "pointer" }}
-              >
-                <td className="font-medium text-blue-600">{e.name}</td>
-                <td>
-                  <div className="flex items-center gap-2">
-                    {e.image ? (
-                      <img
-                        src={`${API_BASE_URL}${e.image}`}
-                        // Note: You might need to adjust image URL depending on if it's full path or relative
-                        alt="avatar"
-                        className="h-6 w-6 rounded-full object-cover"
-                        onError={(e) => (e.currentTarget.style.display = "none")}
-                      />
-                    ) : (
-                      <div className="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center">
-                        <User className="h-3 w-3 text-gray-400" />
-                      </div>
-                    )}
-                    {e.employee_name}
-                  </div>
-                </td>
-                <td>{e.designation || "—"}</td>
-                <td>{e.department || "—"}</td>
-                <td>
-                  <span
-                    className={`px-2 py-0.5 rounded text-xs font-medium ${e.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : e.status === "Left"
+            sortedEmployees.map((e) => {
+              const isSelected = selectedIds.has(e.name);
+              return (
+                <tr
+                  key={e.name}
+                  onClick={() => handleCardClick(e.name)}
+                  style={{ cursor: "pointer", backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined }}
+                >
+                  <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(e.name)}
+                    />
+                  </td>
+                  <td className="font-medium text-blue-600">{e.name}</td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      {e.image ? (
+                        <img
+                          src={`${API_BASE_URL}${e.image}`} 
+                          // Note: You might need to adjust image URL depending on if it's full path or relative
+                          alt="avatar"
+                          className="h-6 w-6 rounded-full object-cover"
+                          onError={(e) => (e.currentTarget.style.display = "none")}
+                        />
+                      ) : (
+                        <div className="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center">
+                          <User className="h-3 w-3 text-gray-400" />
+                        </div>
+                      )}
+                      {e.employee_name}
+                    </div>
+                  </td>
+                  <td>{e.designation || "—"}</td>
+                  <td>{e.department || "—"}</td>
+                  <td>
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        e.status === "Active"
+                          ? "bg-green-100 text-green-700"
+                          : e.status === "Left"
                           ? "bg-red-100 text-red-700"
                           : "bg-gray-100 text-gray-700"
                       }`}
-                  >
-                    {e.status || "—"}
-                  </span>
-                </td>
-                <td>{e.company || "—"}</td>
-              </tr>
-            ))
+                    >
+                      {e.status || "—"}
+                    </span>
+                  </td>
+                  <td>{e.company || "—"}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={e.modified} />
+                  </td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "32px" }}>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px" }}>
                 No employees found.
               </td>
             </tr>
@@ -323,8 +462,6 @@ export default function EmployeeListPage() {
             key={e.name}
             title={e.employee_name}
             subtitle={e.name}
-            // If you have image support in RecordCard, pass it here
-            // otherwise standard fields:
             fields={getFieldsForCard(e)}
             onClick={() => handleCardClick(e.name)}
           />
@@ -357,11 +494,20 @@ export default function EmployeeListPage() {
           <h2>Employees</h2>
           <p>Manage employee records and status</p>
         </div>
-        <Link href="/attendance/doctype/employee/new" passHref>
-          <button className="btn btn--primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add Employee
-          </button>
-        </Link>
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <Link href="/attendance/doctype/employee/new" passHref>
+            <button className="btn btn--primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add Employee
+            </button>
+          </Link>
+        )}
       </div>
 
       {/* FILTER BAR */}
@@ -511,8 +657,20 @@ export default function EmployeeListPage() {
       )}
 
       {/* Content */}
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+        {hasMore && employees.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button 
+              onClick={handleLoadMore} 
+              disabled={isLoadingMore} 
+              className="btn btn--secondary flex items-center gap-2 px-6 py-2" 
+              style={{ minWidth: "140px" }}
+            >
+              {isLoadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : "Load More"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

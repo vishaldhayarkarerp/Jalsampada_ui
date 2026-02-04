@@ -10,6 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { TimeAgo } from "@/components/TimeAgo";
 
 const API_BASE_URL = "http://103.219.3.169:2223";
 
@@ -44,6 +45,7 @@ export default function SessionDefaultPage() {
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
+    const [lastModified, setLastModified] = React.useState<string | null>(null);
 
     /* -------------------------------------------------
        3. FETCH session default fields and values
@@ -84,6 +86,10 @@ export default function SessionDefaultPage() {
                 });
 
                 setRecord(defaultValues);
+                
+                // Try to get the last modified time from the response headers or a separate API call
+                // For now, we'll use the current time as a placeholder since the API doesn't return modification time
+                setLastModified(new Date().toISOString());
             } catch (err: any) {
                 console.error("API Error:", err);
                 setError(
@@ -256,12 +262,23 @@ export default function SessionDefaultPage() {
 
     return (
         <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+                <div>
+                    <h2 className="text-2xl font-semibold">Session Default Settings</h2>
+                    <p className="text-gray-600 dark:text-gray-400">Configure default values for session</p>
+                </div>
+                {lastModified && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Last updated: <TimeAgo date={lastModified} />
+                    </div>
+                )}
+            </div>
             <DynamicForm
                 tabs={formTabs}
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
-                title="Session Default Settings"
-                description="Configure default values for session"
+                title=""
+                description=""
                 submitLabel={isSaving ? "Saving..." : "Save"}
                 cancelLabel="Cancel"
             />

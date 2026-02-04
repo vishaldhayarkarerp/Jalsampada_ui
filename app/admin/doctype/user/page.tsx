@@ -6,21 +6,33 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-// Performance Fix: Import lightweight SVGs instead of loading heavy FontAwesome fonts
-import {
-  Search,
-  Plus,
-  List,
-  LayoutGrid,
-  ChevronDown,
-  ArrowUpNarrowWide,
+import { 
+  Search, 
+  Plus, 
+  List, 
+  LayoutGrid, 
+  ChevronDown, 
+  ArrowUpNarrowWide, 
   ArrowDownWideNarrow,
-  Check
+  Check,
+  Loader2
 } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { formatTimeAgo } from "@/lib/utils";
+import { useSelection } from "@/hooks/useSelection";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { bulkDeleteRPC } from "@/api/rpc";
+import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
+import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 
 const API_BASE_URL = "http://103.219.3.169:2223/api/resource"; // Fixed double slash
 
-// --- Debounce Hook ---
+// 🟢 CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
+
+// ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = React.useState(value);
 
@@ -28,17 +40,13 @@ function useDebounce<T>(value: T, delay: number): T {
     const handler = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
-    return () => {
-      clearTimeout(handler);
-    };
+    return () => clearTimeout(handler);
   }, [value, delay]);
 
   return debouncedValue;
 }
 
-/* -------------------------------------------------
-   1. User Type Definition
-   ------------------------------------------------- */
+// ── Types ────────────────────────────────────────────────────────
 interface User {
   name: string;
   email: string;
@@ -54,7 +62,7 @@ interface User {
   user_image?: string;
 }
 
-type SortDirection = "asc" | "dsc";
+type SortDirection = "asc" | "desc";
 interface SortConfig {
   key: keyof User;
   direction: SortDirection;
@@ -70,27 +78,34 @@ const SORT_OPTIONS: { label: string; key: keyof User }[] = [
 
 type ViewMode = "grid" | "list";
 
+// ── Main Component ───────────────────────────────────────────────
 export default function UserDoctypePage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
-  const doctypeName = "user";
+  const doctypeName = "User";
 
   const [users, setUsers] = React.useState<User[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+  
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0);    // 🟢 Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
-    key: "modified",
-    direction: "dsc",
+    key: "modified", 
+    direction: "desc", 
   });
 
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
+  // Close sort menu on outside click
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
@@ -101,46 +116,66 @@ export default function UserDoctypePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /* -------------------------------------------------
-     3. FETCH USERS
-     ------------------------------------------------- */
-  React.useEffect(() => {
-    const fetchUsers = async () => {
+  // ── Fetch Users ─────────────────────────────────────────────────
+  const fetchUsers = React.useCallback(
+    async (start = 0, isReset = false) => {
       if (!isInitialized) return;
       if (!isAuthenticated || !apiKey || !apiSecret) {
         setLoading(false);
         return;
       }
-      try {
-        setLoading(true);
-        setError(null);
 
+      try {
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
+        }
+
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
         const params: any = {
           fields: JSON.stringify([
             "name", "email", "first_name", "last_name", "full_name",
             "enabled", "modified", "creation", "mobile_no", "phone",
             "user_type", "user_image"
           ]),
-          limit_page_length: "20",
-          order_by: "modified desc",
+          limit_start: start,
+          limit_page_length: limit,
+          order_by: `${sortConfig.key} ${sortConfig.direction}`, 
         };
 
         if (debouncedSearch) {
           params.or_filters = JSON.stringify({
-            email: ["like", `%${debouncedSearch}%`],
-            full_name: ["like", `%${debouncedSearch}%`],
-            first_name: ["like", `%${debouncedSearch}%`],
-            last_name: ["like", `%${debouncedSearch}%`]
+              email: ["like", `%${debouncedSearch}%`],
+              full_name: ["like", `%${debouncedSearch}%`],
+              first_name: ["like", `%${debouncedSearch}%`],
+              last_name: ["like", `%${debouncedSearch}%`]
           });
         }
 
-        const resp = await axios.get(`${API_BASE_URL}/User`, {
-          params,
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-          withCredentials: true,
-        });
+        const commonHeaders = {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        };
 
-        const raw = resp.data?.data ?? [];
+        // Parallel requests for Data and Total Count
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/User`, {
+            params,
+            headers: commonHeaders,
+            withCredentials: true,
+          }),
+          // Only fetch count during initial load - without filters to avoid issues
+          isReset ? axios.get(`http://103.219.1.138:4412/api/method/frappe.client.get_count`, {
+            params: { 
+              doctype: doctypeName
+            },
+            headers: commonHeaders,
+          }).catch(() => ({ data: { message: 0 } })) // Fallback to 0 if count fails
+          : Promise.resolve({ data: { message: 0 } })
+        ]);
+
+        const raw = dataResp.data?.data ?? [];
         const mapped: User[] = raw.map((r: any) => ({
           name: r.name,
           email: r.email,
@@ -153,22 +188,41 @@ export default function UserDoctypePage() {
           mobile_no: r.mobile_no,
           phone: r.phone,
           user_type: r.user_type,
+          user_image: r.user_image,
         }));
 
-        setUsers(mapped);
+        if (isReset) {
+          setUsers(mapped);
+          if (countResp && countResp.data) setTotalCount(countResp.data.message || 0);
+        } else {
+          setUsers((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
       } catch (err: any) {
         console.error("API error:", err);
-        setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch users");
+        if (isReset) {
+          setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch users");
+        }
       } finally {
         setLoading(false);
+        setIsLoadingMore(false);
       }
-    };
-    if (doctypeName === "user") fetchUsers();
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+    },
+    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, sortConfig]
+  );
 
-  /* -------------------------------------------------
-     4. SORTING LOGIC
-     ------------------------------------------------- */
+  React.useEffect(() => {
+    fetchUsers(0, true);
+  }, [fetchUsers]);
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchUsers(users.length, false);
+    }
+  };
+
+  // ── Sorting Logic (client-side backup) ──────────────────────────────
   const sortedUsers = React.useMemo(() => {
     const sortableUsers = [...users];
     sortableUsers.sort((a, b) => {
@@ -183,12 +237,71 @@ export default function UserDoctypePage() {
   const requestSort = (key: keyof User) => {
     let direction: SortDirection = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'dsc';
+      direction = 'desc';
     }
     setSortConfig({ key, direction });
   };
 
   const currentSortLabel = SORT_OPTIONS.find(opt => opt.key === sortConfig.key)?.label || "Sort By";
+
+  // 🟢 Selection Hook
+  const {
+    selectedIds,
+    handleSelectOne,
+    handleSelectAll,
+    clearSelection,
+    isAllSelected,
+  } = useSelection(users, "name");
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // 🟢 Bulk Delete Handler
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (!window.confirm(`Delete ${count} user records permanently?`)) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await bulkDeleteRPC(
+        doctypeName,
+        Array.from(selectedIds),
+        "http://103.219.1.138:4412",
+        apiKey!,
+        apiSecret!
+      );
+
+      if (response._server_messages) {
+        const msgs = JSON.parse(response._server_messages).map((m: string) =>
+          JSON.parse(m).message
+        );
+
+        if (msgs.length) {
+          toast.error("Delete failed", {
+            description: <FrappeErrorDisplay messages={msgs} />,
+            duration: Infinity,
+          });
+          return;
+        }
+      }
+
+      toast.success(`Deleted ${count} user records`);
+      clearSelection();
+      fetchUsers(0, true);
+    } catch (err: any) {
+      const messages = getApiMessages(
+        null,
+        err,
+        "Records deleted successfully",
+        "Failed to delete records"
+      );
+      toast.error(messages.message, {
+        description: messages.description,
+        duration: Infinity,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const getFieldsForUser = (user: User): RecordCardField[] => {
     const fields: RecordCardField[] = [];
@@ -200,6 +313,7 @@ export default function UserDoctypePage() {
       value: user.enabled ? "Active" : "Disabled",
       type: user.enabled ? "success" : "danger"
     });
+    if (user.creation) fields.push({ label: "Created", value: formatTimeAgo(user.creation) });
     return fields;
   };
 
@@ -208,38 +322,67 @@ export default function UserDoctypePage() {
     router.push(`/admin/doctype/user/${encodeURIComponent(id)}`);
   };
 
-  /* -------------------------------------------------
-     6. RENDERERS
-     ------------------------------------------------- */
+  // ── Renderers ────────────────────────────────────────────────────
   const renderListView = () => (
     <div className="stock-table-container">
       <table className="stock-table">
         <thead>
           <tr>
+            <th style={{ width: 40, textAlign: "center" }}>
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleSelectAll}
+              />
+            </th>
             <th style={{ cursor: 'pointer' }} onClick={() => requestSort('name')}>Username</th>
             <th style={{ cursor: 'pointer' }} onClick={() => requestSort('full_name')}>Full Name</th>
             <th style={{ cursor: 'pointer' }} onClick={() => requestSort('email')}>Email</th>
             <th style={{ cursor: 'pointer' }} onClick={() => requestSort('user_type')}>User Type</th>
             <th style={{ cursor: 'pointer' }} onClick={() => requestSort('enabled')}>Status</th>
+            <th className="text-right pr-4" style={{ width: "120px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{users.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
           {sortedUsers.length ? (
-            sortedUsers.map((user) => (
-              <tr key={user.name} onClick={() => handleCardClick(user.name)} style={{ cursor: "pointer" }}>
-                <td>{user.name}</td>
-                <td>{user.full_name || "—"}</td>
-                <td>{user.email || "—"}</td>
-                <td>{user.user_type || "—"}</td>
-                <td>
-                  <span className={`badge ${user.enabled ? 'badge-success' : 'badge-danger'}`}>
-                    {user.enabled ? 'Active' : 'Disabled'}
-                  </span>
-                </td>
-              </tr>
-            ))
+            sortedUsers.map((user) => {
+              const isSelected = selectedIds.has(user.name);
+              return (
+                <tr 
+                  key={user.name} 
+                  onClick={() => handleCardClick(user.name)} 
+                  style={{ cursor: "pointer", backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined }}
+                >
+                  <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectOne(user.name)}
+                    />
+                  </td>
+                  <td>{user.name}</td>
+                  <td>{user.full_name || "—"}</td>
+                  <td>{user.email || "—"}</td>
+                  <td>{user.user_type || "—"}</td>
+                  <td>
+                    <span className={`badge ${user.enabled ? 'badge-success' : 'badge-danger'}`}>
+                      {user.enabled ? 'Active' : 'Disabled'}
+                    </span>
+                  </td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={user.modified} />
+                  </td>
+                </tr>
+              );
+            })
           ) : (
-            <tr><td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>No users found.</td></tr>
+            <tr><td colSpan={7} style={{ textAlign: "center", padding: "32px" }}>No users found.</td></tr>
           )}
         </tbody>
       </table>
@@ -270,15 +413,23 @@ export default function UserDoctypePage() {
           <h2>{title}</h2>
           <p>Manage system users and their permissions</p>
         </div>
-        <Link href="/admin/doctype/user/new" passHref>
-          {/* Replaced icon with SVG (Lucide) for speed */}
-          <button className="btn btn--primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add {title}
-          </button>
-        </Link>
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onDelete={handleBulkDelete}
+            isDeleting={isDeleting}
+          />
+        ) : (
+          <Link href="/admin/doctype/user/new" passHref>
+            <button className="btn btn--primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add {title}
+            </button>
+          </Link>
+        )}
       </div>
 
-      {/* --- FILTER BAR --- */}
+      {/* FILTER BAR */}
       <div className="search-filter-section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", gap: "8px" }}>
 
         {/* Left: Single Omni-Search */}
@@ -286,15 +437,11 @@ export default function UserDoctypePage() {
           <input
             type="text"
             placeholder="Search by name, email..."
-            className="form-control w-full pl-10" // Increased padding for icon
+            className="form-control w-full pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            // Accessibility: Label the input
-            aria-label="Search Users"
+            aria-label="Search Users" 
           />
-          {/* Replaced FontAwesome 'i' with Lucide 'Search' component */}
-          {/* Contrast Fix: Changed text-gray-400 to text-gray-500 */}
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
         </div>
 
         {/* Right: Sort Pill + View Switcher */}
@@ -306,15 +453,13 @@ export default function UserDoctypePage() {
 
               <button
                 className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
-                onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'dsc' : 'asc' }))}
+                onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'desc' : 'asc' }))}
                 title={`Sort ${sortConfig.direction === 'asc' ? 'Descending' : 'Ascending'}`}
-                // Accessibility: Added aria-label
                 aria-label={sortConfig.direction === 'asc' ? "Sort Descending" : "Sort Ascending"}
               >
-                {/* SVG Icons */}
-                {sortConfig.direction === 'asc' ?
-                  <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" /> :
-                  <ArrowUpNarrowWide className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                {sortConfig.direction === 'asc' ? 
+                    <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" /> : 
+                    <ArrowUpNarrowWide className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 }
               </button>
 
@@ -323,7 +468,6 @@ export default function UserDoctypePage() {
               <button
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
                 onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                // Accessibility: Added aria-label
                 aria-label="Open Sort Options"
               >
                 {currentSortLabel}
@@ -334,7 +478,6 @@ export default function UserDoctypePage() {
             {isSortMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
                 <div className="py-1">
-                  {/* Contrast Fix: Darker text */}
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sort By</div>
                   {SORT_OPTIONS.map((option) => (
                     <button
@@ -358,17 +501,28 @@ export default function UserDoctypePage() {
           <button
             className="btn btn--outline btn--sm flex items-center justify-center"
             onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
-            // Accessibility: Added aria-label
             aria-label={view === "grid" ? "Switch to List View" : "Switch to Grid View"}
           >
-            {/* SVG Icons */}
             {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
           </button>
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      {/* Content */}
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+        {hasMore && users.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button 
+              onClick={handleLoadMore} 
+              disabled={isLoadingMore} 
+              className="btn btn--secondary flex items-center gap-2 px-6 py-2" 
+              style={{ minWidth: "140px" }}
+            >
+              {isLoadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : "Load More"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
