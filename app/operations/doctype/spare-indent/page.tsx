@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { useForm, Controller } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 
-// 🟢 New Imports for Bulk Delete
 import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
@@ -16,7 +17,6 @@ import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 import { TimeAgo } from "@/components/TimeAgo";
 import {
-  Search,
   Plus,
   List,
   LayoutGrid,
@@ -24,45 +24,25 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
-  Clock,
-  Loader2 // 🟢 Added Loader2
+  Loader2
 } from "lucide-react";
 
-// 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.1.138:4412";
 
-// 🟢 CONFIG: Settings for Pagination
 const INITIAL_PAGE_SIZE = 25;
 const LOAD_MORE_SIZE = 10;
 
-// --- Debounce Hook ---
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = React.useState(value);
-
-  React.useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-/* -------------------------------------------------
-   Spare Indent Type Definition
-   ------------------------------------------------- */
 interface MaterialRequest {
   name: string;
   material_request_type?: string;
   title?: string;
   transaction_date?: string;
   modified?: string;
+  custom_lis_name?: string;
+  custom_stage?: string;
 }
 
-type SortDirection = "asc" | "desc"; // 🟢 Fixed typo 'dsc' -> 'desc' to match API expectation
+type SortDirection = "asc" | "desc";
 interface SortConfig {
   key: keyof MaterialRequest;
   direction: SortDirection;
@@ -71,9 +51,10 @@ interface SortConfig {
 const SORT_OPTIONS: { label: string; key: keyof MaterialRequest }[] = [
   { label: "Last Updated On", key: "modified" },
   { label: "ID", key: "name" },
+  { label: "LIS Name", key: "custom_lis_name" },
+  { label: "Stage", key: "custom_stage" },
   { label: "Request Type", key: "material_request_type" },
-  { label: "Title", key: "title" },
-  { label: "Transaction Date", key: "transaction_date" },
+  { label: "Date", key: "transaction_date" },
 ];
 
 type ViewMode = "grid" | "list";
@@ -85,25 +66,32 @@ export default function MaterialRequestPage() {
 
   const [requests, setRequests] = React.useState<MaterialRequest[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  // 🟢 Loading & Pagination States
-  const [loading, setLoading] = React.useState(true);       // Full page load
-  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
-  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
-  const [totalCount, setTotalCount] = React.useState(0);    // Total count of records
+  const [loading, setLoading] = React.useState(true);
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  const [hasMore, setHasMore] = React.useState(true);
+  const [totalCount, setTotalCount] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
 
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  // 🟢 Removed searchTerm and debouncedSearch state
+
+  const { control, watch } = useForm({
+    defaultValues: {
+      custom_lis_name: "",
+      custom_stage: "",
+    },
+  });
+
+  const selectedLis = watch("custom_lis_name");
+  const selectedStage = watch("custom_stage");
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
-    direction: "desc", // 🟢 Fixed typo
+    direction: "desc",
   });
 
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
-  // 🟢 1. Initialize Selection Hook
   const {
     selectedIds,
     handleSelectOne,
@@ -124,9 +112,6 @@ export default function MaterialRequestPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /* -------------------------------------------------
-     FETCH Spare IndentS (Refactored)
-     ------------------------------------------------- */
   const fetchMaterialRequests = React.useCallback(
     async (start = 0, isReset = false) => {
       if (!isInitialized) return;
@@ -145,7 +130,6 @@ export default function MaterialRequestPage() {
 
         const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
 
-        // Prepare Filters
         const params: any = {
           fields: JSON.stringify([
             "name",
@@ -153,23 +137,31 @@ export default function MaterialRequestPage() {
             "title",
             "transaction_date",
             "modified",
+            "custom_lis_name",
+            "custom_stage"
           ]),
           limit_start: start,
           limit_page_length: limit,
-          order_by: `${sortConfig.key} ${sortConfig.direction}`, // 🟢 Server-side sorting
+          order_by: `${sortConfig.key} ${sortConfig.direction}`,
         };
 
-        if (debouncedSearch) {
-          params.or_filters = JSON.stringify([
-            ["Material Request", "name", "like", `%${debouncedSearch}%`],
-            ["Material Request", "title", "like", `%${debouncedSearch}%`],
-            ["Material Request", "material_request_type", "like", `%${debouncedSearch}%`],
-          ]);
+        const filters: any[] = [];
+
+        if (selectedLis) {
+          filters.push(["Material Request", "custom_lis_name", "=", selectedLis]);
         }
+        if (selectedStage) {
+          filters.push(["Material Request", "custom_stage", "=", selectedStage]);
+        }
+
+        if (filters.length > 0) {
+          params.filters = JSON.stringify(filters);
+        }
+
+        // 🟢 Removed or_filters logic related to search
 
         const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
 
-        // 🟢 Parallel Requests: Data + Count (only on reset)
         const [dataResp, countResp] = await Promise.all([
           axios.get(`${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`, {
             params,
@@ -178,14 +170,12 @@ export default function MaterialRequestPage() {
           }),
           isReset
             ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
-                params: { 
-                    doctype: doctypeName,
-                    // Note: frappe.client.get_count doesn't easily support or_filters in GET params 
-                    // without full filter array. For now, we fetch total unfiltered or simply ignore count filter accuracy for complex OR searches.
-                    // If you need accurate count on search, you might need a custom RPC method.
-                },
-                headers: commonHeaders,
-              })
+              params: {
+                doctype: doctypeName,
+                filters: filters.length > 0 ? JSON.stringify(filters) : undefined
+              },
+              headers: commonHeaders,
+            })
             : Promise.resolve(null),
         ]);
 
@@ -196,6 +186,8 @@ export default function MaterialRequestPage() {
           title: r.title,
           transaction_date: r.transaction_date,
           modified: r.modified,
+          custom_lis_name: r.custom_lis_name,
+          custom_stage: r.custom_stage,
         }));
 
         if (isReset) {
@@ -214,22 +206,19 @@ export default function MaterialRequestPage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, sortConfig]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, sortConfig, selectedLis, selectedStage]
   );
 
-  // 🟢 Trigger fetch on search, filter, or sort change
   React.useEffect(() => {
     fetchMaterialRequests(0, true);
   }, [fetchMaterialRequests]);
 
-  // 🟢 Load More Handler
   const handleLoadMore = () => {
     if (!isLoadingMore && hasMore) {
       fetchMaterialRequests(requests.length, false);
     }
   };
 
-  // 🟢 2. Handle Bulk Delete
   const handleBulkDelete = async () => {
     const count = selectedIds.size;
     if (!window.confirm(`Are you sure you want to permanently delete ${count} records?`)) {
@@ -246,13 +235,7 @@ export default function MaterialRequestPage() {
         apiSecret!
       );
 
-      // Debug: Log the actual response to understand its structure
-      console.log("Bulk Delete Response:", response);
-
-      // Check if the response contains server messages indicating errors
-      // For bulk delete, error messages are directly in response._server_messages
       if (response._server_messages) {
-        // Parse the server messages to check for errors
         const serverMessages = JSON.parse(response._server_messages);
         const errorMessages = serverMessages.map((msgStr: string) => {
           const parsed = JSON.parse(msgStr);
@@ -260,43 +243,32 @@ export default function MaterialRequestPage() {
         });
 
         if (errorMessages.length > 0) {
-          // Show error messages from server
           toast.error("Failed to delete records", {
             description: <FrappeErrorDisplay messages={errorMessages} />,
             duration: Infinity
           });
-          return; // Don't proceed with success handling
+          return;
         }
       }
 
-      // If no error messages, proceed with success
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
-      fetchMaterialRequests(0, true); // Reload from scratch
+      fetchMaterialRequests(0, true);
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
-
       const messages = getApiMessages(
         null,
         err,
         "Records deleted successfully",
         "Failed to delete records"
       );
-
       toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsDeleting(false);
     }
   };
 
-  /* -------------------------------------------------
-     SORTING LOGIC
-     ------------------------------------------------- */
-  // 🟢 Removed client-side sortedRequests useMemo. 
-  // We now rely on 'requests' which is sorted by the server via 'order_by' param.
-
   const requestSort = (key: keyof MaterialRequest) => {
-    // This will trigger the useEffect -> fetchMaterialRequests(0, true)
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
@@ -308,7 +280,8 @@ export default function MaterialRequestPage() {
 
   const getFieldsForRequest = (req: MaterialRequest): RecordCardField[] => {
     const fields: RecordCardField[] = [];
-    if (req.material_request_type) fields.push({ label: "Type", value: req.material_request_type });
+    if (req.custom_lis_name) fields.push({ label: "LIS", value: req.custom_lis_name });
+    if (req.custom_stage) fields.push({ label: "Stage", value: req.custom_stage });
     if (req.transaction_date) fields.push({ label: "Date", value: req.transaction_date });
     return fields;
   };
@@ -317,15 +290,11 @@ export default function MaterialRequestPage() {
     router.push(`/operations/doctype/spare-indent/${encodeURIComponent(id)}`);
   };
 
-  /* -------------------------------------------------
-     RENDERERS
-     ------------------------------------------------- */
   const renderListView = () => (
     <div className="stock-table-container">
       <table className="stock-table">
         <thead>
           <tr>
-            {/* 🟢 Header Checkbox */}
             <th style={{ width: "40px", textAlign: "center" }}>
               <input
                 type="checkbox"
@@ -334,25 +303,17 @@ export default function MaterialRequestPage() {
                 style={{ cursor: "pointer", width: "16px", height: "16px" }}
               />
             </th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("name")}>
-              ID
-            </th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("material_request_type")}>
-              Request Type
-            </th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("title")}>
-              Title
-            </th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("transaction_date")}>
-              Transaction Date
-            </th>
-            {/* 🟢 Total Count Header */}
+            <th style={{ cursor: "pointer" }} onClick={() => requestSort("name")}>ID</th>
+            <th style={{ cursor: "pointer" }} onClick={() => requestSort("custom_lis_name")}>LIS Name</th>
+            <th style={{ cursor: "pointer" }} onClick={() => requestSort("custom_stage")}>Stage</th>
+            <th style={{ cursor: "pointer" }} onClick={() => requestSort("material_request_type")}>Type</th>
+            <th style={{ cursor: "pointer" }} onClick={() => requestSort("transaction_date")}>Date</th>
+            
             <th className="text-right pr-4" style={{ width: "140px" }}>
-                <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
-                   <><span>{requests.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
-                 )}
-
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{requests.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
               </div>
             </th>
           </tr>
@@ -370,7 +331,6 @@ export default function MaterialRequestPage() {
                     backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
                   }}
                 >
-                  {/* 🟢 Row Checkbox */}
                   <td
                     style={{ textAlign: "center" }}
                     onClick={(e) => e.stopPropagation()}
@@ -383,9 +343,11 @@ export default function MaterialRequestPage() {
                     />
                   </td>
                   <td>{req.name}</td>
+                  <td>{req.custom_lis_name || "—"}</td>
+                  <td>{req.custom_stage || "—"}</td>
                   <td>{req.material_request_type || "—"}</td>
-                  <td>{req.title || "—"}</td>
                   <td>{req.transaction_date || "—"}</td>
+                  
                   <td className="text-right pr-4">
                     <TimeAgo date={req.modified} />
                   </td>
@@ -444,7 +406,6 @@ export default function MaterialRequestPage() {
           <p>List of Spare Indents with type, title and date</p>
         </div>
 
-        {/* 🟢 3. Header Action Switch */}
         {selectedIds.size > 0 ? (
           <BulkActionBar
             selectedCount={selectedIds.size}
@@ -472,21 +433,62 @@ export default function MaterialRequestPage() {
           gap: "8px",
         }}
       >
-        {/* Search */}
-        <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
-          <input
-            type="text"
-            placeholder="Search Spare Indent..."
-            className="form-control w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search Spare Indent"
-          />
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          
+          {/* 🟢 Removed Search Input Code Block here */}
+
+          <div style={{ minWidth: "200px" }}>
+            <Controller
+              control={control}
+              name="custom_lis_name"
+              render={({ field: { value } }) => (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <LinkField
+                    control={control}
+                    field={{
+                      name: "custom_lis_name",
+                      label: "",
+                      type: "Link",
+                      linkTarget: "Lift Irrigation Scheme",
+                      placeholder: "Filter by LIS",
+                      defaultValue: value
+                    }}
+                    error={null}
+                    className="[&>label]:hidden"
+                  />
+                </div>
+              )}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px" }}>
+            <Controller
+              control={control}
+              name="custom_stage"
+              render={({ field: { value } }) => (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <LinkField
+                    control={control}
+                    field={{
+                      name: "custom_stage",
+                      label: "",
+                      type: "Link",
+                      linkTarget: "Stage No",
+                      placeholder: "Filter by Stage",
+                      defaultValue: value,
+                      filterMapping: [{ sourceField: "custom_lis_name", targetField: "lis_name" }]
+                    }}
+                    error={null}
+                    className="[&>label]:hidden"
+                  />
+                </div>
+              )}
+            />
+          </div>
         </div>
 
         {/* Sort & View Switcher */}
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {/* Sort Pill */}
           <div className="relative" ref={sortMenuRef}>
             <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
               <button
@@ -497,7 +499,6 @@ export default function MaterialRequestPage() {
                     direction: prev.direction === "asc" ? "desc" : "asc",
                   }))
                 }
-                title={`Sort ${sortConfig.direction === "asc" ? "Descending" : "Ascending"}`}
               >
                 {sortConfig.direction === "asc" ? (
                   <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -546,11 +547,9 @@ export default function MaterialRequestPage() {
             )}
           </div>
 
-          {/* View Switcher */}
           <button
             className="btn btn--outline btn--sm flex items-center justify-center"
             onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
-            aria-label={view === "grid" ? "Switch to List View" : "Switch to Grid View"}
           >
             {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
           </button>
@@ -559,8 +558,6 @@ export default function MaterialRequestPage() {
 
       <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
-
-        {/* 🟢 Load More Button */}
         {hasMore && requests.length > 0 && (
           <div className="mt-6 flex justify-end">
             <button
