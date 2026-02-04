@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { useForm, Controller } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 
 import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
@@ -18,21 +20,8 @@ import { Plus, List, LayoutGrid, Loader2 } from "lucide-react";
 
 const API_BASE_URL = "http://103.219.1.138:4412";
 
-// 🟢 CONFIG: Settings for Frappe-like pagination
 const INITIAL_PAGE_SIZE = 25;
 const LOAD_MORE_SIZE = 10;
-
-/* ── Debounce Hook ─────────────────────────────── */
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = React.useState(value);
-
-  React.useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
 
 /* ── Types ────────────────────────────────────── */
 interface MaintenanceSchedule {
@@ -41,6 +30,8 @@ interface MaintenanceSchedule {
   maintenance_team?: string;
   creation?: string;
   modified?: string;
+  custom_lis?: string;      // 🟢 Corrected field name
+  custom_stage?: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -53,29 +44,24 @@ export default function MaintenanceScheduleListPage() {
   const [records, setRecords] = React.useState<MaintenanceSchedule[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
   
-  // 🟢 Loading & Pagination States
-  const [loading, setLoading] = React.useState(true);       // Full page load
-  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
-  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
-  const [totalCount, setTotalCount] = React.useState(0);    // 🟢 Total count of records
+  const [loading, setLoading] = React.useState(true);
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  const [hasMore, setHasMore] = React.useState(true);
+  const [totalCount, setTotalCount] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
 
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  const { control, watch } = useForm({
+    defaultValues: {
+      custom_lis: "",      // 🟢 Corrected field name
+      custom_stage: "",
+    },
+  });
+
+  const selectedLis = watch("custom_lis");
+  const selectedStage = watch("custom_stage");
 
   const title = "Maintenance Schedule";
 
-  /* ── Search (same feature as checklist) ───────────────── */
-  const filteredRecords = React.useMemo(() => {
-    if (!debouncedSearch) return records;
-    return records.filter((r) =>
-      r.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      r.asset_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      r.maintenance_team?.toLowerCase().includes(debouncedSearch.toLowerCase())
-    );
-  }, [records, debouncedSearch]);
-
-  /* ── Selection ───────────────────────────────── */
   const {
     selectedIds,
     handleSelectOne,
@@ -104,20 +90,25 @@ export default function MaintenanceScheduleListPage() {
         }
 
         const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
+        
+        // 🟢 Build Filters
         const filters: any[] = [];
-        if (debouncedSearch) {
-          filters.push(["Asset Maintenance", "name", "like", `%${debouncedSearch}%`]);
-          filters.push(["Asset Maintenance", "asset_name", "like", `%${debouncedSearch}%`]);
-          filters.push(["Asset Maintenance", "maintenance_team", "like", `%${debouncedSearch}%`]);
+        
+        if (selectedLis) {
+          // 🟢 Use "custom_lis" (not custom_lis_name)
+          filters.push(["Asset Maintenance", "custom_lis", "=", selectedLis]);
+        }
+        if (selectedStage) {
+          filters.push(["Asset Maintenance", "custom_stage", "=", selectedStage]);
         }
 
         const commonHeaders = {
           Authorization: `token ${apiKey}:${apiSecret}`,
         };
 
-        // Parallel requests for Data and Total Count
         const [dataResp, countResp] = await Promise.all([
-          axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
+          // 🟢 Encode doctypeName to handle space in "Asset Maintenance"
+          axios.get(`${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`, {
             params: {
               fields: JSON.stringify([
                 "name",
@@ -125,6 +116,8 @@ export default function MaintenanceScheduleListPage() {
                 "maintenance_team",
                 "creation",
                 "modified",
+                "custom_lis",    // 🟢 Fetch correct field
+                "custom_stage"
               ]),
               limit_start: start,
               limit_page_length: limit,
@@ -151,6 +144,8 @@ export default function MaintenanceScheduleListPage() {
           maintenance_team: r.maintenance_team ?? "",
           creation: r.creation ?? "",
           modified: r.modified ?? "",
+          custom_lis: r.custom_lis,    // 🟢 Map correct field
+          custom_stage: r.custom_stage,
         }));
 
         if (isReset) {
@@ -175,7 +170,7 @@ export default function MaintenanceScheduleListPage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, selectedLis, selectedStage]
   );
 
   React.useEffect(() => {
@@ -188,7 +183,7 @@ export default function MaintenanceScheduleListPage() {
     }
   };
 
-  /* ── Bulk Delete (unchanged) ───────────────────── */
+  /* ── Bulk Delete ───────────────────────────────── */
   const handleBulkDelete = async () => {
     const count = selectedIds.size;
     if (!window.confirm(`Delete ${count} records permanently?`)) return;
@@ -219,7 +214,7 @@ export default function MaintenanceScheduleListPage() {
 
       toast.success(`Deleted ${count} records`);
       clearSelection();
-      fetchRecords();
+      fetchRecords(0, true);
     } catch (err: any) {
       const messages = getApiMessages(
         null,
@@ -247,6 +242,8 @@ export default function MaintenanceScheduleListPage() {
     record: MaintenanceSchedule
   ): RecordCardField[] => [
     { label: "Asset Name", value: record.asset_name || "-" },
+    { label: "LIS", value: record.custom_lis || "-" },
+    { label: "Stage", value: record.custom_stage || "-" },
     { label: "Maintenance Team", value: record.maintenance_team || "-" },
     { label: "Created", value: formatTimeAgo(record.creation) },
   ];
@@ -266,6 +263,9 @@ export default function MaintenanceScheduleListPage() {
             </th>
             <th>ID</th>
             <th>Asset Name</th>
+            {/* 🟢 Table Columns */}
+            <th>LIS Name</th>
+            <th>Stage</th>
             <th>Maintenance Team</th>
             <th className="text-right pr-4" style={{ width: "120px" }}>
               <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
@@ -273,7 +273,7 @@ export default function MaintenanceScheduleListPage() {
                   <Loader2 className="w-3 h-3 animate-spin" />
                 ) : (
                   <>
-                    <span>{filteredRecords.length}</span>
+                    <span>{records.length}</span>
                     <span className="opacity-50"> /</span>
                     <span className="text-gray-900 dark:text-gray-200 font-bold">
                       {totalCount}
@@ -285,8 +285,8 @@ export default function MaintenanceScheduleListPage() {
           </tr>
         </thead>
         <tbody>
-          {filteredRecords.length ? (
-            filteredRecords.map((r) => {
+          {records.length ? (
+            records.map((r) => {
               const isSelected = selectedIds.has(r.name);
               return (
                 <tr
@@ -311,6 +311,9 @@ export default function MaintenanceScheduleListPage() {
                   </td>
                   <td>{r.name}</td>
                   <td>{r.asset_name}</td>
+                  {/* 🟢 Render Data */}
+                  <td>{r.custom_lis || "—"}</td>
+                  <td>{r.custom_stage || "—"}</td>
                   <td>{r.maintenance_team}</td>
                   <td className="text-right pr-4">
                     <TimeAgo date={r.modified} />
@@ -320,7 +323,7 @@ export default function MaintenanceScheduleListPage() {
             })
           ) : (
             <tr>
-              <td colSpan={5} style={{ textAlign: "center", padding: 32 }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: 32 }}>
                 No records found
               </td>
             </tr>
@@ -332,8 +335,8 @@ export default function MaintenanceScheduleListPage() {
 
   const renderGridView = () => (
     <div className="equipment-grid">
-      {filteredRecords.length ? (
-        filteredRecords.map((r) => (
+      {records.length ? (
+        records.map((r) => (
           <RecordCard
             key={r.name}
             title={r.name}
@@ -347,9 +350,9 @@ export default function MaintenanceScheduleListPage() {
     </div>
   );
 
-  if (loading)
+  if (loading && records.length === 0)
     return <p style={{ padding: "2rem" }}>Loading Maintenance Schedule...</p>;
-  if (error)
+  if (error && records.length === 0)
     return <p style={{ padding: "2rem", color: "red" }}>{error}</p>;
 
   return (
@@ -379,15 +382,59 @@ export default function MaintenanceScheduleListPage() {
         )}
       </div>
 
-      <div className="search-filter-section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
-        <input
-          type="text"
-          placeholder={`Search ${title}...`}
-          className="form-control"
-          style={{ width: 240 }}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="search-filter-section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", gap: "8px" }}>
+        
+        {/* 🟢 Filters */}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          <div style={{ minWidth: "200px" }}>
+            <Controller
+              control={control}
+              name="custom_lis" // Corrected name
+              render={({ field: { value } }) => (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <LinkField
+                    control={control}
+                    field={{
+                      name: "custom_lis",
+                      label: "",
+                      type: "Link",
+                      linkTarget: "Lift Irrigation Scheme",
+                      placeholder: "Filter by LIS",
+                      defaultValue: value
+                    }}
+                    error={null}
+                    className="[&>label]:hidden"
+                  />
+                </div>
+              )}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px" }}>
+            <Controller
+              control={control}
+              name="custom_stage"
+              render={({ field: { value } }) => (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <LinkField
+                    control={control}
+                    field={{
+                      name: "custom_stage",
+                      label: "",
+                      type: "Link",
+                      linkTarget: "Stage No",
+                      placeholder: "Filter by Stage",
+                      defaultValue: value,
+                      filterMapping: [{ sourceField: "custom_lis", targetField: "lis_name" }]
+                    }}
+                    error={null}
+                    className="[&>label]:hidden"
+                  />
+                </div>
+              )}
+            />
+          </div>
+        </div>
 
         <button
           className="btn btn--outline btn--sm flex items-center justify-center"
