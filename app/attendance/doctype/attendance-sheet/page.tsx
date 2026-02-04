@@ -11,10 +11,16 @@ import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { TimeAgo } from "@/components/TimeAgo";
+import { formatTimeAgo } from "@/lib/utils";
+import { Plus, List, LayoutGrid, Loader2 } from "lucide-react";
 
 const API_BASE_URL = "http://103.219.1.138:4412";
 const DOCTYPE = "Attendance Sheet";
+
+// 🟢 CONFIG: Settings for Frappe-like pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
 
 /* Debounce Hook */
 function useDebounce<T>(value: T, delay: number): T {
@@ -29,6 +35,8 @@ function useDebounce<T>(value: T, delay: number): T {
 /* Types */
 interface AttendanceSheet {
   name: string;
+  creation?: string;
+  modified?: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -41,7 +49,12 @@ export default function AttendanceSheetListPage() {
 
   const [records, setRecords] = React.useState<AttendanceSheet[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+  
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0);    // 🟢 Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -62,54 +75,101 @@ export default function AttendanceSheetListPage() {
     handleSelectAll,
     clearSelection,
     isAllSelected,
-  } = useSelection(filteredRecords, "name");
+  } = useSelection(records, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   /* Fetch */
-  const fetchRecords = React.useCallback(async () => {
-    if (!isInitialized) return;
-    if (!isAuthenticated || !apiKey || !apiSecret) {
-      setLoading(false);
-      return;
-    }
+  const fetchRecords = React.useCallback(
+    async (start = 0, isReset = false) => {
+      if (!isInitialized) return;
+      if (!isAuthenticated || !apiKey || !apiSecret) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const resp = await axios.get(
-        `${API_BASE_URL}/api/resource/${DOCTYPE}`,
-        {
-          params: {
-            fields: JSON.stringify(["name"]),
-            limit_page_length: 20,
-            order_by: "creation desc",
-          },
-          headers: {
-            Authorization: `token ${apiKey}:${apiSecret}`,
-          },
-          withCredentials: true,
+      try {
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
         }
-      );
 
-      const raw = resp.data?.data ?? [];
-      setRecords(raw.map((r: any) => ({ name: r.name })));
-    } catch (err: any) {
-      console.error("Fetch error:", err);
-      setError(
-        err.response?.status === 403
-          ? "Unauthorized – check API key/secret"
-          : `Failed to fetch ${DOCTYPE}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [apiKey, apiSecret, isAuthenticated, isInitialized]);
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
+        const filters: any[] = [];
+        if (debouncedSearch) {
+          filters.push(["Attendance Sheet", "name", "like", `%${debouncedSearch}%`]);
+        }
+
+        const commonHeaders = {
+          Authorization: `token ${apiKey}:${apiSecret}`,
+        };
+
+        // Parallel requests for Data and Total Count
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/resource/${DOCTYPE}`, {
+            params: {
+              fields: JSON.stringify(["name", "creation", "modified"]),
+              limit_start: start,
+              limit_page_length: limit,
+              order_by: "creation desc",
+              filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+            },
+            headers: commonHeaders,
+            withCredentials: true,
+          }),
+          // Only fetch count during initial load or filter change
+          isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+            params: { 
+              doctype: DOCTYPE, 
+              filters: filters.length > 0 ? JSON.stringify(filters) : undefined 
+            },
+            headers: commonHeaders,
+          }) : Promise.resolve(null)
+        ]);
+
+        const raw = dataResp.data?.data ?? [];
+        const mapped: AttendanceSheet[] = raw.map((r: any) => ({
+          name: r.name,
+          creation: r.creation ?? "",
+          modified: r.modified ?? "",
+        }));
+
+        if (isReset) {
+          setRecords(mapped);
+          if (countResp) setTotalCount(countResp.data.message || 0);
+        } else {
+          setRecords((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
+      } catch (err: any) {
+        console.error("Fetch error:", err);
+        if (isReset) {
+          setError(
+            err.response?.status === 403
+              ? "Unauthorized – check API key/secret"
+              : `Failed to fetch ${DOCTYPE}`
+          );
+        }
+      } finally {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]
+  );
 
   React.useEffect(() => {
-    fetchRecords();
+    fetchRecords(0, true);
   }, [fetchRecords]);
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchRecords(records.length, false);
+    }
+  };
 
   /* Bulk Delete */
   const handleBulkDelete = async () => {
@@ -142,7 +202,7 @@ export default function AttendanceSheetListPage() {
 
       toast.success(`Deleted ${count} records`);
       clearSelection();
-      fetchRecords();
+      fetchRecords(0, true);
     } catch (err: any) {
       const messages = getApiMessages(
         null,
@@ -164,7 +224,10 @@ export default function AttendanceSheetListPage() {
     router.push(`/attendance/doctype/attendance-sheet/${encodeURIComponent(id)}`);
   };
 
-  const getFieldsForRecord = (record: AttendanceSheet): RecordCardField[] => [];
+  const getFieldsForRecord = (record: AttendanceSheet): RecordCardField[] => [
+    { label: "Created", value: formatTimeAgo(record.creation) },
+    { label: "Modified", value: formatTimeAgo(record.modified) },
+  ];
 
   /* Views */
   const renderListView = () => (
@@ -180,6 +243,13 @@ export default function AttendanceSheetListPage() {
               />
             </th>
             <th>ID</th>
+            <th className="text-right pr-4" style={{ width: "120px" }}>
+              <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                  <><span>{filteredRecords.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                )}
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -205,12 +275,15 @@ export default function AttendanceSheetListPage() {
                     />
                   </td>
                   <td>{r.name}</td>
+                  <td className="text-right pr-4">
+                    <TimeAgo date={r.modified} />
+                  </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan={2} style={{ textAlign: "center", padding: 32 }}>
+              <td colSpan={3} style={{ textAlign: "center", padding: 32 }}>
                 No records found
               </td>
             </tr>
@@ -278,8 +351,20 @@ export default function AttendanceSheetListPage() {
         </button>
       </div>
 
-      <div className="view-container">
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+        {hasMore && records.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button 
+              onClick={handleLoadMore} 
+              disabled={isLoadingMore} 
+              className="btn btn--secondary flex items-center gap-2 px-6 py-2" 
+              style={{ minWidth: "140px" }}
+            >
+              {isLoadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : "Load More"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
