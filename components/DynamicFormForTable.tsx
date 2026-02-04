@@ -36,51 +36,81 @@ function buildDynamicFilters(
 }
 // Helper: Evaluate displayDependsOn condition string
 function evaluateDisplayDependsOn(
-    condition: string,
+    condition: string | Record<string, any> | ((values: Record<string, any>) => boolean),
     getValue: (name: string) => any
 ): boolean {
     try {
-        const parts = condition
-            .split(/(\&\&|\|\|)/)
-            .map((c) => c.trim())
-            .filter((c) => c);
+        // 🟢 If condition is a function, call it with a values object
+        if (typeof condition === "function") {
+            // Build a temporary values object from getValue
+            const valuesProxy = new Proxy(
+                {},
+                {
+                    get: (_, prop: string) => getValue(prop),
+                }
+            );
+            return condition(valuesProxy);
+        }
 
-        const conditions = parts.filter((p) => p !== "&&" && p !== "||");
-        const operators = parts.filter((p) => p === "&&" || p === "||");
+        // 🟢 If condition is an object, check key-value rules
+        if (typeof condition === "object") {
+            for (const key in condition) {
+                const expected = condition[key];
+                const actual = getValue(key);
 
-        const results = conditions.map((cond) => {
-            const [field, op, valueStr] = cond.split(/([=!<>]=?)/);
-            if (!field || !op || valueStr === undefined) return true;
-
-            const fieldName = field.trim();
-            const fieldValue = getValue(fieldName);
-
-            let compareValue: any = valueStr.trim();
-
-            // Smart type conversion
-            if (compareValue === "true") compareValue = true;
-            else if (compareValue === "false") compareValue = false;
-            else if (/^\d+$/.test(compareValue)) compareValue = parseInt(compareValue, 10);
-            else if (/^\d+\.\d+$/.test(compareValue)) compareValue = parseFloat(compareValue);
-            else compareValue = compareValue.replace(/^['"]|['"]$/g, "");
-
-            switch (op) {
-                case "==": return fieldValue == compareValue;
-                case "!=": return fieldValue != compareValue;
-                case ">": return (fieldValue ?? 0) > (compareValue ?? 0);
-                case "<": return (fieldValue ?? 0) < (compareValue ?? 0);
-                case ">=": return (fieldValue ?? 0) >= (compareValue ?? 0);
-                case "<=": return (fieldValue ?? 0) <= (compareValue ?? 0);
-                default: return true;
+                if (expected === true && !actual) return false;
+                if (expected === false && actual) return false;
+                if (expected !== true && expected !== false && actual !== expected) return false;
             }
-        });
+            return true;
+        }
 
-        if (results.length === 0) return true;
+        // 🟢 If condition is a string, use existing string parsing logic
+        if (typeof condition === "string") {
+            const parts = condition
+                .split(/(\&\&|\|\|)/)
+                .map((c) => c.trim())
+                .filter((c) => c);
 
-        return results.reduce((acc, result, i) => {
-            const op = operators[i - 1];
-            return op === "&&" ? acc && result : op === "||" ? acc || result : result;
-        });
+            const conditions = parts.filter((p) => p !== "&&" && p !== "||");
+            const operators = parts.filter((p) => p === "&&" || p === "||");
+
+            const results = conditions.map((cond) => {
+                const [field, op, valueStr] = cond.split(/([=!<>]=?)/);
+                if (!field || !op || valueStr === undefined) return true;
+
+                const fieldName = field.trim();
+                const fieldValue = getValue(fieldName);
+
+                let compareValue: any = valueStr.trim();
+
+                // Smart type conversion
+                if (compareValue === "true") compareValue = true;
+                else if (compareValue === "false") compareValue = false;
+                else if (/^\d+$/.test(compareValue)) compareValue = parseInt(compareValue, 10);
+                else if (/^\d+\.\d+$/.test(compareValue)) compareValue = parseFloat(compareValue);
+                else compareValue = compareValue.replace(/^['"]|['"]$/g, "");
+
+                switch (op) {
+                    case "==": return fieldValue == compareValue;
+                    case "!=": return fieldValue != compareValue;
+                    case ">": return (fieldValue ?? 0) > (compareValue ?? 0);
+                    case "<": return (fieldValue ?? 0) < (compareValue ?? 0);
+                    case ">=": return (fieldValue ?? 0) >= (compareValue ?? 0);
+                    case "<=": return (fieldValue ?? 0) <= (compareValue ?? 0);
+                    default: return true;
+                }
+            });
+
+            if (results.length === 0) return true;
+
+            return results.reduce((acc, result, i) => {
+                const op = operators[i - 1];
+                return op === "&&" ? acc && result : op === "||" ? acc || result : result;
+            });
+        }
+
+        return true;
     } catch (e) {
         console.error("Error evaluating displayDependsOn:", condition, e);
         return true; // fail-safe: show field if condition can't be evaluated
