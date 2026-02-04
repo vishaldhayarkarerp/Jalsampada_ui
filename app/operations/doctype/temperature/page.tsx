@@ -6,16 +6,17 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { 
-  Search, 
-  Plus, 
-  List, 
-  LayoutGrid, 
-  ChevronDown, 
-  ArrowUpNarrowWide, 
+import {
+  Search,
+  Plus,
+  List,
+  LayoutGrid,
+  ChevronDown,
+  ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Check,
   Clock,
+  Loader2, // 🟢 Added Loader2
 } from "lucide-react";
 
 // 🟢 New Imports for Bulk Delete
@@ -23,12 +24,16 @@ import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { bulkDeleteRPC } from "@/api/rpc";
 import { toast } from "sonner";
-import { getApiMessages} from "@/lib/utils";
+import { getApiMessages } from "@/lib/utils";
 import { FrappeErrorDisplay } from "@/components/FrappeErrorDisplay";
 import { TimeAgo } from "@/components/TimeAgo";
 
 // 🟢 Changed: Point to Root URL
 const API_BASE_URL = "http://103.219.1.138:4412";
+
+// 🟢 CONFIG: Settings for Pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -51,11 +56,11 @@ function useDebounce<T>(value: T, delay: number): T {
    ------------------------------------------------- */
 interface TemperatureReading {
   name: string;          // Docname (ID)
-  temperature?: string;  // Temperature field (string to allow formatting)
+  temperature?: string;  // Temperature field
   modified?: string;
 }
 
-type SortDirection = "asc" | "dsc";
+type SortDirection = "asc" | "desc"; // 🟢 Fixed typo 'dsc' -> 'desc' to match API expectation
 interface SortConfig {
   key: keyof TemperatureReading;
   direction: SortDirection;
@@ -74,9 +79,15 @@ export default function TemperatureReadingsPage() {
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
   const doctypeName = "Temperature Readings";
 
+  // Data States
   const [readings, setReadings] = React.useState<TemperatureReading[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0);    // Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -84,7 +95,7 @@ export default function TemperatureReadingsPage() {
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
-    direction: "dsc",
+    direction: "desc", // 🟢 Fixed typo
   });
 
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
@@ -112,63 +123,104 @@ export default function TemperatureReadingsPage() {
   }, []);
 
   /* -------------------------------------------------
-     3. FETCH TEMPERATURE READINGS
+     3. FETCH TEMPERATURE READINGS (Refactored)
      ------------------------------------------------- */
-  const fetchReadings = React.useCallback(async () => {
-    if (!isInitialized) return;
-    if (!isAuthenticated || !apiKey || !apiSecret) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const params: any = {
-        fields: JSON.stringify([
-          "name",
-          "temperature",
-          "modified",
-        ]),
-        limit_page_length: "20",
-        order_by: "modified desc",
-      };
-
-      if (debouncedSearch) {
-        // Search by ID or temperature value
-        params.or_filters = JSON.stringify({
-          name: ["like", `%${debouncedSearch}%`],
-          temperature: ["like", `%${debouncedSearch}%`],
-        });
+  const fetchReadings = React.useCallback(
+    async (start = 0, isReset = false) => {
+      if (!isInitialized) return;
+      if (!isAuthenticated || !apiKey || !apiSecret) {
+        setLoading(false);
+        return;
       }
 
-      // 🟢 Append /api/resource manually
-      const resp = await axios.get(`${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`, {
-        params,
-        headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-        withCredentials: true,
-      });
+      try {
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
+        }
 
-      const raw = resp.data?.data ?? [];
-      const mapped: TemperatureReading[] = raw.map((r: any) => ({
-        name: r.name,
-        temperature: r.temperature?.toString(),
-        modified: r.modified,
-      }));
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
 
-      setReadings(mapped);
-    } catch (err: any) {
-      console.error("API error:", err);
-      setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
-    } finally {
-      setLoading(false);
-    }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]);
+        // Prepare Filters
+        const params: any = {
+          fields: JSON.stringify(["name", "temperature", "modified"]),
+          limit_start: start,
+          limit_page_length: limit,
+          order_by: `${sortConfig.key} ${sortConfig.direction}`, // 🟢 Server-side sorting
+        };
 
+        let filters = [];
+        if (debouncedSearch) {
+          params.or_filters = JSON.stringify({
+            name: ["like", `%${debouncedSearch}%`],
+            temperature: ["like", `%${debouncedSearch}%`],
+          });
+          // Also add to count filters if needed, usually we pass same structure
+          filters.push(["Temperature Readings", "name", "like", `%${debouncedSearch}%`]); 
+          // Note: OR filters are tricky for get_count, typically we rely on list API for filtered data
+        }
+
+        const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
+
+        // 🟢 Parallel Requests: Data + Count (only on reset)
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`, {
+            params,
+            headers: commonHeaders,
+            withCredentials: true,
+          }),
+          isReset
+            ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+                params: { 
+                    doctype: doctypeName,
+                    // Note: frappe.client.get_count doesn't easily support or_filters in GET params 
+                    // without full filter array. For now, we fetch total unfiltered or simply ignore count filter accuracy for complex OR searches.
+                    // If you need accurate count on search, you might need a custom RPC method.
+                },
+                headers: commonHeaders,
+              })
+            : Promise.resolve(null),
+        ]);
+
+        const raw = dataResp.data?.data ?? [];
+        const mapped: TemperatureReading[] = raw.map((r: any) => ({
+          name: r.name,
+          temperature: r.temperature?.toString(),
+          modified: r.modified,
+        }));
+
+        if (isReset) {
+          setReadings(mapped);
+          if (countResp) setTotalCount(countResp.data.message);
+        } else {
+          setReadings((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
+      } catch (err: any) {
+        console.error("API error:", err);
+        if (isReset) setError(err.response?.status === 403 ? "Unauthorized" : "Failed to fetch");
+      } finally {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, sortConfig]
+  );
+
+  // 🟢 Trigger fetch on search or sort change
   React.useEffect(() => {
-    fetchReadings();
+    fetchReadings(0, true);
   }, [fetchReadings]);
+
+  // 🟢 Load More Handler
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchReadings(readings.length, false);
+    }
+  };
 
   // 🟢 2. Handle Bulk Delete
   const handleBulkDelete = async () => {
@@ -187,13 +239,7 @@ export default function TemperatureReadingsPage() {
         apiSecret!
       );
 
-      // Debug: Log the actual response to understand its structure
-      console.log("Bulk Delete Response:", response);
-
-      // Check if the response contains server messages indicating errors
-      // For bulk delete, error messages are directly in response._server_messages
       if (response._server_messages) {
-        // Parse the server messages to check for errors
         const serverMessages = JSON.parse(response._server_messages);
         const errorMessages = serverMessages.map((msgStr: string) => {
           const parsed = JSON.parse(msgStr);
@@ -201,29 +247,25 @@ export default function TemperatureReadingsPage() {
         });
 
         if (errorMessages.length > 0) {
-          // Show error messages from server
-          toast.error("Failed to delete records", { 
+          toast.error("Failed to delete records", {
             description: <FrappeErrorDisplay messages={errorMessages} />,
-            duration: Infinity
+            duration: Infinity,
           });
-          return; // Don't proceed with success handling
+          return;
         }
       }
 
-      // If no error messages, proceed with success
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
-      fetchReadings();
+      fetchReadings(0, true); // Reload from scratch
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
-      
       const messages = getApiMessages(
         null,
         err,
         "Records deleted successfully",
         "Failed to delete records"
       );
-      
       toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsDeleting(false);
@@ -233,23 +275,15 @@ export default function TemperatureReadingsPage() {
   /* -------------------------------------------------
      4. SORTING LOGIC
      ------------------------------------------------- */
-  const sortedReadings = React.useMemo(() => {
-    const sortableReadings = [...readings];
-    sortableReadings.sort((a, b) => {
-      const aValue = (a[sortConfig.key] || "") as string;
-      const bValue = (b[sortConfig.key] || "") as string;
-      const compare = aValue.localeCompare(bValue);
-      return sortConfig.direction === "asc" ? compare : -compare;
-    });
-    return sortableReadings;
-  }, [readings, sortConfig]);
+  // 🟢 Removed client-side sortedReadings useMemo. 
+  // We now rely on 'readings' which is sorted by the server via 'order_by' param.
 
   const requestSort = (key: keyof TemperatureReading) => {
-    let direction: SortDirection = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "dsc";
-    }
-    setSortConfig({ key, direction });
+    // This will trigger the useEffect -> fetchReadings(0, true)
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
   };
 
   const currentSortLabel =
@@ -275,7 +309,6 @@ export default function TemperatureReadingsPage() {
       <table className="stock-table">
         <thead>
           <tr>
-            {/* 🟢 Header Checkbox */}
             <th style={{ width: "40px", textAlign: "center" }}>
               <input
                 type="checkbox"
@@ -293,27 +326,32 @@ export default function TemperatureReadingsPage() {
             >
               Temperature
             </th>
-            <th className="text-right pr-4" style={{ width: "100px" }}>
-              <Clock className="w-4 h-4 mr-1 float-right" />
+            {/* 🟢 Total Count Header */}
+            <th className="text-right pr-4" style={{ width: "140px" }}>
+                <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                   <><span>{readings.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                 )}
+
+              </div>
             </th>
           </tr>
         </thead>
         <tbody>
-          {sortedReadings.length ? (
-            sortedReadings.map((r) => {
+          {readings.length ? (
+            readings.map((r) => {
               const isSelected = selectedIds.has(r.name);
               return (
                 <tr
                   key={r.name}
                   onClick={() => handleCardClick(r.name)}
-                  style={{ 
+                  style={{
                     cursor: "pointer",
                     backgroundColor: isSelected ? "var(--color-surface-selected, #f0f9ff)" : undefined
                   }}
                 >
-                  {/* 🟢 Row Checkbox */}
-                  <td 
-                    style={{ textAlign: "center" }} 
+                  <td
+                    style={{ textAlign: "center" }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <input
@@ -334,7 +372,7 @@ export default function TemperatureReadingsPage() {
           ) : (
             <tr>
               <td colSpan={5} style={{ textAlign: "center", padding: "32px" }}>
-                No records found.
+                {!loading && "No records found."}
               </td>
             </tr>
           )}
@@ -356,7 +394,7 @@ export default function TemperatureReadingsPage() {
           />
         ))
       ) : (
-        <p style={{ color: "var(--color-text-secondary)" }}>No records found.</p>
+        !loading && <p style={{ color: "var(--color-text-secondary)" }}>No records found.</p>
       )}
     </div>
   );
@@ -383,7 +421,6 @@ export default function TemperatureReadingsPage() {
           <p>Temperature readings list</p>
         </div>
         
-        {/* 🟢 3. Header Action Switch */}
         {selectedIds.size > 0 ? (
           <BulkActionBar
             selectedCount={selectedIds.size}
@@ -411,7 +448,6 @@ export default function TemperatureReadingsPage() {
           gap: "8px",
         }}
       >
-        {/* Left: Single Omni-Search */}
         <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
           <input
             type="text"
@@ -423,7 +459,6 @@ export default function TemperatureReadingsPage() {
           />
         </div>
 
-        {/* Right: Sort Pill + View Switcher */}
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           <div className="relative" ref={sortMenuRef}>
             <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
@@ -432,7 +467,7 @@ export default function TemperatureReadingsPage() {
                 onClick={() =>
                   setSortConfig((prev) => ({
                     ...prev,
-                    direction: prev.direction === "asc" ? "dsc" : "asc",
+                    direction: prev.direction === "asc" ? "desc" : "asc",
                   }))
                 }
               >
@@ -489,8 +524,28 @@ export default function TemperatureReadingsPage() {
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+
+        {/* 🟢 Load More Button */}
+        {hasMore && readings.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              className="btn btn--secondary flex items-center gap-2 px-6 py-2"
+              style={{ minWidth: "140px" }}
+            >
+              {isLoadingMore ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                </>
+              ) : (
+                "Load More"
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
