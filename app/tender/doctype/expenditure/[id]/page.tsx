@@ -125,6 +125,7 @@ export default function RecordDetailPage() {
   // NEW: State for work name default value
   const [workName, setWorkName] = React.useState<string>("");
   const [formInstance, setFormInstance] = React.useState<any>(null);
+  const [billType, setBillType] = React.useState<string>("");
 
   /* -------------------------------------------------
   3. FETCH DOCUMENT
@@ -244,7 +245,13 @@ export default function RecordDetailPage() {
     // Store the initial bill type value, but only if it's not "Running" due to RA in prev_bill_no
     const initialBillType = form.getValues('bill_type');
     const initialPrevBillNo = form.getValues('prev_bill_no');
+    setBillType(initialBillType);
 
+    form.watch((value: any, { name }: { name?: string }) => {
+      if (name === "bill_type") {
+        setBillType(value.bill_type);
+      }
+    });
     // If current bill type is "Running" but prev_bill_no contains "ra", 
     // we should assume the original value wasn't "Running"
     if (initialBillType === 'Running' && initialPrevBillNo && typeof initialPrevBillNo === 'string' && /ra/i.test(initialPrevBillNo)) {
@@ -325,12 +332,22 @@ export default function RecordDetailPage() {
             linkTarget: "Fiscal Year",
             required: true,
           },
+          { name: "cb1", label: "", type: "Section Break" },
+
+          {
+            name: "posting_date",
+            label: "Bill Date",
+            type: "Date",
+            fieldColumns: 1,
+          },
+
           {
             name: "tender_number",
             label: "Tender Number",
             type: "Link",
             required: true,
             linkTarget: "Project",
+            fieldColumns: 1,
             filterMapping: [
               { sourceField: "custom_fiscal_year", targetField: "fiscal_year" }
             ]
@@ -339,6 +356,7 @@ export default function RecordDetailPage() {
             name: "tender_amount",
             label: "Tender Amount",
             type: "Currency",
+            fieldColumns: 1,
             precision: 2,
             fetchFrom: {
               sourceField: "tender_number",
@@ -346,39 +364,88 @@ export default function RecordDetailPage() {
               targetField: "custom_tender_amount"
             }
           },
+
           {
-            name: "posting_date",
-            label: "Bill Date",
-            type: "Date",
+            name: "lift_irrigation_scheme",
+            label: "Lift Irrigation Scheme",
+            type: "Link",
+            linkTarget: "Lift Irrigation Scheme",
+            required: true,
+            fieldColumns: 1,
+            fetchFrom: {
+              sourceField: "tender_number",
+              targetDoctype: "Project",
+              targetField: "custom_lis_name"
+            }
           },
 
           {
             name: "prev_bill_no",
             label: "Previous Bill Number",
             type: "Data",
+            defaultValue: 0,
+            fieldColumns: 1,
           },
-          {
-            name: "bill_number",
-            label: "Bill Number",
-            type: "Data",
-          },
+
           {
             name: "prev_bill_amt",
             label: "Previous Bill Amount",
             type: "Currency",
             precision: 2,
+            defaultValue: "0.00",
+            fieldColumns: 1,
           },
+
           {
-            name: "mb_no",
-            label: "MB No",
+            name: "prev_mb_no",
+            label: "Previous MB No",
             type: "Data",
+            defaultValue: 0,
+            fieldColumns: 1,
           },
+
+          {
+            name: "page_no",
+            label: "Previous Page No",
+            type: "Data",
+            defaultValue: 0,
+            fieldColumns: 1,
+          },
+
+          {
+            name: "bill_number",
+            label: "Bill Number",
+            type: "Data",
+            defaultValue: "0.00",
+            fieldColumns: 1,
+          },
+
+
           {
             name: "bill_amount",
             label: "Bill Amount",
             type: "Currency",
             required: true,
             precision: 2,
+            defaultValue: "0.00",
+            fieldColumns: 1,
+          },
+
+          {
+            name: "mb_no",
+            label: "MB No",
+            type: "Data",
+            defaultValue: 0,
+            fieldColumns: 1,
+
+          },
+
+          {
+            name: "page_no",
+            label: "Page No",
+            type: "Data",
+            defaultValue: 0,
+            fieldColumns: 1,
           },
 
           {
@@ -386,18 +453,15 @@ export default function RecordDetailPage() {
             label: "Bill Upto Amount",
             type: "Currency",
             precision: 2,
+            defaultValue: "0.00",
           },
           {
             name: "remaining_amount",
-            label: "Remaining Amount",
+            label: "Bill Remaining Amount",
             type: "Currency",
             precision: 2,
           },
-          {
-            name: "page_no",
-            label: "Page No",
-            type: "Data",
-          },
+
           {
             name: "bill_type",
             label: "Bill Type",
@@ -407,18 +471,7 @@ export default function RecordDetailPage() {
               { label: "Final", value: "Final" },
             ],
           },
-          {
-            name: "lift_irrigation_scheme",
-            label: "Lift Irrigation Scheme",
-            type: "Link",
-            linkTarget: "Lift Irrigation Scheme",
-            required: true,
-            fetchFrom: {
-              sourceField: "tender_number",
-              targetDoctype: "Project",
-              targetField: "custom_lis_name"
-            }
-          },
+
           {
             name: "stage",
             label: "Stage/ Sub Scheme",
@@ -504,6 +557,7 @@ export default function RecordDetailPage() {
             label: "Saved Amount",
             type: "Currency",
             precision: 2,
+            displayDependsOn: { "bill_type": "Final" }
           },
           {
             name: "work_description",
@@ -743,7 +797,39 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
     }
   };
 
-  const handleCancel = () => router.back();
+  const handleCancel = async () => {
+    if (!apiKey || !apiSecret) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    try {
+      await axios.post(
+        `http://103.219.1.138:4412/api/method/frappe.client.cancel`,
+        {
+          doctype: "Expenditure",
+          name: docname,
+        },
+        {
+          headers: {
+            Authorization: `token ${apiKey}:${apiSecret}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      toast.success("Document cancelled successfully");
+
+      // 🔥 Immediately update UI without refresh
+      setExpenditure((prev) =>
+        prev ? { ...prev, docstatus: 2 } : prev
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to cancel document");
+    }
+  };
+
 
   /* -------------------------------------------------
   6. UI STATES
@@ -771,6 +857,76 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
     return <div>Expenditure not found.</div>;
   }
 
+  const handleSubmitDocument = async () => {
+    if (!formInstance) return;
+
+    const formData = formInstance.getValues();
+    if (!apiKey || !apiSecret || !isInitialized || !isAuthenticated) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Prepare payload similar to handleSubmit
+      const payload: Record<string, any> = JSON.parse(JSON.stringify(formData));
+
+      // Convert numeric fields
+      const numericFields = [
+        "bill_upto",
+        "remaining_amount",
+        "tender_amount",
+        "prev_bill_amt",
+        "bill_amount",
+        "saved_amount",
+      ];
+      numericFields.forEach((f) => {
+        if (f in payload) payload[f] = Number(payload[f]) || 0;
+      });
+
+      // Child table numeric + boolean conversions
+      if (Array.isArray(payload.expenditure_details)) {
+        payload.expenditure_details = payload.expenditure_details.map((row: any) => ({
+          ...row,
+          bill_amount: Number(row.bill_amount) || 0,
+          have_asset: row.have_asset ? 1 : 0,
+        }));
+      }
+
+      // Set docstatus to 1 (submitted)
+      payload.docstatus = 1;
+
+      const response = await axios.put(
+        `${API_BASE_URL}/Expenditure/${encodeURIComponent(docname)}`,
+        payload,
+        {
+          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+        }
+      );
+
+      toast.success("Document submitted successfully!");
+      setExpenditure((prev) =>
+        prev ? { ...prev, docstatus: 1 } : prev
+      );
+      // Optionally redirect or reload form
+      const docName = response.data.data.name;
+      if (docName) {
+        router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to submit document");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isDraft = expenditure.docstatus === 0;
+  const isSubmitted = expenditure.docstatus === 1;
+  const isCancelled = expenditure.docstatus === 2;
+  const isFinal = billType === "Final";
+
   /* -------------------------------------------------
   7. RENDER FORM
   ------------------------------------------------- */
@@ -779,14 +935,31 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
     <DynamicForm
       title={`Expenditure ${expenditure.name}`}
       tabs={formTabs}
-      onSubmit={handleSubmit}
-      onCancel={handleCancel}
+      onSubmit={async (data, isDirty) => {
+        if (!isDraft) return;
+        return await handleSubmit(data, isDirty);
+      }}
+      onSubmitDocument={isDraft && isFinal ? handleSubmitDocument : undefined}
+      isSubmittable={isDraft && isFinal}
+      onCancelDocument={async () => {
+        if (!isSubmitted) return;
+        return await handleCancel();
+      }}
+      docstatus={expenditure.docstatus}
+      initialStatus={
+        isDraft ? "Draft" : isSubmitted ? "Submitted" : "Cancelled"
+      }
       onFormInit={handleFormInit}
       doctype={doctypeName}
-      submitLabel={isSaving ? "Saving..." : "Save"}
-      cancelLabel="Cancel"
-      initialStatus={expenditure.docstatus === 0 ? "Draft" : expenditure.docstatus === 1 ? "Submitted" : "Cancelled"}
-      docstatus={expenditure.docstatus}
+      submitLabel={
+        isSaving
+          ? isDraft && isFinal
+            ? "Submitting..."
+            : "Saving..."
+          : isDraft && isFinal
+            ? "Submit"
+            : "Save"
+      }
       deleteConfig={{
         doctypeName: doctypeName,
         docName: docname,

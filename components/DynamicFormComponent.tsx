@@ -1837,7 +1837,8 @@ export function DynamicForm({
                   </button>
                 </>
               )}
-              {isSubmittable && docstatus === 1 && (
+              {/* {isSubmittable && docstatus === 1 && ( */}
+               {docstatus === 1 && onCancelDocument && (
                 <>
                   {/* Submitted: Show Cancel button */}
                   <button
