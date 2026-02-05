@@ -1267,11 +1267,11 @@ body {
 }
 
 .stock-table th {
-  background-color: var(--color-bg-1);
+  background: #3683f6;
   padding: var(--space-4) var(--space-10);
   text-align: left;
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
+  color: white;
   border-bottom: 1px solid var(--color-border);
   height: 40px;
   position: sticky;

@@ -513,7 +513,7 @@ export default function TenderLevelReport() {
             className="stock-table sticky-header-table"
             style={{ minWidth: `${totalTableWidth}px` }}
           >
-            <thead style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "white" }}>
+            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#3683f6" }}>
               <tr>
                 {columnConfig.map((column) => (
                   <th
@@ -522,8 +522,8 @@ export default function TenderLevelReport() {
                       width: column.width,
                       position: column.fieldname === "name" ? "sticky" : "static",
                       left: column.fieldname === "name" ? 0 : "auto",
-                      zIndex: column.fieldname === "name" ? 25 : 20,
-                      backgroundColor: column.fieldname === "name" ? "white" : "inherit",
+                      zIndex: column.fieldname === "name" ? 40 : 15,
+                      backgroundColor: column.fieldname === "name" ? "#3683f6" : "inherit",
                     }}
                   >
                     {column.label}
@@ -550,7 +550,7 @@ export default function TenderLevelReport() {
                         style={{
                           position: column.fieldname === "name" ? "sticky" : "static",
                           left: column.fieldname === "name" ? 0 : "auto",
-                          zIndex: column.fieldname === "name" ? 25 : 20,
+                          zIndex: column.fieldname === "name" ? 40 : 15,
                           backgroundColor: column.fieldname === "name" ? "white" : "inherit",
                         }}
                       >
