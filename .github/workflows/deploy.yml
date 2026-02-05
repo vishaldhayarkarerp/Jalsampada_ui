@@ -22,5 +22,6 @@ jobs:
             set -e
             cd ~/bench-Jalsampada/apps/Jalsampada_ui
             git pull origin develop
-            npm run build
-            /home/erpadmin/.nvm/versions/node/v24.12.0/bin/pm2 restart jalsampada-frontend
+            bun install
+            bun run build
+            pm2 restart jalsampada-frontend
