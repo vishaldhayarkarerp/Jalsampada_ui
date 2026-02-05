@@ -26,11 +26,12 @@ interface AssetData {
   location: string;
   status: string;
   asset_category?: string;
-  purchase_date?: string;
+  custom_pump_status?: string;
   gross_purchase_amount?: number;
   custom_lis_name?: string;
   custom_stage_no?: string;
   custom_condition?: string;
+  custom_current_hours?: number;
   custom_equipement_make?: string;
   custom_equipement_model?: string;
   custom_asset_specifications?: Array<{
@@ -268,12 +269,12 @@ export default function AssetDetailPage() {
           <span className="text-base font-bold">{asset.asset_category || "—"}</span>
         </div>
         <div className="test-info-box !py-2">
-          <p className="text-sm">Condition</p>
-          <span className="text-base font-bold text-blue-600">{asset.custom_condition || "N/A"}</span>
+          <p className="text-sm">LIS Name</p>
+          <span className="text-base font-bold">{asset.custom_lis_name || "—"}</span>
         </div>
         <div className="test-info-box !py-2">
-          <p className="text-sm">LIS Name</p>
-          <span className="text-base font-bold text-green-600">{asset.custom_lis_name || "—"}</span>
+          <p className="text-sm">Stage No</p>
+          <span className="text-base font-bold">{asset.custom_stage_no || "N/A"}</span>
         </div>
         <div className="test-info-box !py-2">
           <p className="text-sm">Make</p>
@@ -284,12 +285,9 @@ export default function AssetDetailPage() {
           <span className="text-base font-bold">{asset.custom_equipement_model || "—"}</span>
         </div>
         <div className="test-info-box !py-2">
-          <p className="text-sm">Purchase Date</p>
-          <span className="text-base font-bold">
-            {asset.purchase_date
-              ? new Date(asset.purchase_date).toLocaleDateString("en-GB")
-              : "—"}
-          </span>
+          <p className="text-sm">Status</p>
+          <span className={`text-base font-bold ${(asset.custom_pump_status || '') == 'Running' ? 'text-green-600' : 'text-red-600'}`}>
+            {asset.custom_pump_status || "—"}</span>
         </div>
       </div>
 
