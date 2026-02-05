@@ -559,7 +559,7 @@ export default function RecordDetailPage() {
 Entered Bill Amount: ${billAmount}
 
 The entered Bill Amount is ${lowOrHigh} than the calculated Invoice Amount.
-Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
+Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, duration: Infinity
       });
       return; // Stop the save process
     }

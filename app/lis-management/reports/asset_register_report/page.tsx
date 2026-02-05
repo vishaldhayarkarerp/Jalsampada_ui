@@ -5,7 +5,7 @@ import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { LinkInput } from "@/components/LinkInput";
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+
 
 // API base URL
 const API_BASE_URL = "http://103.219.1.138:4412/";
