@@ -114,6 +114,8 @@ export default function NewExpenditurePage() {
   const doctypeName = "Expenditure";
   const [isSaving, setIsSaving] = React.useState(false);
   const [billType, setBillType] = React.useState<string>(""); 
+  const [docName, setDocName] = React.useState<string | null>(null);
+const [docStatus, setDocStatus] = React.useState<0 | 1 | 2>(0);
 
   // 🟢 NEW: State for work name default value
   const [workName, setWorkName] = React.useState<string>("");
@@ -306,14 +308,14 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
         },
         {
           name: "mb_no",
-          label: "Prev MB No",
+          label: "Previous MB No",
           type: "Data",
           defaultValue: 0,
           fieldColumns: 1,
         },
         {
           name: "page_no",
-          label: "Prev Pg No",
+          label: "Previous Page No",
           type: "Data",
           defaultValue: 0,
           fieldColumns: 1,
@@ -344,7 +346,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
         },
         {
           name: "page_no_new",
-          label: "Pg No",
+          label: "Page No",
           type: "Data",
           defaultValue: 0,
           fieldColumns: 1,
@@ -580,10 +582,13 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
       toast.success("Expenditure created successfully!");
 
       // Navigate using the auto-generated naming series ID (EXP-####)
-      const docName = response.data.data.name;
-      if (docName) {
-        router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
-      } else {
+      const savedName = response.data.data.name;
+
+if (savedName) {
+  setDocName(savedName);   // ⭐ tells UI document exists
+  setDocStatus(0);         // ⭐ still draft
+  router.push(`/tender/doctype/expenditure/${encodeURIComponent(savedName)}`);
+}else {
         router.push(`/tender/doctype/expenditure`);
       }
 
@@ -621,10 +626,74 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
   /* -------------------------------------------------
 6. Conditional Submit Document feature
 ------------------------------------------------- */
+// const handleSubmitDocument = async () => {
+//   if (!formInstance) return;
+
+//   const formData = formInstance.getValues();
+//   if (!apiKey || !apiSecret || !isInitialized || !isAuthenticated) {
+//     toast.error("Authentication required");
+//     return;
+//   }
+
+//   setIsSaving(true);
+
+//   try {
+//     // Prepare payload similar to handleSubmit
+//     const payload: Record<string, any> = JSON.parse(JSON.stringify(formData));
+
+//     // Convert numeric fields
+//     const numericFields = [
+//       "bill_upto",
+//       "remaining_amount",
+//       "tender_amount",
+//       "prev_bill_amt",
+//       "bill_amount",
+//       "saved_amount",
+//     ];
+//     numericFields.forEach((f) => {
+//       if (f in payload) payload[f] = Number(payload[f]) || 0;
+//     });
+
+//     // Child table numeric + boolean conversions
+//     if (Array.isArray(payload.expenditure_details)) {
+//       payload.expenditure_details = payload.expenditure_details.map((row: any) => ({
+//         ...row,
+//         bill_amount: Number(row.bill_amount) || 0,
+//         have_asset: row.have_asset ? 1 : 0,
+//       }));
+//     }
+
+//     // Set docstatus to 1 (submitted)
+//     payload.docstatus = 1;
+
+//     const response = await axios.put(
+//       `${API_BASE_URL}/Expenditure/${encodeURIComponent(formData.name)}`,
+//       payload,
+//       {
+//         headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+//       }
+//     );
+
+//     toast.success("Document submitted successfully!");
+//     // Optionally redirect or reload form
+//     const docName = response.data.data.name;
+//     if (docName) {
+//       router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
+//     }
+//   } catch (err: any) {
+//     console.error(err);
+//     toast.error("Failed to submit document");
+//   } finally {
+//     setIsSaving(false);
+//   }
+// };
+
+
 const handleSubmitDocument = async () => {
   if (!formInstance) return;
 
   const formData = formInstance.getValues();
+
   if (!apiKey || !apiSecret || !isInitialized || !isAuthenticated) {
     toast.error("Authentication required");
     return;
@@ -633,10 +702,9 @@ const handleSubmitDocument = async () => {
   setIsSaving(true);
 
   try {
-    // Prepare payload similar to handleSubmit
     const payload: Record<string, any> = JSON.parse(JSON.stringify(formData));
 
-    // Convert numeric fields
+    // Numeric conversions
     const numericFields = [
       "bill_upto",
       "remaining_amount",
@@ -649,7 +717,7 @@ const handleSubmitDocument = async () => {
       if (f in payload) payload[f] = Number(payload[f]) || 0;
     });
 
-    // Child table numeric + boolean conversions
+    // Child table conversions
     if (Array.isArray(payload.expenditure_details)) {
       payload.expenditure_details = payload.expenditure_details.map((row: any) => ({
         ...row,
@@ -658,26 +726,38 @@ const handleSubmitDocument = async () => {
       }));
     }
 
-    // Set docstatus to 1 (submitted)
-    payload.docstatus = 1;
-
-    const response = await axios.put(
-      `${API_BASE_URL}/Expenditure/${encodeURIComponent(formData.name)}`,
+    // 🟢 STEP 1 — SAVE DOCUMENT
+    const createResp = await axios.post(
+      `${API_BASE_URL}/${doctypeName}`,
       payload,
       {
         headers: { Authorization: `token ${apiKey}:${apiSecret}` },
       }
     );
 
+    const docName = createResp.data.data.name;
+
+    if (!docName) throw new Error("Document created but name missing");
+
+    toast.success("Saved successfully. Submitting...");
+
+    // 🟢 STEP 2 — SUBMIT DOCUMENT
+    await axios.put(
+      `${API_BASE_URL}/${doctypeName}/${encodeURIComponent(docName)}`,
+      { docstatus: 1 },
+      {
+        headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+      }
+    );
+
     toast.success("Document submitted successfully!");
-    // Optionally redirect or reload form
-    const docName = response.data.data.name;
-    if (docName) {
-      router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
-    }
-  } catch (err: any) {
+    setDocStatus(1);
+
+    router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
+
+  } catch (err) {
     console.error(err);
-    toast.error("Failed to submit document");
+    toast.error("Failed to save & submit document");
   } finally {
     setIsSaving(false);
   }
@@ -685,33 +765,35 @@ const handleSubmitDocument = async () => {
 
   const handleCancel = () => router.back();
 
+  const isFinalBill = billType === "Final";
+const isSaved = !!docName;
+const canSubmit = isFinalBill && isSaved && docStatus === 0;
+
   /* -------------------------------------------------
   5. RENDER FORM
   ------------------------------------------------- */
   return (
 <DynamicForm
   tabs={formTabs}
-  onSubmit={async (data, isDirty) => {
-  if (billType !== "Final") {
-    return await handleSubmit(data, isDirty);
-  }
-  // Do nothing if Final, but return a Promise<void>
-  return Promise.resolve();
-}}
-  onSubmitDocument={billType === "Final" ? handleSubmitDocument : undefined} // Submit only if Final
+  onSubmit={handleSubmit}
+
+onSubmitDocument={canSubmit ? handleSubmitDocument : undefined}
+
+submitLabel={
+  isSaving
+    ? canSubmit
+      ? "Submitting..."
+      : "Saving..."
+    : canSubmit
+    ? "Submit"
+    : "Save"
+}
+
+isSubmittable={canSubmit}
   onCancel={handleCancel}
   title={`New ${doctypeName}`}
   description="Create a new expenditure record"
-  submitLabel={
-    isSaving
-      ? billType === "Final"
-        ? "Submitting..."
-        : "Saving..."
-      : billType === "Final"
-      ? "Submit"
-      : "Save"
-  }
-  isSubmittable={billType === "Final"}
+  
   doctype={doctypeName}
   onFormInit={handleFormInit}
 />

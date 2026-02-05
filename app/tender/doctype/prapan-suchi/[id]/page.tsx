@@ -43,28 +43,122 @@ export default function PrapanSuchiDetailPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
-
-  // 🟢 State to store form methods
   const [formMethods, setFormMethods] = React.useState<UseFormReturn<any> | null>(null);
 
+  // 🟢 STATUS BADGE helper function
+  const getCurrentStatus = () => {
+    if (!record) return "";
+    if (record.docstatus === 2) return "Cancelled";
+    if (record.docstatus === 1) return "Submitted";
+    return "Draft";
+  };
+
+  // 🟢 SUBMIT DOCUMENT
+  const handleSubmitDocument = async () => {
+    if (!record) return;
+    setIsSaving(true);
+    
+    try {
+      // First, get the current form data if we have form methods
+      let formData = record;
+      if (formMethods) {
+        formData = { ...formMethods.getValues(), modified: record.modified };
+      }
+      
+      // Set docstatus to 1 (Submitted)
+      const payload = {
+        ...formData,
+        docstatus: 1,
+        modified: record.modified
+      };
+      
+      const resp = await axios.put(
+        `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
+        payload,
+        { 
+          headers: { 
+            Authorization: `token ${apiKey}:${apiSecret}`,
+            "Content-Type": "application/json"
+          } 
+        }
+      );
+
+      const messages = getApiMessages(resp, null, "Document submitted successfully!", "Submit failed");
+      
+      if (messages.success) {
+        toast.success(messages.message);
+        setRecord(resp.data.data);
+      } else {
+        toast.error(messages.message);
+      }
+    } catch (err: any) {
+      console.error("Submit error:", err);
+      const messages = getApiMessages(null, err, "Document submitted successfully!", "Submit failed");
+      toast.error(messages.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 🟢 CANCEL DOCUMENT
+  const handleCancelDocument = async () => {
+    if (!record) return;
+    
+    if (!window.confirm("Are you sure you want to cancel this document? This action cannot be undone.")) {
+      return;
+    }
+    
+    setIsSaving(true);
+    
+    try {
+      const payload = {
+        docstatus: 2,
+        modified: record.modified
+      };
+      
+      const resp = await axios.put(
+        `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
+        payload,
+        { 
+          headers: { 
+            Authorization: `token ${apiKey}:${apiSecret}`,
+            "Content-Type": "application/json"
+          } 
+        }
+      );
+
+      const messages = getApiMessages(resp, null, "Document cancelled successfully!", "Cancel failed");
+      
+      if (messages.success) {
+        toast.success(messages.message);
+        setRecord(resp.data.data);
+      } else {
+        toast.error(messages.message);
+      }
+    } catch (err: any) {
+      console.error("Cancel error:", err);
+      const messages = getApiMessages(null, err, "Document cancelled successfully!", "Cancel failed");
+      toast.error(messages.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Watch for lis_name changes
   React.useEffect(() => {
     if (!formMethods || !apiKey || !apiSecret) return;
 
     const { watch, setValue } = formMethods;
 
-    // Watch for changes in "lis_name"
     const subscription = watch(async (value, { name, type }) => {
-      // Only run if the specific field "lis_name" changed
       if (name === "lis_name") {
         const lisName = value.lis_name;
 
-        // 1. If LIS Name is cleared, clear the stages table
         if (!lisName) {
           setValue("stage", [], { shouldDirty: true });
           return;
         }
 
-        // 2. Fetch Stages from Custom API
         try {
           const resp = await axios.get(`${API_METHOD_URL}/quantlis_management.api.fetch_lis_name_stage`, {
             params: { lis_name: lisName },
@@ -73,15 +167,12 @@ export default function PrapanSuchiDetailPage() {
           });
 
           const rawList = resp.data.message || [];
-
-          // 3. Format for Child Table
           const formattedStages = rawList.map((item: any, idx: number) => ({
             doctype: "Stage Multiselect",
             stage: item.stage,
             idx: idx + 1
           }));
 
-          // 4. Update the form field
           setValue("stage", formattedStages, { shouldDirty: true });
 
         } catch (error: any) {
@@ -128,14 +219,12 @@ export default function PrapanSuchiDetailPage() {
 
         setRecord(resp.data.data as PrapanSuchi);
       } catch (err: any) {
-
         const messages = getApiMessages(
           null,
           err,
           "Record loaded successfully",
           "Failed to load record",
           (error) => {
-            // Custom handler for load errors with status codes
             if (error.response?.status === 404) return "Record not found";
             if (error.response?.status === 403) return "Unauthorized";
             return "Failed to load record";
@@ -151,14 +240,13 @@ export default function PrapanSuchiDetailPage() {
     fetchDoc();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
-  // BUILD TABS – same pattern as Asset
+  // BUILD TABS
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!record) return [];
 
     const fields = (list: FormField[]): FormField[] =>
       list.map((f) => ({
         ...f,
-        // @ts-ignore
         defaultValue: f.name in record ? record[f.name as keyof PrapanSuchi] : f.defaultValue,
       }));
 
@@ -201,7 +289,6 @@ export default function PrapanSuchiDetailPage() {
             label: "Amount",
             type: "Currency",
             required: true,
-
           },
           {
             name: "work_name",
@@ -219,7 +306,7 @@ export default function PrapanSuchiDetailPage() {
     ];
   }, [record]);
 
-  // SUBMIT – same cleaning pattern as Asset page
+  // SAVE (UPDATE) DOCUMENT
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) {
       toast.info("No changes to save.");
@@ -265,10 +352,9 @@ export default function PrapanSuchiDetailPage() {
         }
       });
 
-      // Process stage field to ensure proper Frappe child table format
+      // Process stage field
       if (finalPayload.stage && Array.isArray(finalPayload.stage)) {
         finalPayload.stage = finalPayload.stage.map((item, index) => {
-          // If item is a string, convert to proper child table object
           if (typeof item === 'string') {
             return {
               doctype: "Stage Multiselect",
@@ -276,7 +362,6 @@ export default function PrapanSuchiDetailPage() {
               idx: index + 1
             };
           }
-          // If item is already an object, ensure it has required fields
           if (typeof item === 'object' && item !== null) {
             return {
               ...item,
@@ -284,7 +369,6 @@ export default function PrapanSuchiDetailPage() {
               idx: item.idx || (index + 1)
             };
           }
-          // Fallback for any other type
           return {
             doctype: "Stage Multiselect",
             stage: String(item),
@@ -309,7 +393,6 @@ export default function PrapanSuchiDetailPage() {
         }
       );
 
-      // Handle successful response with ultra-simple handler
       const messages = getApiMessages(resp, null, "Changes saved!", "Failed to save");
 
       if (messages.success) {
@@ -320,22 +403,16 @@ export default function PrapanSuchiDetailPage() {
         setRecord(resp.data.data as PrapanSuchi);
       }
 
-      router.push(`/tender/doctype/prapan-suchi/${docname}`);
     } catch (err: any) {
       console.error("Save error:", err);
-      console.log("Full server error:", err.response?.data);
-
       const messages = getApiMessages(null, err, "Changes saved!", "Failed to save");
-
       toast.error(messages.message, { description: messages.description, duration: Infinity});
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancel = () => router.back();
-
-  // UI STATES – same UX style as Asset
+  // UI STATES
   if (loading) {
     return (
       <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
@@ -363,22 +440,25 @@ export default function PrapanSuchiDetailPage() {
     );
   }
 
-  // RENDER FORM – mirror Asset usage
+  // RENDER FORM
   return (
     <DynamicForm
       tabs={formTabs}
       onSubmit={handleSubmit}
-      onCancel={handleCancel}
+      onSubmitDocument={record.docstatus === 0 ? handleSubmitDocument : undefined}
+      onCancelDocument={record.docstatus === 1 ? handleCancelDocument : undefined}
+      onCancel={() => router.back()}
       title={`${doctypeName}: ${record.name}`}
       description={`Update details for record ID: ${docname}`}
       submitLabel={isSaving ? "Saving..." : "Save"}
-      cancelLabel="Cancel"
+      isSubmittable={true}
+      docstatus={record.docstatus}
+      initialStatus={getCurrentStatus()}
       deleteConfig={{
         doctypeName: doctypeName,
         docName: docname,
         redirectUrl: "/tender/doctype/prapan-suchi",
       }}
-      // 🟢 Capture form methods
       onFormInit={(methods) => setFormMethods(methods)}
     />
   );
