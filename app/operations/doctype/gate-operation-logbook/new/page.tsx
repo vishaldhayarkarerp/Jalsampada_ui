@@ -65,13 +65,7 @@ export default function NewGateOperationLogbookPage() {
                                     required: true,
                                     defaultValue: getValue("lis_name"),
                               },
-                              {
-                                    name: "lis_phase",
-                                    label: "LIS Phase",
-                                    type: "Link",
-                                    linkTarget: "LIS Phases",
-                                    defaultValue: getValue("lis_phase"),
-                              },
+
                               {
                                     name: "stage",
                                     label: "Stage/ Sub Scheme",
@@ -92,7 +86,7 @@ export default function NewGateOperationLogbookPage() {
                                     type: "Link",
                                     linkTarget: "Gate",
                                     required: true,
-                                    customSearchUrl: "http://103.219.3.169:2223/api/method/frappe.desk.search.search_link",
+                                    customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
                                     filters: (getValue) => {
                                           const filters: Record<string, any> = {};
                                           const stage = getValue("stage");

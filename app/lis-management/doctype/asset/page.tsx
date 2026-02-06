@@ -75,6 +75,10 @@ interface LisPhaseOption {
   name: string;
 }
 
+interface LisOption {
+  name: string;
+}
+
 type SortDirection = "asc" | "desc";
 interface SortConfig {
   key: keyof Asset;
@@ -120,6 +124,7 @@ export default function DoctypePage() {
   const [categories, setCategories] = React.useState<AssetCategoryOption[]>([]);
   const [stages, setStages] = React.useState<StageOption[]>([]);
   const [lisPhases, setLisPhases] = React.useState<LisPhaseOption[]>([]);
+  const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
   const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
 
@@ -139,13 +144,15 @@ export default function DoctypePage() {
     defaultValues: {
       asset_category: "",
       custom_stage_no: "",
-      custom_lis_phase: ""
+      custom_lis_phase: "",
+      custom_lis_name: ""
     }
   });
 
   const selectedCategory = watch("asset_category");
   const selectedStage = watch("custom_stage_no");
   const selectedLisPhase = watch("custom_lis_phase");
+  const selectedLis = watch("custom_lis_name");
 
   // Close sort menu on outside click
   React.useEffect(() => {
@@ -165,8 +172,8 @@ export default function DoctypePage() {
 
       try {
         const headers = { Authorization: `token ${apiKey}:${apiSecret}` };
-
-        const [categoryResp, stageResp, lisPhaseResp] = await Promise.all([
+        
+        const [categoryResp, stageResp, lisPhaseResp, lisResp] = await Promise.all([
           axios.get(`${API_BASE_URL}/api/resource/Asset Category`, {
             params: { fields: JSON.stringify(["name"]), limit_page_length: "100", order_by: "name asc" },
             headers
@@ -178,12 +185,17 @@ export default function DoctypePage() {
           axios.get(`${API_BASE_URL}/api/resource/LIS Phases`, {
             params: { fields: JSON.stringify(["name"]), limit_page_length: "100", order_by: "name asc" },
             headers
+          }),
+          axios.get(`${API_BASE_URL}/api/resource/Lift Irrigation Scheme`, {
+            params: { fields: JSON.stringify(["name"]), limit_page_length: "100", order_by: "name asc" },
+            headers
           })
         ]);
 
         setCategories([{ name: "" }, ...(categoryResp.data?.data ?? [])]);
         setStages([{ name: "" }, ...(stageResp.data?.data ?? [])]);
         setLisPhases([{ name: "" }, ...(lisPhaseResp.data?.data ?? [])]);
+        setLisOptions([{ name: "" }, ...(lisResp.data?.data ?? [])]);
       } catch (err) {
         console.error("Failed to load filter options:", err);
       }
@@ -213,6 +225,7 @@ export default function DoctypePage() {
         const filters: any[] = [];
         if (debouncedSearch) filters.push(["Asset", "name", "like", `%${debouncedSearch}%`]);
         if (selectedCategory) filters.push(["Asset", "asset_category", "=", selectedCategory]);
+        if (selectedLis) filters.push(["Asset", "custom_lis_name", "=", selectedLis]);
         if (selectedStage) filters.push(["Asset", "custom_stage_no", "=", selectedStage]);
         if (selectedLisPhase) filters.push(["Asset", "custom_lis_phase", "=", selectedLisPhase]);
 
@@ -267,7 +280,7 @@ export default function DoctypePage() {
         setIsLoadingMore(false);
       }
     },
-    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedCategory, selectedStage, selectedLisPhase, sortConfig]
+    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedCategory, selectedLis, selectedStage, selectedLisPhase, sortConfig]
   );
 
   React.useEffect(() => {
@@ -338,7 +351,6 @@ export default function DoctypePage() {
             <th>Status</th>
             <th>Category</th>
             <th>LIS</th>
-            <th>LIS Phase</th>
             <th>Stage</th>
             <th>Location</th>
             <th className="text-right pr-4" style={{ width: "120px" }}>
@@ -362,7 +374,6 @@ export default function DoctypePage() {
                 <td>{a.status || "—"}</td>
                 <td>{a.asset_category || "—"}</td>
                 <td>{a.custom_lis_name || "—"}</td>
-                <td>{a.custom_lis_phase || "—"}</td>
                 <td>{a.custom_stage_no || "—"}</td>
                 <td>{a.location}</td>
                 <td className="text-right pr-4"><TimeAgo date={a.modified} /></td>
@@ -413,12 +424,13 @@ export default function DoctypePage() {
             )} />
           </div>
           <div style={{ minWidth: "200px" }}>
-            <Controller control={control} name="custom_lis_phase" render={({ field: { value } }) => (
+            <Controller control={control} name="custom_lis_name" render={({ field: { value } }) => (
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <LinkField control={control} field={{ name: "custom_lis_phase", label: "", type: "Link", linkTarget: "LIS Phases", placeholder: "Select LIS Phase", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
+                <LinkField control={control} field={{ name: "custom_lis_name", label: "", type: "Link", linkTarget: "Lift Irrigation Scheme", placeholder: "Select LIS", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
               </div>
             )} />
           </div>
+         
           <div style={{ minWidth: "200px" }}>
             <Controller control={control} name="custom_stage_no" render={({ field: { value } }) => (
               <div className="form-group" style={{ marginBottom: 0 }}>

@@ -84,6 +84,7 @@ export default function NewLogSheetPage() {
             name: "lis",
             label: "LIS",
             type: "Link",
+            required: true,
             linkTarget: "Lift Irrigation Scheme",
             defaultValue: getValue("lis"),
           },
@@ -100,6 +101,7 @@ export default function NewLogSheetPage() {
             type: "Link",
             linkTarget: "Stage No",
             defaultValue: getValue("stage"),
+            required: true,
             filterMapping: [
               { sourceField: "lis", targetField: "lis_name" }
             ]
@@ -108,12 +110,14 @@ export default function NewLogSheetPage() {
             name: "time",
             label: "Time",
             type: "Time",
+            required: true,
             defaultValue: getValue("time") || new Date().toTimeString().slice(0, 5),
           },
           {
             name: "asset",
             label: "Asset",
             type: "Link",
+            required: true,
             linkTarget: "Asset",
             customSearchUrl: "http://103.219.3.169:2223/api/method/frappe.desk.search.search_link",
             customSearchParams: {
@@ -141,14 +145,13 @@ export default function NewLogSheetPage() {
           {
             name: "operator_id",
             label: "Operator ID",
-            type: "Link",
-            linkTarget: "User",
+            type: "Read Only",
             defaultValue: getValue("operator_id"),
           },
           {
             name: "operator_name",
             label: "Operator Name",
-            type: "Data",
+            type: "Read Only",
             defaultValue: getValue("operator_name"),
           },
           { name: "section_break_mgrv", label: "", type: "Section Break" },

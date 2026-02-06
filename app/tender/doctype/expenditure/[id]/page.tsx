@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import {
   fetchWorkNameByTenderNumber,
   updateWorkNameInTableRows,
-  clearWorkNameInTableRows
+  clearWorkNameInTableRows,
+  fetchPreviousBillDetails // 🟢 Added back
 } from "../services";
 
 const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
@@ -56,8 +57,14 @@ interface ExpenditureData {
   bill_type?: string;               // Select
   posting_date?: string;            // Date
   bill_amount?: number;             // Currency
-  page_no?: string;                 // Data
-  mb_no?: string;                   // Data
+  
+  // 🟢 Corrected Field Names (From our fix)
+  previous_page_no?: string;        // Data (Previous)
+  previous_mb_no?: string;          // Data (Previous)
+  
+  page_no?: string;                 // Data (Current)
+  mb_no?: string;                   // Data (Current)
+
   lift_irrigation_scheme?: string;  // Link -> Lift Irrigation Scheme
   stage?: string[];                 // Table MultiSelect -> Stage Multiselect
   expenditure_details?: ExpenditureDetailsRow[]; // Table -> Expenditure Details
@@ -70,7 +77,6 @@ interface ExpenditureData {
 
 /**
  * Uploads a single file to Frappe's 'upload_file' method
- * and returns the server URL.
  */
 async function uploadFile(
   file: File,
@@ -121,10 +127,17 @@ export default function RecordDetailPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  
+  // 🟢 Colleague's State Logic
+  const isProgrammaticUpdate = React.useRef(false);
+  const [formVersion, setFormVersion] = React.useState(0);
+  type FormSaveState = "CLEAN" | "DIRTY";
+  const [formSaveState, setFormSaveState] = React.useState<FormSaveState>("CLEAN");
 
-  // NEW: State for work name default value
+  // State for work name default value
   const [workName, setWorkName] = React.useState<string>("");
   const [formInstance, setFormInstance] = React.useState<any>(null);
+  const [billType, setBillType] = React.useState<string>("");
 
   /* -------------------------------------------------
   3. FETCH DOCUMENT
@@ -157,36 +170,7 @@ export default function RecordDetailPage() {
         setExpenditure(resp.data.data as ExpenditureData);
       } catch (err: any) {
         console.error("API Error:", err);
-
-        const messages = getApiMessages(
-          null,
-          err,
-          "Record loaded successfully",
-          "Failed to load record",
-          (error) => {
-            // Custom handler for load errors with status codes
-            if (error.response?.status === 404) return "Record not found";
-            if (error.response?.status === 403) return "Unauthorized";
-            if (error.response?.status === 417) {
-              // Extract actual validation message from server response
-              const serverMessages = error.response?.data?._server_messages;
-              if (serverMessages) {
-                try {
-                  const parsed = JSON.parse(serverMessages);
-                  if (Array.isArray(parsed) && parsed.length > 0) {
-                    const messageObj = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
-                    return messageObj.message || error.response?.data?.exception || "Validation failed";
-                  }
-                } catch (e) {
-                  console.error("Failed to parse server messages:", e);
-                }
-              }
-              return error.response?.data?.exception || "Validation failed - Server cannot meet requirements";
-            }
-            return "Failed to load record";
-          }
-        );
-
+        const messages = getApiMessages(null, err, "Loaded", "Failed", (e)=> e.response?.data?.exception || "Error");
         setError(messages.description || messages.message);
       } finally {
         setLoading(false);
@@ -196,113 +180,162 @@ export default function RecordDetailPage() {
     fetchDoc();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
+  // 🟢 OUR FIX: INITIAL FETCH FOR PREVIOUS DETAILS (If missing in current doc)
+  React.useEffect(() => {
+    if (!formInstance || !expenditure?.tender_number) return;
+
+    const currentPrevMB = formInstance.getValues("previous_mb_no");
+    
+    if (!currentPrevMB) {
+        const fetchInitialPrevDetails = async () => {
+             if (!apiKey || !apiSecret) return;
+             try {
+                 const prevDetails = await fetchPreviousBillDetails(
+                    expenditure.tender_number!, 
+                    docname,
+                    apiKey, 
+                    apiSecret
+                 );
+                 if (prevDetails) {
+                    isProgrammaticUpdate.current = true; // Don't mark as dirty for initial load
+                    
+                    formInstance.setValue("prev_bill_no", prevDetails.bill_number || 0);
+                    formInstance.setValue("prev_bill_amt", prevDetails.bill_amount || 0);
+                    // Map 'mb_no' from old record -> 'previous_mb_no'
+                    formInstance.setValue("previous_mb_no", prevDetails.mb_no || 0);
+                    // Map 'page_no' from old record -> 'previous_page_no'
+                    formInstance.setValue("previous_page_no", prevDetails.page_no || 0);
+                    
+                    setTimeout(() => { isProgrammaticUpdate.current = false; }, 100);
+                 }
+             } catch(e) { console.error(e); }
+        };
+        fetchInitialPrevDetails();
+    }
+  }, [formInstance, expenditure, docname, apiKey, apiSecret]);
+
+  // 🟢 OUR FIX: WATCHER WITH FETCH LOGIC
   React.useEffect(() => {
     if (!formInstance) return;
 
-    const subscription = formInstance.watch((value: any, { name }: { name?: string }) => {
+    const subscription = formInstance.watch(async (value: any, { name }: { name?: string }) => {
       if (name === "tender_number" && value.tender_number) {
+        if (!apiKey || !apiSecret) return;
+
+        // 1. Fetch Work Name
         const fetchWorkName = async () => {
           try {
-            if (!apiKey || !apiSecret) {
-              console.error("API keys not available");
-              return;
-            }
-
-            const fetchedWorkName = await fetchWorkNameByTenderNumber(
-              value.tender_number,
-              apiKey,
-              apiSecret
-            );
-
+            const fetchedWorkName = await fetchWorkNameByTenderNumber(value.tender_number, apiKey, apiSecret);
             if (fetchedWorkName) {
               updateWorkNameInTableRows(formInstance, fetchedWorkName);
               setWorkName(fetchedWorkName);
             } else {
-              console.log("No work_name found in response");
               clearWorkNameInTableRows(formInstance);
               setWorkName("");
             }
-          } catch (error) {
-            console.error("Failed to fetch work_name:", error);
-          }
+          } catch (error) { console.error("Failed to fetch work_name:", error); }
         };
 
-        fetchWorkName();
+        // 2. Fetch Previous Bill Details
+        const fetchPreviousBill = async () => {
+          try {
+            const prevDetails = await fetchPreviousBillDetails(
+              value.tender_number, 
+              docname || null,
+              apiKey, 
+              apiSecret
+            );
+
+            if (prevDetails) {
+              formInstance.setValue("prev_bill_no", prevDetails.bill_number || 0);
+              formInstance.setValue("prev_bill_amt", prevDetails.bill_amount || 0);
+              // Correct Mapping
+              formInstance.setValue("previous_mb_no", prevDetails.mb_no || 0);
+              formInstance.setValue("previous_page_no", prevDetails.page_no || 0);
+            } else {
+              formInstance.setValue("prev_bill_no", 0);
+              formInstance.setValue("prev_bill_amt", 0);
+              formInstance.setValue("previous_mb_no", 0);
+              formInstance.setValue("previous_page_no", 0);
+            }
+          } catch (err) { console.error("Error setting previous bill details", err); }
+        };
+
+        await Promise.all([fetchWorkName(), fetchPreviousBill()]);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [formInstance, apiKey, apiSecret]);
+  }, [formInstance, apiKey, apiSecret, docname]);
+
+  // 🟢 COLLEAGUE'S STATE LOGIC
+  React.useEffect(() => {
+    if (expenditure && expenditure.docstatus === 0) {
+      setFormSaveState("CLEAN");
+    }
+  }, [expenditure]);
 
   const handleFormInit = React.useCallback((form: any) => {
     setFormInstance(form);
-
     let previousBillType: string | undefined;
 
-    // Store the initial bill type value, but only if it's not "Running" due to RA in prev_bill_no
     const initialBillType = form.getValues('bill_type');
     const initialPrevBillNo = form.getValues('prev_bill_no');
+    setBillType(initialBillType);
 
-    // If current bill type is "Running" but prev_bill_no contains "ra", 
-    // we should assume the original value wasn't "Running"
+    form.watch((value: any, { name }: { name?: string }) => {
+      if (name === "bill_type") setBillType(value.bill_type);
+    });
+   
     if (initialBillType === 'Running' && initialPrevBillNo && typeof initialPrevBillNo === 'string' && /ra/i.test(initialPrevBillNo)) {
-      // Don't store "Running" as previous - it was auto-set
-      previousBillType = 'Select Type'; // Default fallback
+      previousBillType = 'Select Type';
     } else if (initialBillType && initialBillType !== 'Running') {
       previousBillType = initialBillType;
     } else {
-      previousBillType = 'Select Type'; // Default fallback
+      previousBillType = 'Select Type';
     }
 
-    // Watch the prev_bill_no field and set bill_type accordingly
     form.watch((value: any, { name }: { name?: string }) => {
       if (name === 'prev_bill_no' || name === undefined) {
         const prevBillNo = form.getValues('prev_bill_no');
         const currentBillType = form.getValues('bill_type');
 
-        // Check if prev_bill_no contains 'ra' or 'RA' (case-insensitive)
         if (prevBillNo && typeof prevBillNo === 'string' && /ra/i.test(prevBillNo)) {
-          // Set bill_type to "Running" if it's not already set
           if (currentBillType !== 'Running') {
-            // Store current value as previous before changing to Running
-            if (currentBillType && currentBillType !== 'Running') {
-              previousBillType = currentBillType;
-            }
+            if (currentBillType && currentBillType !== 'Running') previousBillType = currentBillType;
             form.setValue('bill_type', 'Running', { shouldDirty: true });
           }
         } else {
-          // If prev_bill_no is empty or doesn't contain 'ra', restore previous bill type
           if (!prevBillNo || (typeof prevBillNo === 'string' && !/ra/i.test(prevBillNo))) {
             if (currentBillType === 'Running' && previousBillType) {
               form.setValue('bill_type', previousBillType, { shouldDirty: true });
             } else if (!prevBillNo && currentBillType === 'Running' && !previousBillType) {
-              // If no previous value stored, reset to default
               form.setValue('bill_type', 'Select Type', { shouldDirty: true });
             }
           }
         }
       }
     });
+
+    // 🟢 Dirty State Watcher
+    form.watch((_value: any, { name }: { name?: string }) => {
+      if (!name) return;
+      if (isProgrammaticUpdate.current) return;
+      setFormSaveState("DIRTY");
+    });
   }, []);
 
-  /* -------------------------------------------------
-  4. Build tabs once when data is ready
-  ------------------------------------------------- */
-
-  // Helper function to get allowed stages from parent stage field
   const getAllowedStages = React.useCallback((formData: Record<string, any>): string[] => {
     const parentStage = formData.stage;
     if (!parentStage || !Array.isArray(parentStage)) return [];
     return parentStage.map((item: any) => item.stage).filter(Boolean);
   }, []);
 
+  // 🟢 OUR FIELDS (With Correct Names)
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!expenditure) return [];
-
-    // Create a reference to access allowed stages in child table
-    const parentStageRef = { current: expenditure.stage };
 
     const fields = (list: FormField[]): FormField[] =>
       list.map((f) => ({
@@ -318,172 +351,78 @@ export default function RecordDetailPage() {
       {
         name: "Details",
         fields: fields([
+          { name: "fiscal_year", label: "Fiscal Year", type: "Link", linkTarget: "Fiscal Year", required: true },
+          { name: "cb1", label: "", type: "Section Break" },
+          { name: "posting_date", label: "Bill Date", type: "Date", fieldColumns: 1 },
           {
-            name: "fiscal_year",
-            label: "Fiscal Year",
-            type: "Link",
-            linkTarget: "Fiscal Year",
-            required: true,
+            name: "tender_number", label: "Tender Number", type: "Link", required: true, linkTarget: "Project", fieldColumns: 1,
+            filterMapping: [{ sourceField: "custom_fiscal_year", targetField: "fiscal_year" }]
           },
           {
-            name: "tender_number",
-            label: "Tender Number",
-            type: "Link",
-            required: true,
-            linkTarget: "Project",
-            filterMapping: [
-              { sourceField: "custom_fiscal_year", targetField: "fiscal_year" }
-            ]
+            name: "tender_amount", label: "Tender Amount", type: "Currency", fieldColumns: 1, precision: 2,
+            fetchFrom: { sourceField: "tender_number", targetDoctype: "Project", targetField: "custom_tender_amount" }
           },
           {
-            name: "tender_amount",
-            label: "Tender Amount",
-            type: "Currency",
-            precision: 2,
-            fetchFrom: {
-              sourceField: "tender_number",
-              targetDoctype: "Project",
-              targetField: "custom_tender_amount"
-            }
+            name: "lift_irrigation_scheme", label: "Lift Irrigation Scheme", type: "Link", linkTarget: "Lift Irrigation Scheme", required: true, fieldColumns: 1,
+            fetchFrom: { sourceField: "tender_number", targetDoctype: "Project", targetField: "custom_lis_name" }
           },
-          {
-            name: "posting_date",
-            label: "Bill Date",
-            type: "Date",
-          },
+          { name: "prev_bill_no", label: "Previous Bill Number", type: "Data", defaultValue: 0, fieldColumns: 1 },
+          { name: "prev_bill_amt", label: "Previous Bill Amount", type: "Currency", precision: 2, defaultValue: "0.00", fieldColumns: 1 },
+          
+          // 🟢 Corrected Name: previous_mb_no
+          { name: "previous_mb_no", label: "Previous MB No", type: "Data", defaultValue: 0, fieldColumns: 1 },
+          // 🟢 Corrected Name: previous_page_no
+          { name: "previous_page_no", label: "Previous Page No", type: "Data", defaultValue: 0, fieldColumns: 1 },
 
-          {
-            name: "prev_bill_no",
-            label: "Previous Bill Number",
-            type: "Data",
-          },
-          {
-            name: "bill_number",
-            label: "Bill Number",
-            type: "Data",
-          },
-          {
-            name: "prev_bill_amt",
-            label: "Previous Bill Amount",
-            type: "Currency",
-            precision: 2,
-          },
-          {
-            name: "mb_no",
-            label: "MB No",
-            type: "Data",
-          },
-          {
-            name: "bill_amount",
-            label: "Bill Amount",
-            type: "Currency",
-            required: true,
-            precision: 2,
-          },
+          { name: "bill_number", label: "Bill Number", type: "Data", defaultValue: "0.00", fieldColumns: 1 },
+          { name: "bill_amount", label: "Bill Amount", type: "Currency", required: true, precision: 2, defaultValue: "0.00", fieldColumns: 1 },
+          
+          // 🟢 CURRENT MB/Page (using standard names)
+          { name: "mb_no", label: "MB No", type: "Data", defaultValue: 0, fieldColumns: 1 },
+          { name: "page_no", label: "Page No", type: "Data", defaultValue: 0, fieldColumns: 1 },
 
+          { name: "bill_upto", label: "Bill Upto Amount", type: "Currency", precision: 2, defaultValue: "0.00" },
+          { name: "remaining_amount", label: "Bill Remaining Amount", type: "Currency", precision: 2 },
           {
-            name: "bill_upto",
-            label: "Bill Upto Amount",
-            type: "Currency",
-            precision: 2,
+            name: "bill_type", label: "Bill Type", type: "Select",
+            options: [{ label: "Running", value: "Running" }, { label: "Final", value: "Final" }]
           },
           {
-            name: "remaining_amount",
-            label: "Remaining Amount",
-            type: "Currency",
-            precision: 2,
+            name: "stage", label: "Stage/ Sub Scheme", type: "Table MultiSelect", linkTarget: "Stage No",
+            filterMapping: [{ sourceField: "lift_irrigation_scheme", targetField: "lis_name" }],
+            fetchFrom: { sourceField: "tender_number", targetDoctype: "Project", targetField: "custom_stage" }
           },
           {
-            name: "page_no",
-            label: "Page No",
-            type: "Data",
-          },
-          {
-            name: "bill_type",
-            label: "Bill Type",
-            type: "Select",
-            options: [
-              { label: "Running", value: "Running" },
-              { label: "Final", value: "Final" },
-            ],
-          },
-          {
-            name: "lift_irrigation_scheme",
-            label: "Lift Irrigation Scheme",
-            type: "Link",
-            linkTarget: "Lift Irrigation Scheme",
-            required: true,
-            fetchFrom: {
-              sourceField: "tender_number",
-              targetDoctype: "Project",
-              targetField: "custom_lis_name"
-            }
-          },
-          {
-            name: "stage",
-            label: "Stage/ Sub Scheme",
-            type: "Table MultiSelect",
-            linkTarget: "Stage No",
-            filterMapping: [
-              { sourceField: "lift_irrigation_scheme", targetField: "lis_name" },
-            ],
-            fetchFrom: {
-              sourceField: "tender_number",
-              targetDoctype: "Project",
-              targetField: "custom_stage"
-            }
-          },
-
-          {
-            name: "expenditure_details",
-            label: "Expenditure Details",
-            type: "Table",
-            showDownloadUpload: true,
+            name: "expenditure_details", label: "Expenditure Details", type: "Table", showDownloadUpload: true,
             columns: [
               { name: "name_of_work", label: "Name of Work", type: "Read Only", defaultValue: workName },
               {
-                name: "stage",
-                label: "Stage",
-                type: "Link",
-                linkTarget: "Stage No",
+                name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No",
                 filters: (getValues: (name: string) => any) => {
-                  // Use 'parent.stage' to access the live parent field value
                   const parentStage = getValues("parent.stage");
                   const allowedStages = getAllowedStages({ stage: parentStage });
-                  if (!allowedStages || allowedStages.length === 0) return { name: ["in", []] }; // Return empty filter if no stages
+                  if (!allowedStages || allowedStages.length === 0) return { name: ["in", []] };
                   return { name: ["in", allowedStages] };
                 }
               },
               { name: "section_interchange", label: "", type: "Section Break" },
               { name: "work_type", label: "Work Type", type: "Link", linkTarget: "Work Type" },
               {
-                name: "work_subtype",
-                label: "Work Subtype",
-                type: "Link",
-                linkTarget: "Work Subtype",
+                name: "work_subtype", label: "Work Subtype", type: "Link", linkTarget: "Work Subtype",
                 filterMapping: [{ sourceField: "work_type", targetField: "work_type" }]
               },
               { name: "bill_amount", label: "Expenditure Amount", type: "Currency", precision: 2 },
               { name: "have_asset", label: "Have Asset", type: "Check", displayDependsOn: "work_type==Miscellaneous" },
               {
-                name: "asset",
-                label: "Asset",
-                type: "Link",
-                linkTarget: "Asset",
+                name: "asset", label: "Asset", type: "Link", linkTarget: "Asset",
                 displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1"
               },
               {
-                name: "asset_name",
-                label: "Asset Name",
-                type: "Data",
-                displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
+                name: "asset_name", label: "Asset Name", type: "Data", displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
                 fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "asset_name" }
               },
               {
-                name: "asset_no",
-                label: "Asset No",
-                type: "Data",
-                displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
+                name: "asset_no", label: "Asset No", type: "Data", displayDependsOn: "work_type==Repair || work_type==Auxilary || have_asset==1",
                 fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "custom_asset_no" }
               },
               { name: "from_date", label: "From Date", type: "Date", displayDependsOn: "work_type==Operation || work_type==Security" },
@@ -498,21 +437,10 @@ export default function RecordDetailPage() {
               { name: "spare_replaced", label: "Spare Replaced", type: "Long Text", displayDependsOn: "work_type==Repair" },
             ],
           },
-
-          {
-            name: "saved_amount",
-            label: "Saved Amount",
-            type: "Currency",
-            precision: 2,
-          },
-          {
-            name: "work_description",
-            label: "Work Description",
-            type: "Long Text",
-          }
+          { name: "saved_amount", label: "Saved Amount", type: "Currency", precision: 2, displayDependsOn: { "bill_type": "Final" } },
+          { name: "work_description", label: "Work Description", type: "Long Text" }
         ]),
       }
-
     ];
   }, [expenditure, workName]);
 
@@ -520,96 +448,64 @@ export default function RecordDetailPage() {
   5. SUBMIT – with Validation & file uploading
   ------------------------------------------------- */
 
-  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+  const handleSubmit = async (data: Record<string, any>, isDirty: boolean): Promise<{ status?: string } | void> => {
     if (!isDirty) {
       toast.info("No changes to save.");
       return;
     }
 
-    // 🟢 1. CLIENT-SIDE VALIDATION LOGIC 🟢
-
-    // Parse Parent Values
+    // Validation
     const billAmount = Number(data.bill_amount) || 0;
     const tenderAmount = Number(data.tender_amount) || 0;
     const savedAmount = Number(data.saved_amount) || 0;
 
-    // Rule 1: Bill Amount cannot be > Tender Amount
+    // 🟢 Flag as programmatic so watch() doesn't mark dirty immediately
+    isProgrammaticUpdate.current = true;
+
     if (billAmount > tenderAmount) {
       toast.error("Validation Failed", {
-        description: "The Bill Amount cannot be greater than the Tender Amount. Please verify the bill amount."
-        , duration: Infinity
+        description: "The Bill Amount cannot be greater than the Tender Amount.", duration: Infinity
       });
-      return; // Stop the save process
+      return;
     }
 
-    // Calculate sum of child table rows
     const details = data.expenditure_details || [];
-    const totalChildBillAmt = details.reduce((sum: number, row: any) => {
-      return sum + (Number(row.bill_amount) || 0);
-    }, 0);
-
+    const totalChildBillAmt = details.reduce((sum: number, row: any) => sum + (Number(row.bill_amount) || 0), 0);
     const amtToBeMatched = savedAmount + totalChildBillAmt;
 
-    // Rule 2: Balance Check
     if (billAmount !== amtToBeMatched) {
       const lowOrHigh = billAmount < amtToBeMatched ? "LOWER" : "HIGHER";
-
       toast.error("Mismatch detected in amounts", {
-        description: `Calculated Invoice Amount: ${amtToBeMatched}
-Entered Bill Amount: ${billAmount}
-
-The entered Bill Amount is ${lowOrHigh} than the calculated Invoice Amount.
-Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
+        description: `Calculated: ${amtToBeMatched}, Entered: ${billAmount}. Entered is ${lowOrHigh}.`, duration: Infinity
       });
-      return; // Stop the save process
+      return;
     }
 
-    // If validation passes, proceed to save
     setIsSaving(true);
 
     try {
       const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
 
-      // Handle file uploads in Expenditure Details child table
       if (payload.expenditure_details && apiKey && apiSecret) {
-        toast.info("Uploading attachments in expenditure details...");
-
+        toast.info("Uploading attachments...");
         await Promise.all(
-          payload.expenditure_details.map(
-            async (row: any, index: number) => {
-              const originalFile =
-                data.expenditure_details?.[index]?.attach;
-
-              if (originalFile instanceof File) {
-                try {
-                  const fileUrl = await uploadFile(
-                    originalFile,
-                    apiKey,
-                    apiSecret,
-                    API_BASE_URL.replace("/api/resource", "")
-                  );
-                  row.attach = fileUrl;
-                } catch (err) {
-                  throw new Error(
-                    `Failed to upload file in row ${index + 1}`
-                  );
-                }
-              }
+          payload.expenditure_details.map(async (row: any, index: number) => {
+            const originalFile = data.expenditure_details?.[index]?.attach;
+            if (originalFile instanceof File) {
+               try {
+                 const fileUrl = await uploadFile(originalFile, apiKey, apiSecret, API_BASE_URL.replace("/api/resource", ""));
+                 row.attach = fileUrl;
+               } catch (err) { throw new Error(`Failed to upload file in row ${index + 1}`); }
             }
-          )
+          })
         );
       }
 
-      // Clean payload: remove non-data fields
+      // Cleanup Payload
       const allFields = formTabs.flatMap((tab) => tab.fields);
       const nonDataFields = new Set<string>();
       allFields.forEach((field) => {
-        if (
-          field.type === "Section Break" ||
-          field.type === "Column Break" ||
-          field.type === "Button" ||
-          field.type === "Read Only"
-        ) {
+        if (field.type === "Section Break" || field.type === "Column Break" || field.type === "Button" || field.type === "Read Only") {
           nonDataFields.add(field.name);
         }
       });
@@ -630,168 +526,168 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`
       finalPayload.modified = expenditure.modified;
       finalPayload.docstatus = expenditure.docstatus;
 
-      // Boolean conversions (include child-level have_asset if present)
-      const boolFields = [
-        "have_asset",
-      ];
-      boolFields.forEach((f) => {
-        if (f in finalPayload) {
-          finalPayload[f] = finalPayload[f] ? 1 : 0;
-        }
+      // Conversions
+      ["have_asset"].forEach((f) => { if (f in finalPayload) finalPayload[f] = finalPayload[f] ? 1 : 0; });
+      ["bill_upto", "remaining_amount", "tender_amount", "prev_bill_amt", "bill_amount", "saved_amount"].forEach((f) => {
+        if (f in finalPayload) finalPayload[f] = Number(finalPayload[f]) || 0;
       });
 
-      // Numeric conversions
-      const numericFields = [
-        "bill_upto",
-        "remaining_amount",
-        "tender_amount",
-        "prev_bill_amt",
-        "bill_amount",
-        "saved_amount",
-      ];
-      numericFields.forEach((f) => {
-        if (f in finalPayload) {
-          finalPayload[f] = Number(finalPayload[f]) || 0;
-        }
-      });
-
-      // Child table numeric + boolean conversions
       if (Array.isArray(finalPayload.expenditure_details)) {
-        finalPayload.expenditure_details = finalPayload.expenditure_details.map(
-          (row: any) => {
-            return {
-              ...row,
-              bill_amount: Number(row.bill_amount) || 0,
-              have_asset: row.have_asset ? 1 : 0,
-            };
-          }
-        );
+        finalPayload.expenditure_details = finalPayload.expenditure_details.map((row: any) => ({
+          ...row,
+          bill_amount: Number(row.bill_amount) || 0,
+          have_asset: row.have_asset ? 1 : 0,
+        }));
       }
-
-      // Send payload
-      console.log("Sending this PAYLOAD to Frappe:", finalPayload);
 
       const resp = await axios.put(
         `${API_BASE_URL}/${doctypeName}/${docname}`,
         finalPayload,
         {
-          headers: {
-            Authorization: `token ${apiKey}:${apiSecret}`,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `token ${apiKey}:${apiSecret}`, "Content-Type": "application/json" },
           withCredentials: true,
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
         }
       );
 
-      // Handle successful response
       const messages = getApiMessages(resp, null, "Changes saved!", "Failed to save");
-
-      if (messages.success) {
-        toast.success(messages.message, { description: messages.description });
-      } else {
-        toast.error(messages.message, { description: messages.description, duration: Infinity });
-      }
+      if (messages.success) toast.success(messages.message);
+      else toast.error(messages.message, { description: messages.description, duration: Infinity });
 
       if (resp.data && resp.data.data) {
+        isProgrammaticUpdate.current = true;
         setExpenditure(resp.data.data as ExpenditureData);
+        setBillType(resp.data.data.bill_type);
+        setFormSaveState("CLEAN");
+        // 🟢 Force Form Remount (Colleague's Logic)
+        setFormVersion((v) => v + 1);
+        isProgrammaticUpdate.current = false;
       }
 
-      // Return appropriate status based on docstatus
-      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" :
-        resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
-
+      const savedStatus = resp.data.data.docstatus === 0 ? "Draft" : resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
+      
+      // Navigate and Reload to ensure fresh state
       router.push(`/tender/doctype/expenditure/${docname}`);
+      window.location.reload(); 
       return { status: savedStatus };
+
     } catch (err: any) {
       console.error("Save error:", err);
-      console.log("Full server error:", err.response?.data);
-
-      const messages = getApiMessages(
-        null,
-        err,
-        "Changes saved!",
-        "Failed to save",
-        (error) => {
-          // Custom handler for save errors with status codes
-          if (error.response?.status === 404) return "Record not found";
-          if (error.response?.status === 403) return "Unauthorized";
-          if (error.response?.status === 417) {
-            // Extract actual validation message from server response
-            const serverMessages = error.response?.data?._server_messages;
-            if (serverMessages) {
-              try {
-                const parsed = JSON.parse(serverMessages);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  const messageObj = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
-                  return messageObj.message || error.response?.data?.exception || "Validation failed";
-                }
-              } catch (e) {
-                console.error("Failed to parse server messages:", e);
-              }
-            }
-            return error.response?.data?.exception || "Validation failed - Server cannot meet requirements";
-          }
-          return "Failed to save record";
-        }
-      );
-
+      const messages = getApiMessages(null, err, "Saved", "Failed", (e)=> e.response?.data?.exception || "Error");
       toast.error(messages.message, { description: messages.description, duration: Infinity });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancel = () => router.back();
+  const handleCancel = async () => {
+    if (!apiKey || !apiSecret) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    try {
+      await axios.post(
+        `http://103.219.1.138:4412/api/method/frappe.client.cancel`,
+        { doctype: "Expenditure", name: docname },
+        { headers: { Authorization: `token ${apiKey}:${apiSecret}`, "Content-Type": "application/json" } }
+      );
+      toast.success("Document cancelled successfully");
+      setExpenditure((prev) => prev ? { ...prev, docstatus: 2 } : prev);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to cancel document");
+    }
+  };
+
 
   /* -------------------------------------------------
   6. UI STATES
   ------------------------------------------------- */
 
-  if (loading) {
-    return <div>Loading expenditure details...</div>;
-  }
+  if (loading) return <div>Loading expenditure details...</div>;
+  if (error) return <div className="flex flex-col gap-2"><div>{error}</div><button className="border px-3 py-1 rounded" onClick={() => window.location.reload()}>Retry</button></div>;
+  if (!expenditure) return <div>Expenditure not found.</div>;
 
-  if (error) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div>{error}</div>
-        <button
-          className="border px-3 py-1 rounded"
-          onClick={() => window.location.reload()}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+  const handleSubmitDocument = async () => {
+    if (!formInstance) return;
+    isProgrammaticUpdate.current = true;
+    const formData = formInstance.getValues();
+    if (!apiKey || !apiSecret || !isInitialized || !isAuthenticated) {
+      toast.error("Authentication required");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const payload: Record<string, any> = JSON.parse(JSON.stringify(formData));
+      ["bill_upto", "remaining_amount", "tender_amount", "prev_bill_amt", "bill_amount", "saved_amount"].forEach((f) => {
+        if (f in payload) payload[f] = Number(payload[f]) || 0;
+      });
+      if (Array.isArray(payload.expenditure_details)) {
+        payload.expenditure_details = payload.expenditure_details.map((row: any) => ({
+          ...row,
+          bill_amount: Number(row.bill_amount) || 0,
+          have_asset: row.have_asset ? 1 : 0,
+        }));
+      }
+      payload.docstatus = 1;
+      const response = await axios.put(
+        `${API_BASE_URL}/Expenditure/${encodeURIComponent(docname)}`,
+        payload,
+        { headers: { Authorization: `token ${apiKey}:${apiSecret}` } }
+      );
+      toast.success("Document submitted successfully!");
+      setExpenditure((prev) => prev ? { ...prev, docstatus: 1 } : prev);
+      setFormSaveState("CLEAN");
+      isProgrammaticUpdate.current = false;
+      
+      const docName = response.data.data.name;
+      if (docName) {
+        router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
+        window.location.reload();
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to submit document");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-  if (!expenditure) {
-    return <div>Expenditure not found.</div>;
-  }
+  const isDraft = expenditure.docstatus === 0;
+  const isSubmitted = expenditure.docstatus === 1;
+  const isFinal = billType === "Final";
 
-  /* -------------------------------------------------
-  7. RENDER FORM
-  ------------------------------------------------- */
+  // 🟢 Colleague's Button Logic
+  const showSave = isDraft && formSaveState === "DIRTY";
+  const showSubmit = isDraft && isFinal && formSaveState === "CLEAN";
+  const formKey = `${expenditure.name}-${expenditure.docstatus}-${formVersion}`;
 
   return (
     <DynamicForm
+      key={formKey} // 🟢 Reset Form on Save
       title={`Expenditure ${expenditure.name}`}
       tabs={formTabs}
       onSubmit={handleSubmit}
-      onCancel={handleCancel}
+      onSubmitDocument={handleSubmitDocument}
+      isSubmittable={showSubmit} // 🟢 Only if Final AND Clean
+      onCancelDocument={async () => {
+        if (!isSubmitted) return;
+        return await handleCancel();
+      }}
+      docstatus={expenditure.docstatus}
+      initialStatus={isDraft ? "Draft" : isSubmitted ? "Submitted" : "Cancelled"}
       onFormInit={handleFormInit}
       doctype={doctypeName}
-      submitLabel={isSaving ? "Saving..." : "Save"}
-      cancelLabel="Cancel"
-      initialStatus={expenditure.docstatus === 0 ? "Draft" : expenditure.docstatus === 1 ? "Submitted" : "Cancelled"}
-      docstatus={expenditure.docstatus}
-      deleteConfig={{
-        doctypeName: doctypeName,
-        docName: docname,
-        redirectUrl: "/tender/doctype/expenditure",
-      }}
+      submitLabel={
+        isSaving
+          ? showSubmit
+            ? "Submitting..."
+            : "Saving..."
+          : showSubmit
+            ? "Submit"
+            : "Save"
+      }
+      deleteConfig={{ doctypeName: doctypeName, docName: docname, redirectUrl: "/tender/doctype/expenditure" }}
     />
   );
 }

@@ -34,7 +34,6 @@ interface TenderProjectData {
   custom_prapan_suchi_amount?: number | string;
   expected_start_date?: string;
   custom_tender_amount?: number | string;
-  custom_posting_date?: string;
   custom_tender_status?: string;
   custom_expected_date?: string;
   custom_is_extension?: 0 | 1;
@@ -278,11 +277,6 @@ export default function RecordDetailPage() {
         required: true,
       },
       {
-        name: "custom_posting_date",
-        label: "Posting Date",
-        type: "Date",
-      },
-      {
         name: "custom_tender_status",
         label: "Status",
         type: "Select",
@@ -293,6 +287,15 @@ export default function RecordDetailPage() {
         name: "custom_is_extension",
         label: "Is Extension",
         type: "Check",
+        displayDependsOn: (data: any) => {
+          if (!data.custom_expected_date) return false;
+          const completionDate = new Date(data.custom_expected_date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          completionDate.setHours(0, 0, 0, 0);
+          const diffInDays = (completionDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+          return diffInDays <= 2;
+        },
       },
       {
         name: "custom_tender_extension_history",
@@ -300,7 +303,7 @@ export default function RecordDetailPage() {
         type: "Table",
         options: "Extension Period Details",
         columns: [
-          { name: "extension_count", label: "Extension Count", type: "Data" },
+          { name: "extension_count", label: "Extension Count", type: "Read Only" },
           { name: "extension_upto", label: "Extension Upto", type: "Date", },
           { name: "sanction_letter", label: "Sanction Letter", type: "Data" },
           { name: "attach", label: "Attach", type: "Attach" },
@@ -318,7 +321,7 @@ export default function RecordDetailPage() {
         type: "Long Text",
       },
       {
-        name: "custom_tender_extension_history",
+        name: "section_break_contractor_details",
         label: "Contractor Details",
         type: "Section Break",
       },
@@ -411,7 +414,62 @@ export default function RecordDetailPage() {
   }, [record]);
 
   /* -------------------------------------------------
-     7. SUBMIT
+     7. Form Initialization & Watch Logic
+  ------------------------------------------------- */
+  const handleFormInit = React.useCallback((methods: any) => {
+    const { watch, setValue, getValues } = methods;
+    const tableName = 'custom_tender_extension_history';
+
+    const subscription = watch((value: any, { name, type }: any) => {
+
+      // 1. Toggle ON -> Add first row (01) if empty
+      // We check if value exists because in some cases value might be partial
+      if (name === 'custom_is_extension' && (value?.custom_is_extension === 1 || value?.custom_is_extension === true)) {
+        const currentHistory = getValues(tableName) || [];
+
+        if (currentHistory.length === 0) {
+          setValue(tableName, [
+            {
+              extension_count: "01",
+              extension_upto: "",
+              sanction_letter: "",
+              attach: ""
+            }
+          ], { shouldDirty: true });
+
+
+          return;
+        }
+      }
+
+      // 2. Auto-Indexing Strategy (Handles Add/Delete)
+      // Checks table changes to enforce sequential indexing (01, 02, 03...)
+      if (!name || name === tableName || name.startsWith(tableName)) {
+        // slight delay to ensure getValues gets the *new* row added by the UI
+        setTimeout(() => {
+          const rows = getValues(tableName);
+
+          if (Array.isArray(rows) && rows.length > 0) {
+            let hasUpdated = false;
+            rows.forEach((row: any, index: number) => {
+              const expected = (index + 1).toString().padStart(2, '0');
+
+              // Only update if strictly different to avoid render loops
+              if (row.extension_count !== expected) {
+                setValue(`${tableName}.${index}.extension_count`, expected, { shouldDirty: true });
+                hasUpdated = true;
+              }
+            });
+          }
+        }, 50);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  /* -------------------------------------------------
+     8. SUBMIT
   ------------------------------------------------- */
 
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
@@ -493,10 +551,6 @@ export default function RecordDetailPage() {
         if (f in finalPayload) finalPayload[f] = finalPayload[f] ? 1 : 0;
       });
 
-      if (finalPayload.custom_posting_date === "Today") {
-        finalPayload.custom_posting_date = new Date().toISOString().slice(0, 10);
-      }
-
       const resp = await axios.put(
         `${API_BASE_URL}/${doctypeName}/${docname}`,
         finalPayload,
@@ -571,7 +625,7 @@ export default function RecordDetailPage() {
   const handleCancel = () => router.back();
 
   /* -------------------------------------------------
-     8. UI states
+     9. UI states
   ------------------------------------------------- */
 
   if (loading) {
@@ -602,7 +656,7 @@ export default function RecordDetailPage() {
   }
 
   /* -------------------------------------------------
-     9. Render form
+     10. Render form
   ------------------------------------------------- */
 
   return (
@@ -621,6 +675,7 @@ export default function RecordDetailPage() {
         tabs={formTabs}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
+        onFormInit={handleFormInit}
         doctype={doctypeName}
 
         title={`Tender : ${record.name}`}
@@ -629,7 +684,6 @@ export default function RecordDetailPage() {
         cancelLabel="Cancel"
         initialStatus={record.docstatus === 0 ? "Draft" : record.docstatus === 1 ? "Submitted" : "Cancelled"}
         docstatus={record.docstatus}
-        // 🟢 SIMPLY PASS THE CONFIG
         deleteConfig={{
           doctypeName: doctypeName, // "Project"
           docName: docname,

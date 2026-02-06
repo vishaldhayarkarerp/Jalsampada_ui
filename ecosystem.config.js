@@ -1,8 +1,9 @@
 module.exports = {
   apps: [{
-    name: 'jalsampada',
-    script: './.next/standalone/server.js',
-    cwd: '/home/erpadmin/bench-dev-jalsampada/apps/Jalsampada_ui',
+    name: 'jalsampada-frontend',
+    script: 'bun',
+    args: 'start',
+    cwd: '/home/erpadmin/bench-Jalsampada/apps/Jalsampada_ui',
     instances: 1,
     exec_mode: 'fork',
     watch: false,

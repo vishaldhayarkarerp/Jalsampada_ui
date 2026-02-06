@@ -32,10 +32,17 @@ interface TenderProjectData {
   custom_prapan_suchi_amount?: number | string;
   expected_start_date?: string;
   custom_tender_amount?: number | string;
-  custom_posting_date?: string;
   custom_tender_status?: string;
   custom_expected_date?: string;
   custom_is_extension?: 0 | 1;
+
+  // Extension Child Table
+  custom_tender_extension_history?: Array<{
+    extension_count?: string;
+    extension_upto?: string;
+    sanction_letter?: string;
+    attach?: string;
+  }>;
 
   // Document tables
   custom_work_order_document?: Array<{
@@ -47,6 +54,11 @@ interface TenderProjectData {
     name_of_document?: string;
     attachment?: string | File;
   }>;
+}
+
+interface FormData {
+  [key: string]: any;
+  custom_expected_date?: string;
 }
 
 /* -------------------------------------------------
@@ -170,11 +182,6 @@ export default function NewTenderPage() {
         required: true,
       },
       {
-        name: "custom_posting_date",
-        label: "Posting Date",
-        type: "Date",
-      },
-      {
         name: "custom_tender_status",
         label: "Status",
         type: "Select",
@@ -185,6 +192,45 @@ export default function NewTenderPage() {
         name: "custom_is_extension",
         label: "Is Extension",
         type: "Check",
+        // This logic determines if field should be visible
+        displayDependsOn: (data: FormData) => {
+          if (!data.custom_expected_date) return false;
+
+          const completionDate = new Date(data.custom_expected_date);
+          const today = new Date();
+
+          // Reset hours to compare purely by date
+          today.setHours(0, 0, 0, 0);
+          completionDate.setHours(0, 0, 0, 0);
+
+          // Calculate difference in time and convert to days
+          const diffInTime = completionDate.getTime() - today.getTime();
+          const diffInDays = diffInTime / (1000 * 3600 * 24);
+
+          // Visible only if date is within 2 days (today, tomorrow, or day after)
+          // or if date has already passed.
+          return diffInDays <= 2;
+        },
+        // Add onChange handler to auto-add first row when extension is toggled on
+        onChange: (value: any, data: any, setFieldValue: any) => {
+          if (value === 1 || value === true) {
+            const currentRows = data.custom_tender_extension_history || [];
+            // Only add if the table is currently empty to avoid overwriting user data
+            if (currentRows.length === 0) {
+              setFieldValue("custom_tender_extension_history", [
+                {
+                  extension_count: "01",
+                  extension_upto: "",
+                  sanction_letter: "",
+                  attach: ""
+                }
+              ]);
+            }
+          } else {
+            // Optional: Clear the table if they toggle extension OFF
+            setFieldValue("custom_tender_extension_history", []);
+          }
+        }
       },
       {
         name: "custom_tender_extension_history",
@@ -192,7 +238,7 @@ export default function NewTenderPage() {
         type: "Table",
         options: "Extension Period Details",
         columns: [
-          { name: "extension_count", label: "Extension Count", type: "Data" },
+          { name: "extension_count", label: "Extension Count", type: "Read Only" },
           { name: "extension_upto", label: "Extension Upto", type: "Date", },
           { name: "sanction_letter", label: "Sanction Letter", type: "Data" },
           { name: "attach", label: "Attach", type: "Attach" },
@@ -210,7 +256,7 @@ export default function NewTenderPage() {
         type: "Long Text",
       },
       {
-        name: "custom_tender_extension_history",
+        name: "section_break1",
         label: "Contractor Details",
         type: "Section Break",
       },
@@ -218,7 +264,7 @@ export default function NewTenderPage() {
         name: "custom_contractor_name",
         label: "Contractor Name",
         type: "Link",
-        linkTarget: "Supplier",
+        linkTarget: "Contractor",
       },
       {
         name: "custom_mobile_no",
@@ -250,8 +296,6 @@ export default function NewTenderPage() {
           targetField: "email_address"
         },
       },
-
-
     ];
 
     // Documents Attachment tab (from Fields-1.csv – Tab Break) [file:6]
@@ -305,7 +349,62 @@ export default function NewTenderPage() {
   }, []);
 
   /* -------------------------------------------------
-  5. SUBMIT – with file upload for child tables
+  5. Form Initialization & Watch Logic
+  ------------------------------------------------- */
+  const handleFormInit = React.useCallback((methods: any) => {
+    const { watch, setValue, getValues } = methods;
+    const tableName = 'custom_tender_extension_history';
+
+    const subscription = watch((value: any, { name, type }: any) => {
+      
+      // 1. Toggle ON -> Add first row (01) if empty
+      // We check if value exists because in some cases value might be partial
+      if (name === 'custom_is_extension' && (value?.custom_is_extension === 1 || value?.custom_is_extension === true)) {
+          const currentHistory = getValues(tableName) || [];
+          
+          if (currentHistory.length === 0) {
+            setValue(tableName, [
+              {
+                extension_count: "01",
+                extension_upto: "",
+                sanction_letter: "",
+                attach: ""
+              }
+            ], { shouldDirty: true });
+            
+            
+            return; 
+          }
+      }
+
+      // 2. Auto-Indexing Strategy (Handles Add/Delete)
+      // Checks table changes to enforce sequential indexing (01, 02, 03...)
+      if (!name || name === tableName || name.startsWith(tableName)) {
+          // slight delay to ensure getValues gets the *new* row added by the UI
+          setTimeout(() => {
+              const rows = getValues(tableName);
+              
+              if (Array.isArray(rows) && rows.length > 0) {
+                  let hasUpdated = false;
+                  rows.forEach((row: any, index: number) => {
+                      const expected = (index + 1).toString().padStart(2, '0');
+                      
+                      // Only update if strictly different to avoid render loops
+                      if (row.extension_count !== expected) {
+                          setValue(`${tableName}.${index}.extension_count`, expected, { shouldDirty: true });
+                          hasUpdated = true;
+                      }
+                  });
+              }
+          }, 50);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  /* -------------------------------------------------
+  6. SUBMIT – with file upload for child tables
   ------------------------------------------------- */
   const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
     if (!isDirty) {
@@ -368,6 +467,28 @@ export default function NewTenderPage() {
         );
       }
 
+      // Upload files for custom_tender_extension_history
+      if (payload.custom_tender_extension_history) {
+        toast.info("Uploading extension documents...");
+        await Promise.all(
+          payload.custom_tender_extension_history.map(
+            async (row: any, index: number) => {
+              const original =
+                data.custom_tender_extension_history?.[index]?.attach;
+              if (original instanceof File) {
+                const fileUrl = await uploadFile(
+                  original,
+                  apiKey,
+                  apiSecret,
+                  baseUrl
+                );
+                row.attach = fileUrl;
+              }
+            }
+          )
+        );
+      }
+
       // Clean non-data fields (Section Break, Column Break, etc.)
       const nonDataFields = new Set<string>();
       formTabs.forEach((tab) => {
@@ -397,13 +518,6 @@ export default function NewTenderPage() {
           finalPayload[f] = finalPayload[f] ? 1 : 0;
         }
       });
-
-      // Ensure posting date is a valid date or null (avoid "Today") [web:1][file:6]
-      if (finalPayload.custom_posting_date === "Today") {
-        finalPayload.custom_posting_date = new Date()
-          .toISOString()
-          .slice(0, 10);
-      }
 
       // Numeric conversions
       const numericFields = [
@@ -497,6 +611,7 @@ export default function NewTenderPage() {
       tabs={formTabs}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
+      onFormInit={handleFormInit}
       title={`New ${doctypeName}`}
       description="Create a new tender/project"
       submitLabel={isSaving ? "Saving..." : "New Tender"}

@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { Controller, useForm } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 import Link from "next/link";
 import {
   Search,
@@ -88,7 +90,7 @@ export default function RepairWorkRequirementPage() {
   const [rows, setRows] = React.useState<RepairWorkRequirement[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
   // 🟢 Loading & Pagination States
-  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [loading, setLoading] = React.useState(false);       // Full page load
   const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
   const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
   const [totalCount, setTotalCount] = React.useState(0);    // Total count of records
@@ -96,6 +98,17 @@ export default function RepairWorkRequirementPage() {
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      lis_name: "",
+      stage: "",
+    },
+  });
+
+  const selectedLis = watch("lis_name");
+  const selectedStage = watch("stage");
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
@@ -162,6 +175,20 @@ export default function RepairWorkRequirementPage() {
           order_by: `${sortConfig.key} ${sortConfig.direction}`, // 🟢 Server-side sorting
         };
 
+        const filters: any[] = [];
+
+        if (selectedLis) {
+          filters.push(["Repair Work Requirement", "lis_name", "=", selectedLis]);
+        }
+
+        if (selectedStage) {
+          filters.push(["Repair Work Requirement", "stage", "=", selectedStage]);
+        }
+
+        if (filters.length > 0) {
+          params.filters = JSON.stringify(filters);
+        }
+
         if (debouncedSearch) {
           params.or_filters = JSON.stringify([
             ["name", "like", `%${debouncedSearch}%`],
@@ -220,7 +247,7 @@ export default function RepairWorkRequirementPage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, sortConfig]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, selectedLis, selectedStage, sortConfig]
   );
 
   // 🟢 Trigger fetch on search, filter, or sort change
@@ -495,17 +522,67 @@ export default function RepairWorkRequirementPage() {
           gap: "8px",
         }}
       >
-        {/* Left: Search */}
-        <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
-          <input
-            type="text"
-            placeholder="Search ID, Work Req. No, LIS, Stage, Prepared By..."
-            className="form-control w-full pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search Repair Work Requirements"
-          />
+        {/* Left: Two Filters */}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          {/* LIS Name Filter */}
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="lis_name"
+              render={({ field: { value } }) => {
+                const mockField = {
+                  name: "lis_name",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Lift Irrigation Scheme",
+                  placeholder: "Select LIS",
+                  required: false,
+                  defaultValue: "",
+                };
 
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          {/* Stage Filter */}
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="stage"
+              render={({ field: { value } }) => {
+                const mockField = {
+                  name: "stage",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Stage No",
+                  placeholder: "Select Stage",
+                  required: false,
+                  defaultValue: "",
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
         </div>
 
         {/* Right: Sort + View Switcher */}

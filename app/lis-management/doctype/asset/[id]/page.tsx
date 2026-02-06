@@ -6,11 +6,12 @@ import Link from "next/link";
 import axios from "axios";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
+import { fetchLogsheetData, LogsheetData } from "../services";
 import {
   Download, QrCode,
-  BarChart3, History, Settings, X, Pencil, Loader2,
+  BarChart3, History, Settings, Pencil, Loader2,
   FileText, ExternalLink, UploadCloud,
-  Package, Wrench, MapPin
+  Package, MapPin
 } from "lucide-react";
 import { Image as ImageIcon } from "lucide-react";
 
@@ -26,11 +27,12 @@ interface AssetData {
   location: string;
   status: string;
   asset_category?: string;
-  purchase_date?: string;
+  custom_pump_status?: string;
   gross_purchase_amount?: number;
   custom_lis_name?: string;
   custom_stage_no?: string;
   custom_condition?: string;
+  custom_current_hours?: number;
   custom_equipement_make?: string;
   custom_equipement_model?: string;
   custom_asset_specifications?: Array<{
@@ -59,10 +61,12 @@ export default function AssetDetailPage() {
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("drawings");
   const [showQR, setShowQR] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [logsheetData, setLogsheetData] = useState<LogsheetData[]>([]);
+  const [logsheetLoading, setLogsheetLoading] = useState(false);
 
   useEffect(() => {
     const fetchAsset = async () => {
@@ -105,6 +109,33 @@ export default function AssetDetailPage() {
     fetchAsset();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
+  // Fetch Logsheet Data
+  const fetchLogsheetDataHandler = async () => {
+    if (!asset?.custom_lis_name || !asset?.custom_stage_no || !asset?.name || !apiKey || !apiSecret) return;
+
+    try {
+      setLogsheetLoading(true);
+      const data = await fetchLogsheetData(
+        asset.custom_lis_name,
+        asset.custom_stage_no,
+        asset.name,
+        apiKey,
+        apiSecret
+      );
+      setLogsheetData(data);
+    } catch (err) {
+      toast.error('Failed to load logsheet data');
+    } finally {
+      setLogsheetLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'readings' && asset) {
+      fetchLogsheetDataHandler();
+    }
+  }, [activeTab, asset]);
+
   const handleDownloadReport = () => toast.success("Report downloading...");
 
   const handleOpenFile = (url?: string) => {
@@ -125,7 +156,7 @@ export default function AssetDetailPage() {
 
       // Call Frappe PDF generator
       const { data } = await axios.get(
-        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset_pdf`,
+        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset`,
         {
           params: { docname: asset.name },
           headers: { Authorization: `token ${apiKey}:${apiSecret}` }
@@ -168,7 +199,7 @@ export default function AssetDetailPage() {
 
     try {
       const { data } = await axios.get(
-        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset_pdf`,
+        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset`,
         {
           params: { docname: asset.name },
           headers: { Authorization: `token ${apiKey}:${apiSecret}` }
@@ -201,7 +232,6 @@ export default function AssetDetailPage() {
   };
 
   const tabs = [
-    { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "drawings", label: "Drawings", icon: ImageIcon },
     { id: "specs", label: "Specs", icon: Settings },
     { id: "readings", label: "Readings", icon: BarChart3 },
@@ -268,12 +298,12 @@ export default function AssetDetailPage() {
           <span className="text-base font-bold">{asset.asset_category || "—"}</span>
         </div>
         <div className="test-info-box !py-2">
-          <p className="text-sm">Condition</p>
-          <span className="text-base font-bold text-blue-600">{asset.custom_condition || "N/A"}</span>
+          <p className="text-sm">LIS Name</p>
+          <span className="text-base font-bold">{asset.custom_lis_name || "—"}</span>
         </div>
         <div className="test-info-box !py-2">
-          <p className="text-sm">LIS Name</p>
-          <span className="text-base font-bold text-green-600">{asset.custom_lis_name || "—"}</span>
+          <p className="text-sm">Stage No</p>
+          <span className="text-base font-bold">{asset.custom_stage_no || "N/A"}</span>
         </div>
         <div className="test-info-box !py-2">
           <p className="text-sm">Make</p>
@@ -284,12 +314,9 @@ export default function AssetDetailPage() {
           <span className="text-base font-bold">{asset.custom_equipement_model || "—"}</span>
         </div>
         <div className="test-info-box !py-2">
-          <p className="text-sm">Purchase Date</p>
-          <span className="text-base font-bold">
-            {asset.purchase_date
-              ? new Date(asset.purchase_date).toLocaleDateString("en-GB")
-              : "—"}
-          </span>
+          <p className="text-sm">Status</p>
+          <span className={`text-base font-bold ${(asset.custom_pump_status || '') == 'Running' ? 'text-green-600' : 'text-red-600'}`}>
+            {asset.custom_pump_status || "—"}</span>
         </div>
       </div>
 
@@ -312,17 +339,6 @@ export default function AssetDetailPage() {
 
       {/* Single Column Content */}
       <div className="space-y-4">
-
-        {/* OVERVIEW TAB */}
-        {activeTab === "overview" && (
-          <div className="test-card !p-4">
-            <h2 className="test-card-title text-lg mb-3">Recent Readings</h2>
-            <p className="text-sm text-gray-500 mb-3">Live sensor data integration pending.</p>
-            <div className="p-4 text-center text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-              No sensor data connected to this asset ID.
-            </div>
-          </div>
-        )}
 
         {/* DRAWINGS TAB */}
         {activeTab === "drawings" && (
@@ -413,11 +429,61 @@ export default function AssetDetailPage() {
           </div>
         )}
 
-        {/* PLACEHOLDER TABS */}
-        {(activeTab === "readings" || activeTab === "maintenance") && (
+        {/* READINGS TAB */}
+        {activeTab === "readings" && (
           <div className="test-card !p-4">
-            <h2 className="test-card-title text-lg mb-2">Data Unavailable</h2>
-            <p className="text-sm text-gray-500">This module is not yet connected to the historical API.</p>
+            <h2 className="test-card-title text-lg mb-3">Log Sheet Readings</h2>
+            {logsheetLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="animate-spin h-8 w-8 text-blue-600 mr-2" />
+                <span className="text-sm text-gray-500">Loading readings...</span>
+              </div>
+            ) : logsheetData.length > 0 ? (
+              <div className="stock-table-container">
+                <table className="stock-table">
+                  <thead>
+                    <tr>
+                      <th>Date & Time</th>
+                      <th>Water Level</th>
+                      <th>Pressure Gauge</th>
+                      <th>BR</th>
+                      <th>RY</th>
+                      <th>YB</th>
+                      <th>R</th>
+                      <th>Y</th>
+                      <th>B</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logsheetData.map((reading, index) => (
+                      <tr key={index}>
+                        <td className="text-sm">{new Date(`${reading.date}T${reading.time}`).toLocaleString('en-IN', { hour12: false })}</td>
+                        <td>{reading.water_level}</td>
+                        <td>{reading.pressure_guage}</td>
+                        <td>{reading.br}</td>
+                        <td>{reading.ry}</td>
+                        <td>{reading.yb}</td>
+                        <td>{reading.r}</td>
+                        <td>{reading.y}</td>
+                        <td>{reading.b}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                <p className="text-sm">No logsheet data available for this asset.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MAINTENANCE TAB */}
+        {activeTab === "maintenance" && (
+          <div className="test-card !p-4">
+            <h2 className="test-card-title text-lg mb-2">Maintenance Records</h2>
+            <p className="text-sm text-gray-500">Maintenance module is not yet connected to the API.</p>
           </div>
         )}
       </div>

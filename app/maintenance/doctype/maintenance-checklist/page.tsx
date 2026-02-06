@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { useForm, Controller } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 
 import { useSelection } from "@/hooks/useSelection";
 import { BulkActionBar } from "@/components/BulkActionBar";
@@ -45,6 +47,18 @@ interface ParameterChecklist {
   modified?: string;
 }
 
+interface LisOption {
+  name: string;
+}
+
+interface StageOption {
+  name: string;
+}
+
+interface AssetCategoryOption {
+  name: string;
+}
+
 type ViewMode = "grid" | "list";
 
 export default function MaintenanceChecklistListPage() {
@@ -65,28 +79,71 @@ export default function MaintenanceChecklistListPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const [lisNameFilter, setLisNameFilter] = React.useState("");
-  const [stageFilter, setStageFilter] = React.useState("");
-  const [assetCategoryFilter, setAssetCategoryFilter] = React.useState("");
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      lis_name: "",
+      stage: "",
+      asset_category: ""
+    }
+  });
 
-  const [lisNameOptions, setLisNameOptions] = React.useState<string[]>([]);
-  const [stageOptions, setStageOptions] = React.useState<string[]>([]);
-  const [assetCategoryOptions, setAssetCategoryOptions] = React.useState<string[]>([]);
+  const selectedLis = watch("lis_name");
+  const selectedStage = watch("stage");
+  const selectedAssetCategory = watch("asset_category");
+
+  const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
+  const [stageOptions, setStageOptions] = React.useState<StageOption[]>([]);
+  const [assetCategoryOptions, setAssetCategoryOptions] = React.useState<AssetCategoryOption[]>([]);
 
   const title = "Maintenance Checklist";
+
+  // ── Load Filter Options ───────────────────────────────
+  React.useEffect(() => {
+    const fetchFilterOptions = async () => {
+      if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
+
+      try {
+        const headers = { Authorization: `token ${apiKey}:${apiSecret}` };
+        
+        const [lisResp, stageResp, assetCategoryResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/resource/Lift Irrigation Scheme`, {
+            params: { fields: JSON.stringify(["name"]), limit_page_length: "100", order_by: "name asc" },
+            headers
+          }),
+          axios.get(`${API_BASE_URL}/api/resource/Stage No`, {
+            params: { fields: JSON.stringify(["name"]), limit_page_length: "100", order_by: "name asc" },
+            headers
+          }),
+          axios.get(`${API_BASE_URL}/api/resource/Asset Category`, {
+            params: { fields: JSON.stringify(["name"]), limit_page_length: "100", order_by: "name asc" },
+            headers
+          })
+        ]);
+
+        setLisOptions([{ name: "" }, ...(lisResp.data?.data ?? [])]);
+        setStageOptions([{ name: "" }, ...(stageResp.data?.data ?? [])]);
+        setAssetCategoryOptions([{ name: "" }, ...(assetCategoryResp.data?.data ?? [])]);
+      } catch (err) {
+        console.error("Failed to load filter options:", err);
+      }
+    };
+
+    fetchFilterOptions();
+  }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
   /* ── Search & Filter ─────────────────────────────── */
   const filteredRecords = React.useMemo(() => {
     return records.filter((r) => {
       const matchesSearch = !debouncedSearch || 
         r.name.toLowerCase().includes(debouncedSearch.toLowerCase());
-      const matchesLisName = !lisNameFilter || r.lis_name === lisNameFilter;
-      const matchesStage = !stageFilter || r.stage === stageFilter;
-      const matchesAssetCategory = !assetCategoryFilter || r.asset_category === assetCategoryFilter;
+      const matchesLisName = !selectedLis || r.lis_name === selectedLis;
+      const matchesStage = !selectedStage || r.stage === selectedStage;
+      const matchesAssetCategory = !selectedAssetCategory || r.asset_category === selectedAssetCategory;
       
       return matchesSearch && matchesLisName && matchesStage && matchesAssetCategory;
     });
-  }, [records, debouncedSearch, lisNameFilter, stageFilter, assetCategoryFilter]);
+  }, [records, debouncedSearch, selectedLis, selectedStage, selectedAssetCategory]);
 
   /* ── Selection ───────────────────────────────── */
   const {
@@ -125,6 +182,9 @@ export default function MaintenanceChecklistListPage() {
           filters.push(["Maintenance Checklist", "monitoring_type", "like", `%${debouncedSearch}%`]);
           filters.push(["Maintenance Checklist", "asset_category", "like", `%${debouncedSearch}%`]);
         }
+        if (selectedLis) filters.push(["Maintenance Checklist", "lis_name", "=", selectedLis]);
+        if (selectedStage) filters.push(["Maintenance Checklist", "stage", "=", selectedStage]);
+        if (selectedAssetCategory) filters.push(["Maintenance Checklist", "asset_category", "=", selectedAssetCategory]);
 
         const commonHeaders = {
           Authorization: `token ${apiKey}:${apiSecret}`,
@@ -194,7 +254,7 @@ export default function MaintenanceChecklistListPage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis, selectedStage, selectedAssetCategory]
   );
 
   React.useEffect(() => {
@@ -415,47 +475,29 @@ export default function MaintenanceChecklistListPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           
-          <select
-            className="form-control"
-            style={{ width: 180 }}
-            value={lisNameFilter}
-            onChange={(e) => setLisNameFilter(e.target.value)}
-          >
-            <option value="">All LIS Names</option>
-            {lisNameOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          <div style={{ minWidth: "200px" }}>
+            <Controller control={control} name="lis_name" render={({ field: { value } }) => (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <LinkField control={control} field={{ name: "lis_name", label: "", type: "Link", linkTarget: "Lift Irrigation Scheme", placeholder: "Select LIS", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
+              </div>
+            )} />
+          </div>
 
-          <select
-            className="form-control"
-            style={{ width: 150 }}
-            value={stageFilter}
-            onChange={(e) => setStageFilter(e.target.value)}
-          >
-            <option value="">All Stages</option>
-            {stageOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          <div style={{ minWidth: "200px" }}>
+            <Controller control={control} name="stage" render={({ field: { value } }) => (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <LinkField control={control} field={{ name: "stage", label: "", type: "Link", linkTarget: "Stage No", placeholder: "Select Stage", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
+              </div>
+            )} />
+          </div>
 
-          <select
-            className="form-control"
-            style={{ width: 180 }}
-            value={assetCategoryFilter}
-            onChange={(e) => setAssetCategoryFilter(e.target.value)}
-          >
-            <option value="">All Asset Categories</option>
-            {assetCategoryOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          <div style={{ minWidth: "200px" }}>
+            <Controller control={control} name="asset_category" render={({ field: { value } }) => (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <LinkField control={control} field={{ name: "asset_category", label: "", type: "Link", linkTarget: "Asset Category", placeholder: "Select Category", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
+              </div>
+            )} />
+          </div>
         </div>
 
         <div className="view-switcher">

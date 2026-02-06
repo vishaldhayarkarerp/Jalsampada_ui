@@ -21,6 +21,10 @@ import { TimeAgo } from "@/components/TimeAgo";
 // 🟢 Changed: Point to Root URL (Required for RPC calls)
 const API_BASE_URL = "http://103.219.3.169:2223";
 
+// 🟢 CONFIG: Settings for Pagination
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_SIZE = 10;
+
 // ── Debounce Hook ────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = React.useState(value);
@@ -58,9 +62,12 @@ export default function DoctypePage() {
 
   const [rows, setRows] = React.useState<Expenditure[]>([]);
   const [view, setView] = React.useState<ViewMode>("list");
-  const [loading, setLoading] = React.useState(true);
+  // 🟢 Loading & Pagination States
+  const [loading, setLoading] = React.useState(true);       // Full page load
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false); // Button load
+  const [hasMore, setHasMore] = React.useState(true);       // Are there more records?
+  const [totalCount, setTotalCount] = React.useState(0);    // Total count of records
   const [error, setError] = React.useState<string | null>(null);
-  const [totalCount, setTotalCount] = React.useState(0);
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [lisOptions, setLisOptions] = React.useState<LisOption[]>([]);
@@ -75,24 +82,8 @@ export default function DoctypePage() {
 
   const selectedLis = watch("lis_name");
 
-  // Filter records client-side for instant results
-  const filteredRows = React.useMemo(() => {
-    let filtered = rows;
-
-    if (debouncedSearch) {
-      filtered = filtered.filter(row =>
-        row.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-      );
-    }
-
-    if (selectedLis) {
-      filtered = filtered.filter(
-        row => row.lift_irrigation_scheme === selectedLis
-      );
-    }
-
-    return filtered;
-  }, [rows, debouncedSearch, selectedLis]);
+  // 🟢 Remove client-side filtering since we'll use server-side filtering with pagination
+  const filteredRows = rows;
 
   // 🟢 1. Initialize Selection Hook
   const {
@@ -134,78 +125,125 @@ export default function DoctypePage() {
   }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
   /* -------------------------------------------------
-  3. FETCH
+  3. FETCH (Refactored for Pagination)
   ------------------------------------------------- */
-  const fetchRecords = React.useCallback(async () => {
-    if (!isInitialized) return;
-    if (!isAuthenticated || !apiKey || !apiSecret) {
-      setLoading(false);
-      return;
-    }
+  const fetchRecords = React.useCallback(
+    async (start = 0, isReset = false) => {
+      if (!isInitialized) return;
+      if (!isAuthenticated || !apiKey || !apiSecret) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        if (isReset) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
+        }
 
-      const params = {
-        fields: JSON.stringify([
-          "name",
-          "fiscal_year",
-          "bill_number",
-          "bill_amount",
-          "tender_number",
-          "lift_irrigation_scheme",
-          "modified",
-        ]),
-        limit_page_length: "20",
-        order_by: "creation desc",
-      };
+        const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
 
-      // 🟢 Append /api/resource manually
-      const resp = await axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
-        params,
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-        },
-        withCredentials: true,
-      });
+        // Prepare Filters
+        const params: any = {
+          fields: JSON.stringify([
+            "name",
+            "fiscal_year",
+            "bill_number",
+            "bill_amount",
+            "tender_number",
+            "lift_irrigation_scheme",
+            "modified",
+          ]),
+          limit_start: start,
+          limit_page_length: limit,
+          order_by: "creation desc",
+        };
 
-      // Get total count
-      const countResp = await axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
-        params: { doctype: doctypeName },
-        headers: {
-          Authorization: `token ${apiKey}:${apiSecret}`,
-        },
-      });
+        if (debouncedSearch) {
+          params.or_filters = JSON.stringify({
+            name: ["like", `%${debouncedSearch}%`],
+            bill_number: ["like", `%${debouncedSearch}%`],
+            tender_number: ["like", `%${debouncedSearch}%`],
+            lift_irrigation_scheme: ["like", `%${debouncedSearch}%`],
+          });
+        }
 
-      const raw = resp.data?.data ?? [];
-      const mapped: Expenditure[] = raw.map((r: any) => ({
-        name: r.name,
-        fiscal_year: r.fiscal_year ?? "",
-        bill_number: r.bill_number ?? "",
-        bill_amount: r.bill_amount ?? "",
-        tender_number: r.tender_number ?? "",
-        lift_irrigation_scheme: r.lift_irrigation_scheme ?? "",
-        modified: r.modified ?? "",
-      }));
+        const filters: any[] = [];
 
-      setRows(mapped);
-      setTotalCount(countResp.data.message || 0);
-    } catch (err: any) {
-      console.error("API error:", err);
-      setError(
-        err.response?.status === 403
-          ? "Unauthorized – check API key/secret"
-          : `Failed to fetch ${doctypeName}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
+        if (selectedLis) {
+          filters.push(["Expenditure", "lift_irrigation_scheme", "=", selectedLis]);
+        }
 
+        if (filters.length > 0) {
+          params.filters = JSON.stringify(filters);
+        }
+
+        const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
+
+        // 🟢 Parallel Requests: Data + Count (only on reset)
+        const [dataResp, countResp] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/resource/${encodeURIComponent(doctypeName)}`, {
+            params,
+            headers: commonHeaders,
+            withCredentials: true,
+          }),
+          isReset
+            ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
+                params: { 
+                    doctype: doctypeName,
+                },
+                headers: commonHeaders,
+              })
+            : Promise.resolve(null),
+        ]);
+
+        const raw = dataResp.data?.data ?? [];
+        const mapped: Expenditure[] = raw.map((r: any) => ({
+          name: r.name,
+          fiscal_year: r.fiscal_year ?? "",
+          bill_number: r.bill_number ?? "",
+          bill_amount: r.bill_amount ?? "",
+          tender_number: r.tender_number ?? "",
+          lift_irrigation_scheme: r.lift_irrigation_scheme ?? "",
+          modified: r.modified ?? "",
+        }));
+
+        if (isReset) {
+          setRows(mapped);
+          if (countResp) setTotalCount(countResp.data.message || 0);
+        } else {
+          setRows((prev) => [...prev, ...mapped]);
+        }
+
+        setHasMore(mapped.length === limit);
+      } catch (err: any) {
+        console.error("API error:", err);
+        if (isReset) setError(
+          err.response?.status === 403
+            ? "Unauthorized – check API key/secret"
+            : `Failed to fetch ${doctypeName}`
+        );
+      } finally {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis]
+  );
+
+  // 🟢 Trigger fetch on search or filter change
   React.useEffect(() => {
-    fetchRecords();
+    fetchRecords(0, true);
   }, [fetchRecords]);
+
+  // 🟢 Load More Handler
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchRecords(rows.length, false);
+    }
+  };
 
   // 🟢 2. Handle Bulk Delete
   const handleBulkDelete = async () => {
@@ -250,7 +288,7 @@ export default function DoctypePage() {
       // If no error messages, proceed with success
       toast.success(`Successfully deleted ${count} records.`);
       clearSelection();
-      fetchRecords(); // Refresh list
+      fetchRecords(0, true); // Refresh list
     } catch (err: any) {
       console.error("Bulk Delete Error:", err);
 
@@ -487,8 +525,28 @@ export default function DoctypePage() {
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "0.5rem" }}>
+      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
+
+        {/* 🟢 Load More Button */}
+        {hasMore && rows.length > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              className="btn btn--secondary flex items-center gap-2 px-6 py-2"
+              style={{ minWidth: "140px" }}
+            >
+              {isLoadingMore ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                </>
+              ) : (
+                "Load More"
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

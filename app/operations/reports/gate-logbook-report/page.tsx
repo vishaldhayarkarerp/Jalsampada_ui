@@ -57,7 +57,6 @@ const formatDateTime = (dateString: string | null): string => {
 const columnConfig: ColumnConfig[] = [
   { fieldname: "name", label: "Doc Name", width: "150px" },
   { fieldname: "lis_name", label: "LIS Name", width: "150px" },
-  { fieldname: "lis_phase", label: "LIS Phase", width: "150px" },
   { fieldname: "stage", label: "Stage", width: "150px" },
   { fieldname: "gate_no", label: "Gate No.", width: "120px" },
   { fieldname: "lift_by", label: "Lifted By", width: "150px" },
@@ -268,18 +267,6 @@ export default function GateLogBookSheetReportPage() {
             onChange={(value) => handleFilterChange("lis_name", value)}
             placeholder="Select LIS..."
             linkTarget="Lift Irrigation Scheme"
-            className="w-full relative"
-          />
-        </div>
-
-        <div className="form-group z-[50]">
-          <label className="text-sm font-medium mb-1 block">LIS Phase</label>
-          <LinkInput
-            value={filters.lis_phase}
-            onChange={(value) => handleFilterChange("lis_phase", value)}
-            placeholder="Select LIS Phase..."
-            linkTarget="LIS Phases"
-            filters={{ lis_name: filters.lis_name || undefined }}
             className="w-full relative"
           />
         </div>

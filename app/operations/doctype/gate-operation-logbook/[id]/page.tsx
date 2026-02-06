@@ -226,12 +226,7 @@ export default function GateOperationLogbookDetailPage() {
                         linkTarget: "Lift Irrigation Scheme",
                         required: true,
                     },
-                    {
-                        name: "lis_phase",
-                        label: "LIS Phase",
-                        type: "Link",
-                        linkTarget: "LIS Phases",
-                    },
+                   
                     {
                         name: "stage",
                         label: "Stage/ Sub Scheme",

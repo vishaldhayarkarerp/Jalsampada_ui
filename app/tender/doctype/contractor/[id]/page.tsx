@@ -97,10 +97,20 @@ export default function ContractorDetailsPage({
   const formTabs: TabbedLayout[] = React.useMemo(() => {
     if (!data) return [];
 
+    const withDefaults = (list: FormField[]): FormField[] =>
+      list.map((f) => ({
+        ...f,
+        defaultValue:
+          f.name in data
+            ? // @ts-ignore
+            data[f.name as keyof ContractorData]
+            : f.defaultValue,
+      }));
+
     return [
       {
         name: "Details",
-        fields: [
+        fields: withDefaults([
           // --- Main Section ---
           {
             name: "contractor_name",
@@ -173,7 +183,7 @@ export default function ContractorDetailsPage({
             type: "Long Text",
             required: true,
           },
-        ],
+        ]),
       },
     ];
   }, [data]);

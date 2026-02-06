@@ -50,8 +50,10 @@ export default function AssetInterchangeDetailPage() {
     const [error, setError] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
     const [selectedAsset, setSelectedAsset] = React.useState<"Motor" | "Pump" | "">("");
+    const [formDirty, setFormDirty] = React.useState(false); // Track form dirty state
+    const [formInstance, setFormInstance] = React.useState<any>(null);
 
-    // 🟢 STATUS BADGE
+    // STATUS BADGE
     const getCurrentStatus = () => {
         if (!record) return "";
         if (record.docstatus === 2) return "Cancelled";
@@ -59,7 +61,7 @@ export default function AssetInterchangeDetailPage() {
         return "Draft";
     };
 
-    // 🟢 FETCH RECORD
+    // FETCH RECORD
     const fetchDoc = async () => {
         if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) return;
         try {
@@ -70,6 +72,12 @@ export default function AssetInterchangeDetailPage() {
             const data = resp.data.data;
             setRecord(data);
             setSelectedAsset(data.which_asset_to_interchange || "");
+            setFormDirty(false); // Reset dirty state on load
+            
+            // Reset form if instance exists
+            if (formInstance) {
+                formInstance.reset(data);
+            }
         } catch {
             setError("Failed to load record");
         } finally {
@@ -81,9 +89,52 @@ export default function AssetInterchangeDetailPage() {
 
     const handleAssetChange = (value: "Motor" | "Pump") => setSelectedAsset(value);
 
-    // 🟢 SUBMIT DOC
+    // SAVE (UPDATE) DOCUMENT
+    const handleSubmit = async (data: Record<string, any>, formIsDirty?: boolean) => {
+        if (!record || !formIsDirty) {
+            toast.info("No changes to save.");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const resp = await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`,
+                { ...data, modified: record.modified },
+                { headers: { Authorization: `token ${apiKey}:${apiSecret}` } }
+            );
+
+            const messages = getApiMessages(resp, null, "Saved!", "Save failed");
+            if (messages.success) {
+                toast.success(messages.message);
+                
+                // Update the record
+                const updatedRecord = resp.data.data;
+                setRecord(updatedRecord);
+                
+                // IMPORTANT: Mark form as clean after save
+                setFormDirty(false);
+                
+                // Reset form to clear dirty state
+                if (formInstance) {
+                    formInstance.reset(updatedRecord);
+                }
+            } else {
+                toast.error(messages.message);
+            }
+
+        } catch (err: any) {
+            console.error("Save error:", err);
+            const messages = getApiMessages(null, err, "Saved!", "Save failed");
+            toast.error(messages.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // SUBMIT DOCUMENT
     const handleSubmitDocument = async () => {
         if (!record) return;
+
         setIsSaving(true);
         try {
             const resp = await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
@@ -94,14 +145,28 @@ export default function AssetInterchangeDetailPage() {
             const msg = getApiMessages(resp, null, "Document submitted!", "Submit failed");
             msg.success ? toast.success(msg.message) : toast.error(msg.message);
             setRecord(resp.data.data);
-        } catch {
-            toast.error("Failed to submit");
-        } finally { setIsSaving(false); }
+        } catch (err: any) {
+            console.error("Submit error:", err);
+            const messages = getApiMessages(null, err, "Submitted!", "Submit failed");
+            toast.error(messages.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    // 🟢 CANCEL DOC
+    // CANCEL DOCUMENT
     const handleCancelDocument = async () => {
         if (!record) return;
+
+        if (record.docstatus !== 1) {
+            toast.error("Only submitted documents can be cancelled.");
+            return;
+        }
+
+        if (!window.confirm("Are you sure you want to cancel this document? This action cannot be undone.")) {
+            return;
+        }
+
         setIsSaving(true);
         try {
             const resp = await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
@@ -112,12 +177,16 @@ export default function AssetInterchangeDetailPage() {
             const msg = getApiMessages(resp, null, "Document cancelled!", "Cancel failed");
             msg.success ? toast.success(msg.message) : toast.error(msg.message);
             setRecord(resp.data.data);
-        } catch {
-            toast.error("Failed to cancel");
-        } finally { setIsSaving(false); }
+        } catch (err: any) {
+            console.error("Cancel error:", err);
+            const messages = getApiMessages(null, err, "Cancelled!", "Cancel failed");
+            toast.error(messages.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    // 🟢 FORM
+    // FORM
     const formTabs: TabbedLayout[] = React.useMemo(() => {
         if (!record) return [];
         const getValue = (f: keyof AssetInterchangeData) => record[f];
@@ -125,9 +194,27 @@ export default function AssetInterchangeDetailPage() {
         return [{
             name: "Details",
             fields: [
-                { name: "lis_name", label: "LIS Name", type: "Link", linkTarget: "Lift Irrigation Scheme", defaultValue: getValue("lis_name") },
-                { name: "stage", label: "Stage", type: "Link", linkTarget: "Stage No", defaultValue: getValue("stage"), filterMapping: [{ sourceField: "lis_name", targetField: "lis_name" }] },
-                { name: "posting_date", label: "Posting Date", type: "Date", defaultValue: getValue("posting_date") },
+                {
+                    name: "lis_name",
+                    label: "LIS Name",
+                    type: "Link",
+                    linkTarget: "Lift Irrigation Scheme",
+                    defaultValue: getValue("lis_name")
+                },
+                {
+                    name: "stage",
+                    label: "Stage",
+                    type: "Link",
+                    linkTarget: "Stage No",
+                    defaultValue: getValue("stage"),
+                    filterMapping: [{ sourceField: "lis_name", targetField: "lis_name" }]
+                },
+                {
+                    name: "posting_date",
+                    label: "Posting Date",
+                    type: "Date",
+                    defaultValue: getValue("posting_date")
+                },
                 {
                     name: "which_asset_to_interchange",
                     label: "Which Asset To Interchange?",
@@ -137,55 +224,171 @@ export default function AssetInterchangeDetailPage() {
                     onChange: handleAssetChange,
                 },
 
-                // 🔵 MOTOR SECTION
-                { name: "motor_section", type: "Section Break", label: "Interchange Motor", displayDependsOn: { which_asset_to_interchange: "Motor" } },
-                { name: "pump_asset", label: "Pump Asset", type: "Link", linkTarget: "Asset", displayDependsOn: { which_asset_to_interchange: "Motor" }, defaultValue: getValue("pump_asset") },
-                { name: "pump_no", label: "Pump No", type: "Read Only", fetchFrom: { sourceField: "pump_asset", targetDoctype: "Asset", targetField: "custom_asset_no" }, displayDependsOn: { which_asset_to_interchange: "Motor" }, defaultValue: getValue("pump_no") },
-                { name: "current_motor_asset", label: "Current Motor Asset", type: "Read Only", displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true }, defaultValue: getValue("current_motor_asset") },
-                { name: "current_motor_no", label: "Current Motor No", type: "Data", displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true }, defaultValue: getValue("current_motor_no") },
-                { name: "interchange_motor", label: "Interchange Motor", type: "Link", linkTarget: "Asset", displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true }, defaultValue: getValue("interchange_motor") },
-                { name: "interchange_motor_no", label: "Interchange Motor No", type: "Data", displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true }, defaultValue: getValue("interchange_motor_no") },
+                // MOTOR SECTION
+                {
+                    name: "motor_section",
+                    type: "Section Break",
+                    label: "Interchange Motor",
+                    displayDependsOn: { which_asset_to_interchange: "Motor" }
+                },
+                {
+                    name: "pump_asset",
+                    label: "Pump Asset",
+                    type: "Link",
+                    linkTarget: "Asset",
+                    displayDependsOn: { which_asset_to_interchange: "Motor" },
+                    defaultValue: getValue("pump_asset")
+                },
+                {
+                    name: "pump_no",
+                    label: "Pump No",
+                    type: "Read Only",
+                    fetchFrom: { sourceField: "pump_asset", targetDoctype: "Asset", targetField: "custom_asset_no" },
+                    displayDependsOn: { which_asset_to_interchange: "Motor" },
+                    defaultValue: getValue("pump_no")
+                },
+                {
+                    name: "current_motor_asset",
+                    label: "Current Motor Asset",
+                    type: "Read Only",
+                    displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true },
+                    defaultValue: getValue("current_motor_asset")
+                },
+                {
+                    name: "current_motor_no",
+                    label: "Current Motor No",
+                    type: "Data",
+                    displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true },
+                    defaultValue: getValue("current_motor_no")
+                },
+                {
+                    name: "interchange_motor",
+                    label: "Interchange Motor",
+                    type: "Link",
+                    linkTarget: "Asset",
+                    displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true },
+                    defaultValue: getValue("interchange_motor")
+                },
+                {
+                    name: "interchange_motor_no",
+                    label: "Interchange Motor No",
+                    type: "Data",
+                    displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true },
+                    defaultValue: getValue("interchange_motor_no")
+                },
 
-                // 🔵 PUMP SECTION
-                { name: "pump_section", type: "Section Break", label: "Interchange Pump", displayDependsOn: { which_asset_to_interchange: "Pump" } },
-                { name: "motor_asset", label: "Motor Asset", type: "Link", linkTarget: "Asset", defaultValue: getValue("motor_asset"), displayDependsOn: { which_asset_to_interchange: "Pump" } },
-                { name: "motor_no_for_pump", label: "Motor No", type: "Read Only", fetchFrom: { sourceField: "motor_asset", targetDoctype: "Asset", targetField: "custom_asset_no" }, defaultValue: getValue("motor_no_for_pump"), displayDependsOn: { which_asset_to_interchange: "Pump" } },
-                { name: "current_pump_asset", label: "Current Pump Asset", type: "Read Only", defaultValue: getValue("current_pump_asset"), displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true } },
-                { name: "current_pump_no", label: "Current Pump No", type: "Data", defaultValue: getValue("current_pump_no"), displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true } },
-                { name: "interchange_pump", label: "Interchange Pump", type: "Link", linkTarget: "Asset", defaultValue: getValue("interchange_pump"), displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true } },
-                { name: "interchange_pump_no", label: "Interchange Pump No", type: "Data", defaultValue: getValue("interchange_pump_no"), displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true } },
+                // PUMP SECTION
+                {
+                    name: "pump_section",
+                    type: "Section Break",
+                    label: "Interchange Pump",
+                    displayDependsOn: { which_asset_to_interchange: "Pump" }
+                },
+                {
+                    name: "motor_asset",
+                    label: "Motor Asset",
+                    type: "Link",
+                    linkTarget: "Asset",
+                    defaultValue: getValue("motor_asset"),
+                    displayDependsOn: { which_asset_to_interchange: "Pump" }
+                },
+                {
+                    name: "motor_no_for_pump",
+                    label: "Motor No",
+                    type: "Read Only",
+                    fetchFrom: { sourceField: "motor_asset", targetDoctype: "Asset", targetField: "custom_asset_no" },
+                    defaultValue: getValue("motor_no_for_pump"),
+                    displayDependsOn: { which_asset_to_interchange: "Pump" }
+                },
+                {
+                    name: "current_pump_asset",
+                    label: "Current Pump Asset",
+                    type: "Read Only",
+                    defaultValue: getValue("current_pump_asset"),
+                    displayDependsOn: {
+                        which_asset_to_interchange: "Pump",
+                        motor_asset: true
+                    }
+                },
+                {
+                    name: "current_pump_no",
+                    label: "Current Pump No",
+                    type: "Data",
+                    defaultValue: getValue("current_pump_no"),
+                    displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true }
+                },
+                {
+                    name: "interchange_pump",
+                    label: "Interchange Pump",
+                    type: "Link",
+                    linkTarget: "Asset",
+                    defaultValue: getValue("interchange_pump"),
+                    displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true }
+                },
+                {
+                    name: "interchange_pump_no",
+                    label: "Interchange Pump No",
+                    type: "Data",
+                    defaultValue: getValue("interchange_pump_no"),
+                    displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true }
+                },
             ],
         }];
     }, [record, selectedAsset]);
 
-    const handleSubmit = async (data: Record<string, any>, isDirty?: boolean) => {
-        if (!record || !isDirty) { toast.info("No changes to save."); return; }
-        setIsSaving(true);
-        try {
-            await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, { ...data, modified: record.modified }, { headers: { Authorization: `token ${apiKey}:${apiSecret}` } });
-            toast.success("Saved!");
-            fetchDoc();
-        } catch { toast.error("Save failed"); }
-        finally { setIsSaving(false); }
-    };
+    // Handle form initialization
+    const handleFormInit = React.useCallback((form: any) => {
+        setFormInstance(form);
+        
+        // Track form dirty state
+        const subscription = form.watch(() => {
+            // Check if form is dirty
+            const isDirty = form.formState.isDirty;
+            if (isDirty !== formDirty) {
+                setFormDirty(isDirty);
+            }
+        });
+        
+        // Initial check
+        const initialDirty = form.formState.isDirty;
+        setFormDirty(initialDirty);
+        
+        return () => subscription.unsubscribe();
+    }, [formDirty]);
 
     if (loading) return <div style={{ padding: "2rem" }}>Loading...</div>;
     if (!record) return <div style={{ padding: "2rem" }}>Not found</div>;
+
+    const isDraft = record.docstatus === 0;
+    const isSubmitted = record.docstatus === 1;
+   
+    const showSubmitButton = isDraft && !formDirty;
+    const showCancelButton = isSubmitted;
+    
+    const showActionButton = isDraft;
 
     return (
         <DynamicForm
             tabs={formTabs}
             onSubmit={handleSubmit}
-            onSubmitDocument={handleSubmitDocument}
-            onCancelDocument={handleCancelDocument}
+            onSubmitDocument={showSubmitButton ? handleSubmitDocument : undefined}
+            onCancelDocument={showCancelButton ? handleCancelDocument : undefined}
             onCancel={() => router.back()}
             title={`${DOCTYPE_NAME}: ${record.name}`}
             description="Update Asset Interchange"
-            submitLabel={isSaving ? "Saving..." : "Save"}
-            isSubmittable={true}
+            submitLabel={isSaving ? 
+                (showSubmitButton ? "Submitting..." : "Saving...") : 
+                (showSubmitButton ? "Submit" : "Save")
+            }
+            isSubmittable={showSubmitButton || showCancelButton}
             docstatus={record.docstatus}
             initialStatus={getCurrentStatus()}
-            deleteConfig={{ doctypeName: DOCTYPE_NAME, docName: docname, redirectUrl: "/assets/doctype/asset-interchange" }}
+            deleteConfig={{
+                doctypeName: DOCTYPE_NAME,
+                docName: docname,
+                redirectUrl: "/assets/doctype/asset-interchange"
+            }}
+            onFormInit={handleFormInit}
         />
     );
 }

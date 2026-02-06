@@ -122,7 +122,7 @@ export default function LogSheetDetailPage() {
             {
                 name: "Details",
                 fields: fields([
-                    { name: "lis", label: "LIS", type: "Link", linkTarget: "Lift Irrigation Scheme", },
+                    { name: "lis", label: "LIS", type: "Link", linkTarget: "Lift Irrigation Scheme", required: true },
                     { name: "date", label: "Date", type: "Date", defaultValue: "Today", required: true },
                     {
                         name: "stage",
@@ -130,17 +130,19 @@ export default function LogSheetDetailPage() {
                         type: "Link",
                         linkTarget: "Stage No",
                         defaultValue: record?.stage,
+                        required: true,
                         filterMapping: [
                             { sourceField: "lis", targetField: "lis_name" }
                         ]
                     },
-                    { name: "time", label: "Time", type: "Time", defaultValue: record?.time },
+                    { name: "time", label: "Time", type: "Time", defaultValue: record?.time, required: true },
                     {
                         name: "asset",
                         label: "Asset",
                         type: "Link",
                         linkTarget: "Asset",
-                        customSearchUrl: "http://103.219.3.169:2223/api/method/frappe.desk.search.search_link",
+                        required: true,
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
                         customSearchParams: {
                             filters: {
                                 asset_category: "Pump",
@@ -157,8 +159,8 @@ export default function LogSheetDetailPage() {
                     },
 
                     { name: "logbook", label: "Pump No", type: "Link", linkTarget: "Logbook Ledger", fetchFrom: { sourceField: "asset", targetDoctype: "Asset", targetField: "custom_asset_no" } },
-                    { name: "operator_id", label: "Operator ID", type: "Link", linkTarget: "User" },
-                    { name: "operator_name", label: "Operator Name", type: "Data" },
+                    { name: "operator_id", label: "Operator ID", type: "Read Only" },
+                    { name: "operator_name", label: "Operator Name", type: "Read Only" },
                     { name: "section_break_mgrv", label: "", type: "Section Break" },
                     { name: "water_level", label: "Water Level", type: "Float", precision: 2 },
                     { name: "pressure_guage", label: "Pressure Guage Reading", type: "Float", precision: 2 },

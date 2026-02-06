@@ -93,7 +93,6 @@ interface AssetData {
     custom_description?: string;
     custom_obsolete?: 0 | 1;
     available_for_use_date?: string;
-    custom_lis_phase?: string;
 
     finance_books?: Array<{
         finance_book?: string;
@@ -591,7 +590,7 @@ export default function RecordDetailPage() {
                     { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
                     { name: "custom_asset_no", label: "Asset No", type: "Data" },
                     { name: "custom_lis_name", label: "Lift Irrigation Scheme", required: true, type: "Link", linkTarget: "Lift Irrigation Scheme" },
-                    { name: "custom_lis_phase", label: "LIS Phase", type: "Link", linkTarget: "LIS Phases" },
+                   
                     { name: "custom_stage_no", label: "Stage No.", type: "Link", required: true, linkTarget: "Stage No" },
                     { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location" },
                     { name: "custom_serial_number", label: "Serial Number", type: "Data" },
@@ -631,11 +630,9 @@ export default function RecordDetailPage() {
                         customSearchUrl: "http://103.219.3.169:2223/api/method/frappe.desk.search.search_link",
                         filters: (getValue) => {
                             const filters: Record<string, any> = {};
-                            const lisPhase = getValue("custom_lis_phase");
                             const stageNo = getValue("custom_stage_no");
                             const lisName = getValue("custom_lis_name");
 
-                            if (lisPhase) filters.custom_lis_phase = lisPhase;
                             if (stageNo) filters.custom_stage_no = stageNo;
                             if (lisName) filters.custom_lis_name = lisName;
 
