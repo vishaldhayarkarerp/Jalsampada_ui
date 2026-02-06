@@ -6,11 +6,12 @@ import Link from "next/link";
 import axios from "axios";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
+import { fetchLogsheetData, LogsheetData } from "../services";
 import {
   Download, QrCode,
-  BarChart3, History, Settings, X, Pencil, Loader2,
+  BarChart3, History, Settings, Pencil, Loader2,
   FileText, ExternalLink, UploadCloud,
-  Package, Wrench, MapPin
+  Package, MapPin
 } from "lucide-react";
 import { Image as ImageIcon } from "lucide-react";
 
@@ -64,6 +65,8 @@ export default function AssetDetailPage() {
   const [showQR, setShowQR] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [logsheetData, setLogsheetData] = useState<LogsheetData[]>([]);
+  const [logsheetLoading, setLogsheetLoading] = useState(false);
 
   useEffect(() => {
     const fetchAsset = async () => {
@@ -105,6 +108,33 @@ export default function AssetDetailPage() {
 
     fetchAsset();
   }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
+
+  // Fetch Logsheet Data
+  const fetchLogsheetDataHandler = async () => {
+    if (!asset?.custom_lis_name || !asset?.custom_stage_no || !asset?.name || !apiKey || !apiSecret) return;
+
+    try {
+      setLogsheetLoading(true);
+      const data = await fetchLogsheetData(
+        asset.custom_lis_name,
+        asset.custom_stage_no,
+        asset.name,
+        apiKey,
+        apiSecret
+      );
+      setLogsheetData(data);
+    } catch (err) {
+      toast.error('Failed to load logsheet data');
+    } finally {
+      setLogsheetLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'readings' && asset) {
+      fetchLogsheetDataHandler();
+    }
+  }, [activeTab, asset]);
 
   const handleDownloadReport = () => toast.success("Report downloading...");
 
@@ -411,11 +441,61 @@ export default function AssetDetailPage() {
           </div>
         )}
 
-        {/* PLACEHOLDER TABS */}
-        {(activeTab === "readings" || activeTab === "maintenance") && (
+        {/* READINGS TAB */}
+        {activeTab === "readings" && (
           <div className="test-card !p-4">
-            <h2 className="test-card-title text-lg mb-2">Data Unavailable</h2>
-            <p className="text-sm text-gray-500">This module is not yet connected to the historical API.</p>
+            <h2 className="test-card-title text-lg mb-3">Log Sheet Readings</h2>
+            {logsheetLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="animate-spin h-8 w-8 text-blue-600 mr-2" />
+                <span className="text-sm text-gray-500">Loading readings...</span>
+              </div>
+            ) : logsheetData.length > 0 ? (
+              <div className="stock-table-container">
+                <table className="stock-table">
+                  <thead>
+                    <tr>
+                      <th>Date & Time</th>
+                      <th>Water Level</th>
+                      <th>Pressure Gauge</th>
+                      <th>BR</th>
+                      <th>RY</th>
+                      <th>YB</th>
+                      <th>R</th>
+                      <th>Y</th>
+                      <th>B</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logsheetData.map((reading, index) => (
+                      <tr key={index}>
+                        <td className="text-sm">{new Date(`${reading.date}T${reading.time}`).toLocaleString('en-IN', { hour12: false })}</td>
+                        <td>{reading.water_level}</td>
+                        <td>{reading.pressure_guage}</td>
+                        <td>{reading.br}</td>
+                        <td>{reading.ry}</td>
+                        <td>{reading.yb}</td>
+                        <td>{reading.r}</td>
+                        <td>{reading.y}</td>
+                        <td>{reading.b}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                <p className="text-sm">No logsheet data available for this asset.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MAINTENANCE TAB */}
+        {activeTab === "maintenance" && (
+          <div className="test-card !p-4">
+            <h2 className="test-card-title text-lg mb-2">Maintenance Records</h2>
+            <p className="text-sm text-gray-500">Maintenance module is not yet connected to the API.</p>
           </div>
         )}
       </div>
