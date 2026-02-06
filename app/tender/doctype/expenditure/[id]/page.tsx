@@ -121,11 +121,18 @@ export default function RecordDetailPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const isProgrammaticUpdate = React.useRef(false);
+  const [formVersion, setFormVersion] = React.useState(0);
 
   // NEW: State for work name default value
   const [workName, setWorkName] = React.useState<string>("");
   const [formInstance, setFormInstance] = React.useState<any>(null);
   const [billType, setBillType] = React.useState<string>("");
+
+  type FormSaveState = "CLEAN" | "DIRTY";
+
+  const [formSaveState, setFormSaveState] =
+    React.useState<FormSaveState>("CLEAN");
 
   /* -------------------------------------------------
   3. FETCH DOCUMENT
@@ -237,6 +244,12 @@ export default function RecordDetailPage() {
     };
   }, [formInstance, apiKey, apiSecret]);
 
+  React.useEffect(() => {
+    if (expenditure && expenditure.docstatus === 0) {
+      setFormSaveState("CLEAN");
+    }
+  }, [expenditure]);
+
   const handleFormInit = React.useCallback((form: any) => {
     setFormInstance(form);
 
@@ -252,8 +265,7 @@ export default function RecordDetailPage() {
         setBillType(value.bill_type);
       }
     });
-    // If current bill type is "Running" but prev_bill_no contains "ra", 
-    // we should assume the original value wasn't "Running"
+
     if (initialBillType === 'Running' && initialPrevBillNo && typeof initialPrevBillNo === 'string' && /ra/i.test(initialPrevBillNo)) {
       // Don't store "Running" as previous - it was auto-set
       previousBillType = 'Select Type'; // Default fallback
@@ -263,34 +275,13 @@ export default function RecordDetailPage() {
       previousBillType = 'Select Type'; // Default fallback
     }
 
-    // Watch the prev_bill_no field and set bill_type accordingly
-    form.watch((value: any, { name }: { name?: string }) => {
-      if (name === 'prev_bill_no' || name === undefined) {
-        const prevBillNo = form.getValues('prev_bill_no');
-        const currentBillType = form.getValues('bill_type');
 
-        // Check if prev_bill_no contains 'ra' or 'RA' (case-insensitive)
-        if (prevBillNo && typeof prevBillNo === 'string' && /ra/i.test(prevBillNo)) {
-          // Set bill_type to "Running" if it's not already set
-          if (currentBillType !== 'Running') {
-            // Store current value as previous before changing to Running
-            if (currentBillType && currentBillType !== 'Running') {
-              previousBillType = currentBillType;
-            }
-            form.setValue('bill_type', 'Running', { shouldDirty: true });
-          }
-        } else {
-          // If prev_bill_no is empty or doesn't contain 'ra', restore previous bill type
-          if (!prevBillNo || (typeof prevBillNo === 'string' && !/ra/i.test(prevBillNo))) {
-            if (currentBillType === 'Running' && previousBillType) {
-              form.setValue('bill_type', previousBillType, { shouldDirty: true });
-            } else if (!prevBillNo && currentBillType === 'Running' && !previousBillType) {
-              // If no previous value stored, reset to default
-              form.setValue('bill_type', 'Select Type', { shouldDirty: true });
-            }
-          }
-        }
-      }
+    form.watch((_value: any, { name }: { name?: string }) => {
+      if (!name) return;
+
+      if (isProgrammaticUpdate.current) return;
+
+      setFormSaveState("DIRTY");
     });
   }, []);
 
@@ -574,7 +565,10 @@ export default function RecordDetailPage() {
   5. SUBMIT – with Validation & file uploading
   ------------------------------------------------- */
 
-  const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+  const handleSubmit = async (
+    data: Record<string, any>,
+    isDirty: boolean
+  ): Promise<{ status?: string } | void> => {
     if (!isDirty) {
       toast.info("No changes to save.");
       return;
@@ -586,7 +580,7 @@ export default function RecordDetailPage() {
     const billAmount = Number(data.bill_amount) || 0;
     const tenderAmount = Number(data.tender_amount) || 0;
     const savedAmount = Number(data.saved_amount) || 0;
-
+    isProgrammaticUpdate.current = true;
     // Rule 1: Bill Amount cannot be > Tender Amount
     if (billAmount > tenderAmount) {
       toast.error("Validation Failed", {
@@ -617,7 +611,6 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
       });
       return; // Stop the save process
     }
-
     // If validation passes, proceed to save
     setIsSaving(true);
 
@@ -749,7 +742,16 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
       }
 
       if (resp.data && resp.data.data) {
+        isProgrammaticUpdate.current = true;
+
         setExpenditure(resp.data.data as ExpenditureData);
+        setBillType(resp.data.data.bill_type);
+        setFormSaveState("CLEAN");
+
+        // FORCE DynamicForm REMOUNT
+        setFormVersion((v) => v + 1);
+
+        isProgrammaticUpdate.current = false;
       }
 
       // Return appropriate status based on docstatus
@@ -757,6 +759,7 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
         resp.data.data.docstatus === 1 ? "Submitted" : "Cancelled";
 
       router.push(`/tender/doctype/expenditure/${docname}`);
+      window.location.reload();
       return { status: savedStatus };
     } catch (err: any) {
       console.error("Save error:", err);
@@ -820,7 +823,6 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
 
       toast.success("Document cancelled successfully");
 
-      // 🔥 Immediately update UI without refresh
       setExpenditure((prev) =>
         prev ? { ...prev, docstatus: 2 } : prev
       );
@@ -859,7 +861,7 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
 
   const handleSubmitDocument = async () => {
     if (!formInstance) return;
-
+    isProgrammaticUpdate.current = true;
     const formData = formInstance.getValues();
     if (!apiKey || !apiSecret || !isInitialized || !isAuthenticated) {
       toast.error("Authentication required");
@@ -909,10 +911,13 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
       setExpenditure((prev) =>
         prev ? { ...prev, docstatus: 1 } : prev
       );
+      setFormSaveState("CLEAN");
+      isProgrammaticUpdate.current = false;
       // Optionally redirect or reload form
       const docName = response.data.data.name;
       if (docName) {
         router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
+        window.location.reload();
       }
     } catch (err: any) {
       console.error(err);
@@ -922,10 +927,21 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
     }
   };
 
-  const isDraft = expenditure.docstatus === 0;
   const isSubmitted = expenditure.docstatus === 1;
   const isCancelled = expenditure.docstatus === 2;
+  const isDraft = expenditure.docstatus === 0;
   const isFinal = billType === "Final";
+
+  const showSave =
+    isDraft &&
+    formSaveState === "DIRTY";
+
+  const showSubmit =
+    isDraft &&
+    isFinal &&
+    formSaveState === "CLEAN";
+
+  const formKey = `${expenditure.name}-${expenditure.docstatus}-${formVersion}`;
 
   /* -------------------------------------------------
   7. RENDER FORM
@@ -933,14 +949,12 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
 
   return (
     <DynamicForm
+      key={formKey}
       title={`Expenditure ${expenditure.name}`}
       tabs={formTabs}
-      onSubmit={async (data, isDirty) => {
-        if (!isDraft) return;
-        return await handleSubmit(data, isDirty);
-      }}
-      onSubmitDocument={isDraft && isFinal ? handleSubmitDocument : undefined}
-      isSubmittable={isDraft && isFinal}
+      onSubmit={handleSubmit}
+      onSubmitDocument={handleSubmitDocument}
+      isSubmittable={showSubmit}
       onCancelDocument={async () => {
         if (!isSubmitted) return;
         return await handleCancel();
@@ -953,10 +967,10 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
       doctype={doctypeName}
       submitLabel={
         isSaving
-          ? isDraft && isFinal
+          ? showSubmit
             ? "Submitting..."
             : "Saving..."
-          : isDraft && isFinal
+          : showSubmit
             ? "Submit"
             : "Save"
       }
