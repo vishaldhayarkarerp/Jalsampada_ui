@@ -65,13 +65,7 @@ linkTarget: "Lift Irrigation Scheme",
 required: true,
 defaultValue: getValue("lis_name"),
 },
-{
-name: "lis_phase",
-label: "LIS Phase",
-type: "Link",
-linkTarget: "LIS Phases",
-defaultValue: getValue("lis_phase"),
-},
+
 {
 name: "stage",
 label: "Stage/ Sub Scheme",

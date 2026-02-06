@@ -142,13 +142,7 @@ export default function NewMaintenanceLogPage() {
             required: true,
             defaultValue: getValue("lis"),
           },
-          {
-            name: "lis_phase",
-            label: "LIS Phase",
-            type: "Link",
-            linkTarget: "LIS Phases",
-            defaultValue: getValue("lis_phase"),
-          },
+          
           {
             name: "stage",
             label: "Stage",

@@ -58,7 +58,6 @@ const formatDateTime = (dateString: string | null): string => {
 const columnConfig: ColumnConfig[] = [
   { fieldname: "name", label: "Logsheet", width: "140px" },
   { fieldname: "lis", label: "LIS", width: "140px" },
-  { fieldname: "lis_phase", label: "LIS Phase", width: "140px" },
   { fieldname: "stage_no", label: "Stage No.", width: "120px" },
   { fieldname: "asset", label: "Asset Name", width: "150px" },
   { fieldname: "pump_no", label: "Pump No.", width: "120px" },
@@ -340,19 +339,7 @@ export default function LogsheetReportPage() {
             />
           </div>
 
-          <div className="form-group z-[50]">
-            <label className="text-sm font-medium mb-1 block">LIS Phase</label>
-            <LinkInput
-              value={filters.lis_phase}
-              onChange={(value) => handleFilterChange("lis_phase", value)}
-              placeholder="Select LIS Phase..."
-              linkTarget="LIS Phases"
-              className="w-full relative"
-              filters={{
-                lis_name: filters.lis || undefined
-              }}
-            />
-          </div>
+         
 
           <div className="form-group relative z-[30]">
             <label className="text-sm font-medium mb-1 block">Stage</label>

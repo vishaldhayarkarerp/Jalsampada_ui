@@ -351,7 +351,6 @@ export default function DoctypePage() {
             <th>Status</th>
             <th>Category</th>
             <th>LIS</th>
-            <th>LIS Phase</th>
             <th>Stage</th>
             <th>Location</th>
             <th className="text-right pr-4" style={{ width: "120px" }}>
@@ -375,7 +374,6 @@ export default function DoctypePage() {
                 <td>{a.status || "—"}</td>
                 <td>{a.asset_category || "—"}</td>
                 <td>{a.custom_lis_name || "—"}</td>
-                <td>{a.custom_lis_phase || "—"}</td>
                 <td>{a.custom_stage_no || "—"}</td>
                 <td>{a.location}</td>
                 <td className="text-right pr-4"><TimeAgo date={a.modified} /></td>
@@ -432,13 +430,7 @@ export default function DoctypePage() {
               </div>
             )} />
           </div>
-          <div style={{ minWidth: "200px" }}>
-            <Controller control={control} name="custom_lis_phase" render={({ field: { value } }) => (
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <LinkField control={control} field={{ name: "custom_lis_phase", label: "", type: "Link", linkTarget: "LIS Phases", placeholder: "Select LIS Phase", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
-              </div>
-            )} />
-          </div>
+         
           <div style={{ minWidth: "200px" }}>
             <Controller control={control} name="custom_stage_no" render={({ field: { value } }) => (
               <div className="form-group" style={{ marginBottom: 0 }}>
