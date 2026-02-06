@@ -10,6 +10,13 @@ export interface WorkNameResponse {
     work_name: string;
 }
 
+export interface PreviousBillDetails {
+    bill_number?: string;
+    bill_amount?: number;
+    mb_no?: string;
+    page_no?: string;
+}
+
 /**
  * Fetches work name for a given tender number using SQL query
  * @param tenderNumber - The tender/project number
@@ -73,6 +80,43 @@ export function updateWorkNameInTableRows(
     } catch (error) {
         console.error("Failed to update work name in table rows:", error);
         throw error;
+    }
+}
+
+export async function fetchPreviousBillDetails(
+    tenderNumber: string,
+    currentDocName: string | null,
+    apiKey: string,
+    apiSecret: string
+): Promise<PreviousBillDetails | null> {
+    try {
+        const queryParams = new URLSearchParams({
+            tender_number: tenderNumber,
+            ...(currentDocName && { current_doc_name: currentDocName })
+        });
+
+        const response = await axios.get(
+            `${API_BASE_URL.replace("/api/resource", "")}/api/method/quantlis_management.tendor.doctype.expenditure.expenditure.get_previous_bill_details?${queryParams}`,
+            {
+                headers: {
+                    Authorization: `token ${apiKey}:${apiSecret}`,
+                    "Content-Type": "application/json",
+                },
+                withCredentials: true,
+            }
+        );
+
+        return response.data.message || null;
+    } catch (error: any) {
+        console.error("Failed to fetch previous bill details:", error);
+        
+        // Check if method doesn't exist
+        if (error.response?.data?.exc?.includes("has no attribute 'get_previous_bill_details'")) {
+            console.warn("get_previous_bill_details method not found in API. Backend method may need to be properly exposed.");
+            return null;
+        }
+        
+        return null;
     }
 }
 

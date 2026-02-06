@@ -125,7 +125,7 @@ export interface FormField {
   patternMessage?: string;
   filters?: (getValue: (name: string) => any) => Record<string, any>;
   filterMapping?: { sourceField: string; targetField: string }[];
-  displayDependsOn?: string | Record<string, any>;
+  displayDependsOn?: string | Record<string, any> | ((values: Record<string, any>) => boolean);
   fetchFrom?: {
     sourceField: string;
     targetDoctype: string;
@@ -134,6 +134,7 @@ export interface FormField {
   customElement?: React.ReactNode;
   precision?: number;
   disableAutoToday?: boolean;
+  onChange?: (value: any, data: any, setFieldValue: any) => void;
 }
 
 export interface TabbedLayout {
@@ -238,10 +239,19 @@ async function fetchMultipleFieldValues(
 }
 
 function evaluateDisplayDependsOn(
-  condition: string | Record<string, any>,
+  condition: string | Record<string, any> | ((values: Record<string, any>) => boolean),
   values: Record<string, any>
 ) {
   if (!condition) return true;
+
+  if (typeof condition === "function") {
+    try {
+      return condition(values);
+    } catch (err) {
+      console.error("Error evaluating displayDependsOn function:", err);
+      return true; // fallback to visible if error
+    }
+  }
 
   if (typeof condition === "string") {
     try {

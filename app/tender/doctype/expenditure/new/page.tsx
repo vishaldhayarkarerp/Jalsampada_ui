@@ -13,7 +13,8 @@ import { toast } from "sonner";
 import {
   fetchWorkNameByTenderNumber,
   updateWorkNameInTableRows,
-  clearWorkNameInTableRows
+  clearWorkNameInTableRows,
+  fetchPreviousBillDetails
 } from "../services";
 
 const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
@@ -54,8 +55,13 @@ interface ExpenditureData {
   bill_type?: string;               // Select
   posting_date?: string;            // Date
   bill_amount?: number;             // Currency
-  page_no?: string;                 // Data
-  mb_no?: string;                   // Data
+  
+  // 🟢 Corrected keys to match database & UI needs
+  prev_page_no?: string;            // Data (Previous)
+  prev_mb_no?: string;              // Data (Previous)
+  page_no?: string;                 // Data (Current)
+  mb_no?: string;                   // Data (Current)
+
   lift_irrigation_scheme?: string;  // Link -> Lift Irrigation Scheme
   stage?: string[];                 // Table MultiSelect -> Stage Multiselect
   expenditure_details?: ExpenditureDetailsRow[]; // Table -> Expenditure Details
@@ -115,9 +121,9 @@ export default function NewExpenditurePage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [billType, setBillType] = React.useState<string>(""); 
   const [docName, setDocName] = React.useState<string | null>(null);
-const [docStatus, setDocStatus] = React.useState<0 | 1 | 2>(0);
+  const [docStatus, setDocStatus] = React.useState<0 | 1 | 2>(0);
 
-  // 🟢 NEW: State for work name default value
+  // State for work name default value
   const [workName, setWorkName] = React.useState<string>("");
 
   /* -------------------------------------------------
@@ -138,32 +144,29 @@ const [docStatus, setDocStatus] = React.useState<0 | 1 | 2>(0);
 
     console.log("Setting up watch subscription for tender_number");
 
-    const subscription = formInstance.watch((value: any, { name }: { name?: string }) => {
+    const subscription = formInstance.watch(async (value: any, { name }: { name?: string }) => {
 
       if (name === "tender_number" && value.tender_number) {
 
+        if (!apiKey || !apiSecret) {
+          console.error("API keys not available");
+          return;
+        }
+
+        // 1. Fetch Work Name (Existing logic)
         const fetchWorkName = async () => {
           try {
-            if (!apiKey || !apiSecret) {
-              console.error("API keys not available");
-              return;
-            }
-
             const fetchedWorkName = await fetchWorkNameByTenderNumber(
               value.tender_number,
               apiKey,
               apiSecret
             );
 
-
             if (fetchedWorkName) {
-              // Update all existing rows in table using service function
               updateWorkNameInTableRows(formInstance, fetchedWorkName);
-              // Update state for future "Add Row" clicks
               setWorkName(fetchedWorkName);
             } else {
               console.log("No work_name found in response");
-              // Clear work name from existing rows using service function
               clearWorkNameInTableRows(formInstance);
               setWorkName("");
             }
@@ -172,14 +175,46 @@ const [docStatus, setDocStatus] = React.useState<0 | 1 | 2>(0);
           }
         };
 
-        fetchWorkName();
+        // 2. Fetch Previous Bill Details (NEW LOGIC)
+        const fetchPreviousBill = async () => {
+          try {
+            const prevDetails = await fetchPreviousBillDetails(
+              value.tender_number, 
+              docName || null,
+              apiKey, 
+              apiSecret
+            );
+
+            if (prevDetails) {
+              // 🟢 Auto-populate the fields using the CORRECT variable names
+              formInstance.setValue("prev_bill_no", prevDetails.bill_number || 0);
+              formInstance.setValue("prev_bill_amt", prevDetails.bill_amount || 0);
+              
+              // Map the API's 'mb_no' to our UI's 'prev_mb_no'
+              formInstance.setValue("prev_mb_no", prevDetails.mb_no || 0);
+              // Map the API's 'page_no' to our UI's 'prev_page_no'
+              formInstance.setValue("prev_page_no", prevDetails.page_no || 0);
+            } else {
+              // Reset if no previous record found
+              formInstance.setValue("prev_bill_no", 0);
+              formInstance.setValue("prev_bill_amt", 0);
+              formInstance.setValue("prev_mb_no", 0);
+              formInstance.setValue("prev_page_no", 0);
+            }
+          } catch (err) {
+            console.error("Error setting previous bill details", err);
+          }
+        };
+
+        // Execute both fetch operations
+        await Promise.all([fetchWorkName(), fetchPreviousBill()]);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [formInstance, apiKey, apiSecret]);
+  }, [formInstance, apiKey, apiSecret, docName]);
 
   const handleFormInit = React.useCallback((form: any) => {
   setFormInstance(form);
@@ -307,14 +342,16 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           fieldColumns: 1,
         },
         {
-          name: "mb_no",
+          // 🟢 RENAMED: was "mb_no", now "prev_mb_no" to avoid conflict
+          name: "prev_mb_no",
           label: "Previous MB No",
           type: "Data",
           defaultValue: 0,
           fieldColumns: 1,
         },
         {
-          name: "page_no",
+          // 🟢 RENAMED: was "page_no", now "prev_page_no" to avoid conflict
+          name: "prev_page_no",
           label: "Previous Page No",
           type: "Data",
           defaultValue: 0,
@@ -338,14 +375,16 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           fieldColumns: 1,
         },
         {
-          name: "mb_no_new",
+          // 🟢 RENAMED: was "mb_no_new", now "mb_no" (The actual database field)
+          name: "mb_no",
           label: "MB No",
           type: "Data",
           defaultValue: 0,
           fieldColumns: 1,
         },
         {
-          name: "page_no_new",
+          // 🟢 RENAMED: was "page_no_new", now "page_no" (The actual database field)
+          name: "page_no",
           label: "Page No",
           type: "Data",
           defaultValue: 0,
@@ -626,68 +665,6 @@ if (savedName) {
   /* -------------------------------------------------
 6. Conditional Submit Document feature
 ------------------------------------------------- */
-// const handleSubmitDocument = async () => {
-//   if (!formInstance) return;
-
-//   const formData = formInstance.getValues();
-//   if (!apiKey || !apiSecret || !isInitialized || !isAuthenticated) {
-//     toast.error("Authentication required");
-//     return;
-//   }
-
-//   setIsSaving(true);
-
-//   try {
-//     // Prepare payload similar to handleSubmit
-//     const payload: Record<string, any> = JSON.parse(JSON.stringify(formData));
-
-//     // Convert numeric fields
-//     const numericFields = [
-//       "bill_upto",
-//       "remaining_amount",
-//       "tender_amount",
-//       "prev_bill_amt",
-//       "bill_amount",
-//       "saved_amount",
-//     ];
-//     numericFields.forEach((f) => {
-//       if (f in payload) payload[f] = Number(payload[f]) || 0;
-//     });
-
-//     // Child table numeric + boolean conversions
-//     if (Array.isArray(payload.expenditure_details)) {
-//       payload.expenditure_details = payload.expenditure_details.map((row: any) => ({
-//         ...row,
-//         bill_amount: Number(row.bill_amount) || 0,
-//         have_asset: row.have_asset ? 1 : 0,
-//       }));
-//     }
-
-//     // Set docstatus to 1 (submitted)
-//     payload.docstatus = 1;
-
-//     const response = await axios.put(
-//       `${API_BASE_URL}/Expenditure/${encodeURIComponent(formData.name)}`,
-//       payload,
-//       {
-//         headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-//       }
-//     );
-
-//     toast.success("Document submitted successfully!");
-//     // Optionally redirect or reload form
-//     const docName = response.data.data.name;
-//     if (docName) {
-//       router.push(`/tender/doctype/expenditure/${encodeURIComponent(docName)}`);
-//     }
-//   } catch (err: any) {
-//     console.error(err);
-//     toast.error("Failed to submit document");
-//   } finally {
-//     setIsSaving(false);
-//   }
-// };
-
 
 const handleSubmitDocument = async () => {
   if (!formInstance) return;

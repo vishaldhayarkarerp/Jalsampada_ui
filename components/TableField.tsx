@@ -32,6 +32,7 @@ interface TableFieldProps {
   register: any;
   errors: any;
   disabled?: boolean;
+  onChange?: (value: any, data: any, setFieldValue: any) => void;
 }
 
 // ... [Keep renderTableInput, renderTableTextarea, etc. unchanged] ...
@@ -530,7 +531,7 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
                 {(field.columns || []).map((c) => (
                   <th key={c.name}>{c.label}</th>
                 ))}
-                <th style={{ width: 60, position: 'sticky', right: 0, backgroundColor: 'var(--color-surface, #fff)', zIndex: 10 }} className="child-table-edit-cell">
+                <th style={{ width: 60, position: 'sticky', right: 0, zIndex: 10 }} className="child-table-edit-cell">
                   Actions
                 </th>
               </tr>
