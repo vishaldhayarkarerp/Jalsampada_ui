@@ -61,7 +61,7 @@ export default function AssetDetailPage() {
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("drawings");
   const [showQR, setShowQR] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
@@ -85,7 +85,7 @@ export default function AssetDetailPage() {
         setAsset(resp.data.data);
       } catch (err: any) {
         console.error("API Error:", err);
-        
+
         const messages = getApiMessages(
           null,
           err,
@@ -97,7 +97,7 @@ export default function AssetDetailPage() {
             return "Failed to load asset details";
           }
         );
-        
+
         if (!messages.success) {
           setError(messages.message);
         }
@@ -156,7 +156,7 @@ export default function AssetDetailPage() {
 
       // Call Frappe PDF generator
       const { data } = await axios.get(
-        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset_pdf`,
+        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset`,
         {
           params: { docname: asset.name },
           headers: { Authorization: `token ${apiKey}:${apiSecret}` }
@@ -173,7 +173,7 @@ export default function AssetDetailPage() {
       }
     } catch (err) {
       console.error(err);
-      
+
       const messages = getApiMessages(
         null,
         err,
@@ -184,7 +184,7 @@ export default function AssetDetailPage() {
           return "Failed to generate QR code";
         }
       );
-      
+
       if (!messages.success) {
         toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
@@ -199,7 +199,7 @@ export default function AssetDetailPage() {
 
     try {
       const { data } = await axios.get(
-        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset_pdf`,
+        `${FRAPPE_BASE_URL}/api/method/quantlis_management.Asset_qr.generate_asset`,
         {
           params: { docname: asset.name },
           headers: { Authorization: `token ${apiKey}:${apiSecret}` }
@@ -212,7 +212,7 @@ export default function AssetDetailPage() {
       }
     } catch (err) {
       console.error(err);
-      
+
       const messages = getApiMessages(
         null,
         err,
@@ -224,7 +224,7 @@ export default function AssetDetailPage() {
           return "Failed to open PDF";
         }
       );
-      
+
       if (!messages.success) {
         toast.error(messages.message, { description: messages.description, duration: Infinity });
       }
@@ -232,7 +232,6 @@ export default function AssetDetailPage() {
   };
 
   const tabs = [
-    { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "drawings", label: "Drawings", icon: ImageIcon },
     { id: "specs", label: "Specs", icon: Settings },
     { id: "readings", label: "Readings", icon: BarChart3 },
@@ -340,17 +339,6 @@ export default function AssetDetailPage() {
 
       {/* Single Column Content */}
       <div className="space-y-4">
-
-        {/* OVERVIEW TAB */}
-        {activeTab === "overview" && (
-          <div className="test-card !p-4">
-            <h2 className="test-card-title text-lg mb-3">Recent Readings</h2>
-            <p className="text-sm text-gray-500 mb-3">Live sensor data integration pending.</p>
-            <div className="p-4 text-center text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-              No sensor data connected to this asset ID.
-            </div>
-          </div>
-        )}
 
         {/* DRAWINGS TAB */}
         {activeTab === "drawings" && (
