@@ -91,7 +91,6 @@ export default function DoctypePage() {
   });
 
   const selectedLis = watch("lis_name");
-  const selectedLisPhase = watch("lis_phase");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Filter stages client-side for instant results
@@ -112,13 +111,8 @@ export default function DoctypePage() {
       filtered = filtered.filter(stage => stage.lis_name === selectedLis);
     }
     
-    // Apply LIS Phase filter
-    if (selectedLisPhase) {
-      filtered = filtered.filter(stage => stage.lis_phase === selectedLisPhase);
-    }
-    
     return filtered;
-  }, [stages, debouncedSearch, selectedLis, selectedLisPhase]);
+  }, [stages, debouncedSearch, selectedLis]);
 
   // 🟢 Use filtered stages for display but original stages for pagination count
   const displayStages = filteredStages;
@@ -150,21 +144,12 @@ export default function DoctypePage() {
           headers: { Authorization: `token ${apiKey}:${apiSecret}` },
         });
 
-        // Fetch LIS Phase options
-        const lisPhaseResp = await axios.get(`${API_BASE_URL}/api/resource/LIS Phases`, {
-          params: {
-            fields: JSON.stringify(["name"]),
-            limit_page_length: "100",
-            order_by: "name asc",
-          },
-          headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-        });
+       
 
         const lisData = lisResp.data?.data ?? [];
-        const lisPhaseData = lisPhaseResp.data?.data ?? [];
 
         setLisOptions([{ name: "" }, ...lisData]); // empty string = All
-        setLisPhaseOptions([{ name: "" }, ...lisPhaseData]); // empty string = All
+        setLisPhaseOptions([{ name: "" }]); // empty string = All
       } catch (err) {
         console.error("Failed to load filter options:", err);
       }
@@ -200,7 +185,7 @@ export default function DoctypePage() {
         const [dataResp, countResp] = await Promise.all([
           axios.get(`${API_BASE_URL}/api/resource/${doctypeName}`, {
             params: {
-              fields: JSON.stringify(["name", "stage_no", "lis_name", "lis_phase", "modified"]),
+              fields: JSON.stringify(["name", "stage_no", "lis_name", "modified"]),
               limit_start: start,
               limit_page_length: limit,
               order_by: "creation desc",
@@ -221,7 +206,6 @@ export default function DoctypePage() {
           name: r.name,
           stage_no: r.stage_no ?? r.name,
           lis_name: r.lis_name ?? "—",
-          lis_phase: r.lis_phase ?? "—",
           modified: r.modified,
         }));
 
@@ -327,7 +311,6 @@ export default function DoctypePage() {
   const getFieldsForStage = (stage: StageNo): RecordCardField[] => {
     const fields: RecordCardField[] = [];
     if (stage.lis_name) fields.push({ label: "LIS", value: stage.lis_name });
-    if (stage.lis_phase) fields.push({ label: "LIS Phase", value: stage.lis_phase });
     return fields;
   };
 
@@ -350,7 +333,6 @@ export default function DoctypePage() {
             </th>
             <th>Stage No</th>
             <th>LIS Name</th>
-            <th>LIS Phase</th>
             <th>ID</th>
             <th className="text-right pr-4" style={{ width: "120px" }}>
               <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
@@ -388,7 +370,6 @@ export default function DoctypePage() {
                   </td>
                   <td>{stage.stage_no}</td>
                   <td>{stage.lis_name}</td>
-                  <td>{stage.lis_phase}</td>
                   <td>{stage.name}</td>
                   <td className="text-right pr-4">
                     <TimeAgo date={stage.modified} />
@@ -531,34 +512,7 @@ export default function DoctypePage() {
             />
           </div>
 
-          <div style={{ minWidth: "200px",marginBottom: "0.2rem" }}>
-            <Controller
-              control={control}
-              name="lis_phase"
-              render={({ field: { onChange, value } }) => {
-                const mockField = {
-                  name: "lis_phase",
-                  label: "",
-                  type: "Link" as const,
-                  linkTarget: "LIS Phases",
-                  placeholder: "Select LIS Phase",
-                  required: false,
-                  defaultValue: ""
-                };
-
-                return (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <LinkField
-                      control={control}
-                      field={{ ...mockField, defaultValue: value }}
-                      error={null}
-                      className="[&>label]:hidden vishal"
-                    />
-                  </div>
-                );
-              }}
-            />
-          </div>
+         
         </div>
 
         <div className="view-switcher">

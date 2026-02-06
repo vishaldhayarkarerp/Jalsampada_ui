@@ -64,7 +64,7 @@ export default function NewRecordPage() {
           { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category", defaultValue: getValue("asset_category") },
           { name: "custom_asset_no", label: "Asset No", type: "Data", defaultValue: getValue("custom_asset_no") },
           { name: "custom_lis_name", label: "Lift Irrigation Scheme", required: true, type: "Link", linkTarget: "Lift Irrigation Scheme", defaultValue: getValue("custom_lis_name") },
-          { name: "custom_lis_phase", label: "LIS Phase", type: "Link", linkTarget: "LIS Phases" },
+         
           
           {
             name: "custom_stage_no", label: "Stage No.", type: "Link", required: true, linkTarget: "Stage No", defaultValue: getValue("custom_stage_no"),
@@ -109,11 +109,9 @@ export default function NewRecordPage() {
             customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
             filters: (getValue) => {
                 const filters: Record<string, any> = {};
-                const lisPhase = getValue("custom_lis_phase");
                 const stageNo = getValue("custom_stage_no");
                 const lisName = getValue("custom_lis_name");
 
-                if (lisPhase) filters.custom_lis_phase = lisPhase;
                 if (stageNo) filters.custom_stage_no = stageNo;
                 if (lisName) filters.custom_lis_name = lisName;
 

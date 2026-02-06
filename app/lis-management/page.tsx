@@ -20,7 +20,6 @@ const masterDoctypes: Doctype[] = [
   { name: "doctype/asset", title: "Asset", icon: Database },
   { name: "doctype/asset-category", title: "Asset Category", icon: Database },
   { name: "doctype/lift-irrigation-scheme", title: "Lift Irrigation Scheme", icon: Droplets },
-  { name: "doctype/lis-phases", title: "LIS Phases", icon: Layers },
   { name: "doctype/stage-no", title: "Stage No", icon: Layers },
   { name: "doctype/equipment-make", title: "Equipement Make", icon: Factory },
   { name: "doctype/equipement-model", title: "Equipement Model", icon: Package },
