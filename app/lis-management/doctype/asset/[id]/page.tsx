@@ -6,7 +6,7 @@ import Link from "next/link";
 import axios from "axios";
 import { toast } from "sonner";
 import { getApiMessages } from "@/lib/utils";
-import { fetchLogsheetData, LogsheetData } from "../services";
+import { fetchLogsheetData, fetchMaintenanceData, LogsheetData, MaintenanceData } from "../services";
 import {
   Download, QrCode,
   BarChart3, History, Settings, Pencil, Loader2,
@@ -67,6 +67,8 @@ export default function AssetDetailPage() {
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
   const [logsheetData, setLogsheetData] = useState<LogsheetData[]>([]);
   const [logsheetLoading, setLogsheetLoading] = useState(false);
+  const [maintenanceData, setMaintenanceData] = useState<MaintenanceData[]>([]);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
 
   useEffect(() => {
     const fetchAsset = async () => {
@@ -130,9 +132,33 @@ export default function AssetDetailPage() {
     }
   };
 
+  // Fetch Maintenance Data
+  const fetchMaintenanceDataHandler = async () => {
+    if (!asset?.custom_lis_name || !asset?.custom_stage_no || !asset?.name || !apiKey || !apiSecret) return;
+
+    try {
+      setMaintenanceLoading(true);
+      const data = await fetchMaintenanceData(
+        asset.custom_lis_name,
+        asset.custom_stage_no,
+        asset.name,
+        apiKey,
+        apiSecret
+      );
+      setMaintenanceData(data);
+    } catch (err) {
+      toast.error('Failed to load maintenance data');
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'readings' && asset) {
       fetchLogsheetDataHandler();
+    }
+    if (activeTab === 'maintenance' && asset) {
+      fetchMaintenanceDataHandler();
     }
   }, [activeTab, asset]);
 
@@ -482,8 +508,51 @@ export default function AssetDetailPage() {
         {/* MAINTENANCE TAB */}
         {activeTab === "maintenance" && (
           <div className="test-card !p-4">
-            <h2 className="test-card-title text-lg mb-2">Maintenance Records</h2>
-            <p className="text-sm text-gray-500">Maintenance module is not yet connected to the API.</p>
+            <h2 className="test-card-title text-lg mb-3">Maintenance Records</h2>
+            {maintenanceLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="animate-spin h-8 w-8 text-blue-600 mr-2" />
+                <span className="text-sm text-gray-500">Loading maintenance data...</span>
+              </div>
+            ) : maintenanceData.length > 0 ? (
+              <div className="stock-table-container">
+                <table className="stock-table">
+                  <thead>
+                    <tr>
+                      <th>Task</th>
+                      <th>Status</th>
+                      <th>Start Date</th>
+                      <th>End Date</th>
+                      <th>Next Due Date</th>
+                      <th>Last Completion Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {maintenanceData.map((record, index) => (
+                      <tr key={index}>
+                        <td className="text-sm">{record.maintenance_task}</td>
+                        <td>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${record.maintenance_status === 'Completed' ? 'bg-green-100 text-green-800' :
+                            record.maintenance_status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                            {record.maintenance_status}
+                          </span>
+                        </td>
+                        <td className="text-sm">{new Date(record.start_date).toLocaleDateString('en-IN')}</td>
+                        <td className="text-sm">{new Date(record.end_date).toLocaleDateString('en-IN')}</td>
+                        <td className="text-sm">{new Date(record.next_due_date).toLocaleDateString('en-IN')}</td>
+                        <td className="text-sm">{new Date(record.last_completion_date).toLocaleDateString('en-IN')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                <p className="text-sm">No maintenance data available for this asset.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
