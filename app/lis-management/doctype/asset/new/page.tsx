@@ -172,8 +172,7 @@ export default function NewRecordPage() {
           { name: "last_repair_date", label: "Last Repair Date", type: "Date", defaultValue: getValue("last_repair_date") },
           { name: "custom_equipement_capacity", label: "Equipement Capacity", type: "Link", linkTarget: "Equipement Capacity", defaultValue: getValue("custom_equipement_capacity") },
           { name: "custom_equipement_rating", label: "Equipement Rating", type: "Link", linkTarget: "Rating", defaultValue: getValue("custom_equipement_rating") },
-          { name: "maintenance_required", label: "Maintenance Required", type: "Check", defaultValue: getValue("maintenance_required", false) },
-          { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float", defaultValue: getValue("custom_previous_hours") },
+
           {
             name: "custom_condition",
             label: "Condition",
@@ -182,6 +181,10 @@ export default function NewRecordPage() {
             defaultValue: getValue("custom_condition"),
 
           },
+          { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float", defaultValue: getValue("custom_previous_hours") },
+          { name: "custom_hours_before_system", label: "Hours Before System", type: "Float", defaultValue: getValue("custom_hours_before_system") },
+          { name: "custom_cumulative_hours", label: "Cumulative Hours", type: "Float", defaultValue: getValue("custom_cumulative_hours") },
+          { name: "maintenance_required", label: "Maintenance Required", type: "Check", defaultValue: getValue("maintenance_required", false) },
           {
             name: "custom_description", label: "Description", type: "Small Text", defaultValue: getValue("custom_description"),
             displayDependsOn: "custom_condition=='Under Repair'"

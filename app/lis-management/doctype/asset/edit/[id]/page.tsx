@@ -701,19 +701,16 @@ export default function RecordDetailPage() {
                     { name: "last_repair_date", label: "Last Repair Date", type: "Date" },
                     { name: "custom_equipement_capacity", label: "Equipement Capacity", type: "Link", linkTarget: "Equipement Capacity" },
                     { name: "custom_equipement_rating", label: "Equipement Rating", type: "Link", linkTarget: "Rating" },
-                    { name: "maintenance_required", label: "Maintenance Required", type: "Check" },
-                    { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float" },
                     {
                         name: "custom_condition",
                         label: "Condition",
                         type: "Select",
                         options: [{ label: "Working", value: "Working" }, { label: "Under Repair", value: "Under Repair", }],
                     },
-                    {
-                        name: "custom_description", label: "Description", type: "Long Text",
-                        displayDependsOn: "custom_condition=='Under Repair'",
-                    },
-
+                    { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float" },
+                    { name: "custom_hours_before_system", label: "Hours Before System", type: "Float" },
+                    { name: "custom_cumulative_hours", label: "Cumulative Hours", type: "Float" },
+                    { name: "maintenance_required", label: "Maintenance Required", type: "Check" },
                     { name: "section_specifications", label: "Specification of Asset", type: "Section Break" },
                     {
                         name: "custom_asset_specifications",
