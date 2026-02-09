@@ -587,7 +587,7 @@ export default function RecordDetailPage() {
 
     try {
       await axios.post(
-        `http://103.219.1.138:4412/api/method/frappe.client.cancel`,
+        `http://103.219.3.169:2223/api/method/frappe.client.cancel`,
         { doctype: "Expenditure", name: docname },
         { headers: { Authorization: `token ${apiKey}:${apiSecret}`, "Content-Type": "application/json" } }
       );
