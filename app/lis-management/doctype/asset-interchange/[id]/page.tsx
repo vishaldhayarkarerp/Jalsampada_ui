@@ -50,8 +50,13 @@ export default function AssetInterchangeDetailPage() {
     const [error, setError] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
     const [selectedAsset, setSelectedAsset] = React.useState<"Motor" | "Pump" | "">("");
-    const [formDirty, setFormDirty] = React.useState(false); // Track form dirty state
+    const [formDirty, setFormDirty] = React.useState(false);
     const [formInstance, setFormInstance] = React.useState<any>(null);
+    const [formVersion, setFormVersion] = React.useState(0);
+    const isProgrammaticUpdate = React.useRef(false);
+    
+    // Button state
+    const [activeButton, setActiveButton] = React.useState<"SAVE" | "SUBMIT" | "CANCEL" | null>(null);
 
     // STATUS BADGE
     const getCurrentStatus = () => {
@@ -72,11 +77,13 @@ export default function AssetInterchangeDetailPage() {
             const data = resp.data.data;
             setRecord(data);
             setSelectedAsset(data.which_asset_to_interchange || "");
-            setFormDirty(false); // Reset dirty state on load
+            setFormDirty(false);
             
-            // Reset form if instance exists
-            if (formInstance) {
-                formInstance.reset(data);
+            // Initialize button state based on document status
+            if (data.docstatus === 0) { // Draft
+                setActiveButton("SUBMIT");
+            } else if (data.docstatus === 1) { // Submitted
+                setActiveButton("CANCEL");
             }
         } catch {
             setError("Failed to load record");
@@ -85,69 +92,188 @@ export default function AssetInterchangeDetailPage() {
         }
     };
 
-    React.useEffect(() => { fetchDoc(); }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
+    React.useEffect(() => { 
+        fetchDoc(); 
+    }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
+
+    // Watch for form changes
+    React.useEffect(() => {
+        if (!formInstance) return;
+
+        const subscription = formInstance.watch((value: any, { name }: { name?: string }) => {
+            // Watch for form changes to mark as dirty
+            if (name && !isProgrammaticUpdate.current) {
+                setFormDirty(true);
+                // When form becomes dirty, show SAVE button
+                if (record?.docstatus === 0) {
+                    setActiveButton("SAVE");
+                }
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, [formInstance, record?.docstatus]);
 
     const handleAssetChange = (value: "Motor" | "Pump") => setSelectedAsset(value);
 
+    // Handle form initialization
+    const handleFormInit = React.useCallback((form: any) => {
+        setFormInstance(form);
+    }, []);
+
     // SAVE (UPDATE) DOCUMENT
-    const handleSubmit = async (data: Record<string, any>, formIsDirty?: boolean) => {
-        if (!record || !formIsDirty) {
+    const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
+        if (!isDirty) {
             toast.info("No changes to save.");
             return;
         }
 
+        if (!record) {
+            toast.error("Record not loaded. Cannot save.", { duration: Infinity });
+            return;
+        }
+
         setIsSaving(true);
+        isProgrammaticUpdate.current = true;
+
         try {
-            const resp = await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`,
-                { ...data, modified: record.modified },
-                { headers: { Authorization: `token ${apiKey}:${apiSecret}` } }
+            const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
+
+            // Clean payload: remove non-data fields
+            const nonDataFields = new Set<string>();
+            formTabs.forEach(tab => {
+                tab.fields.forEach(field => {
+                    if (
+                        field.type === "Section Break" ||
+                        field.type === "Column Break" ||
+                        field.type === "Button" ||
+                        field.type === "Read Only"
+                    ) {
+                        nonDataFields.add(field.name);
+                    }
+                });
+            });
+
+            const finalPayload: Record<string, any> = {};
+            for (const key in payload) {
+                if (!nonDataFields.has(key)) {
+                    finalPayload[key] = payload[key];
+                }
+            }
+
+            finalPayload.modified = record.modified;
+            finalPayload.docstatus = record.docstatus;
+
+            console.log("Sending this PAYLOAD to Frappe:", finalPayload);
+
+            const resp = await axios.put(
+                `${API_BASE_URL}/${encodeURIComponent(DOCTYPE_NAME)}/${encodeURIComponent(docname)}`,
+                finalPayload,
+                {
+                    headers: {
+                        Authorization: `token ${apiKey}:${apiSecret}`,
+                        "Content-Type": "application/json",
+                    },
+                }
             );
 
-            const messages = getApiMessages(resp, null, "Saved!", "Save failed");
+            const messages = getApiMessages(resp, null, "Changes saved!", "Failed to save");
+
             if (messages.success) {
-                toast.success(messages.message);
-                
-                // Update the record
-                const updatedRecord = resp.data.data;
-                setRecord(updatedRecord);
-                
-                // IMPORTANT: Mark form as clean after save
+                toast.success(messages.message, { description: messages.description });
+            } else {
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
+            }
+
+            if (resp.data && resp.data.data) {
+                // Update state with new data
+                const updatedData = resp.data.data as AssetInterchangeData;
+                setRecord(updatedData);
                 setFormDirty(false);
                 
-                // Reset form to clear dirty state
-                if (formInstance) {
-                    formInstance.reset(updatedRecord);
+                // Update button state after save
+                if (updatedData.docstatus === 0) { // Still draft
+                    setActiveButton("SUBMIT");
                 }
-            } else {
-                toast.error(messages.message);
+
+                // Force form remount
+                setFormVersion((v) => v + 1);
             }
 
         } catch (err: any) {
             console.error("Save error:", err);
-            const messages = getApiMessages(null, err, "Saved!", "Save failed");
-            toast.error(messages.message);
+            const messages = getApiMessages(null, err, "Changes saved!", "Failed to save");
+            toast.error(messages.message, { description: messages.description, duration: Infinity});
         } finally {
             setIsSaving(false);
+            isProgrammaticUpdate.current = false;
         }
     };
 
     // SUBMIT DOCUMENT
     const handleSubmitDocument = async () => {
-        if (!record) return;
-
+        if (!record || !formInstance) return;
+        
         setIsSaving(true);
-        try {
-            const resp = await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
-                docstatus: 1,
-                modified: record.modified
-            }, { headers: { Authorization: `token ${apiKey}:${apiSecret}` } });
 
-            const msg = getApiMessages(resp, null, "Document submitted!", "Submit failed");
-            msg.success ? toast.success(msg.message) : toast.error(msg.message);
-            setRecord(resp.data.data);
+        try {
+            // Get current form data
+            const formData = formInstance.getValues();
+            
+            // Clean the form data
+            const nonDataFields = new Set<string>();
+            formTabs.forEach(tab => {
+                tab.fields.forEach(field => {
+                    if (
+                        field.type === "Section Break" ||
+                        field.type === "Column Break" ||
+                        field.type === "Button" ||
+                        field.type === "Read Only"
+                    ) {
+                        nonDataFields.add(field.name);
+                    }
+                });
+            });
+
+            const payload: Record<string, any> = {};
+            for (const key in formData) {
+                if (!nonDataFields.has(key)) {
+                    payload[key] = formData[key];
+                }
+            }
+            
+            // Set docstatus to 1 (submitted)
+            payload.docstatus = 1;
+            payload.modified = record.modified;
+
+            const response = await axios.put(
+                `${API_BASE_URL}/${encodeURIComponent(DOCTYPE_NAME)}/${encodeURIComponent(docname)}`,
+                payload,
+                {
+                    headers: { 
+                        Authorization: `token ${apiKey}:${apiSecret}`,
+                        "Content-Type": "application/json"
+                    }
+                }
+            );
+
+            toast.success("Document submitted successfully!");
+            
+            // Update local state without reload
+            const updatedData = response.data.data as AssetInterchangeData;
+            setRecord(updatedData);
+            setFormDirty(false);
+            
+            // Update button to CANCEL after submission
+            setActiveButton("CANCEL");
+            
+            // Force form remount with new docstatus
+            setFormVersion((v) => v + 1);
         } catch (err: any) {
             console.error("Submit error:", err);
-            const messages = getApiMessages(null, err, "Submitted!", "Submit failed");
+            const messages = getApiMessages(null, err, "Document submitted successfully!", "Submit failed");
             toast.error(messages.message);
         } finally {
             setIsSaving(false);
@@ -157,29 +283,40 @@ export default function AssetInterchangeDetailPage() {
     // CANCEL DOCUMENT
     const handleCancelDocument = async () => {
         if (!record) return;
-
-        if (record.docstatus !== 1) {
-            toast.error("Only submitted documents can be cancelled.");
-            return;
-        }
-
+        
         if (!window.confirm("Are you sure you want to cancel this document? This action cannot be undone.")) {
             return;
         }
-
+        
         setIsSaving(true);
+        
         try {
-            const resp = await axios.put(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
+            const payload = {
                 docstatus: 2,
                 modified: record.modified
-            }, { headers: { Authorization: `token ${apiKey}:${apiSecret}` } });
+            };
+            
+            const resp = await axios.put(
+                `${API_BASE_URL}/${encodeURIComponent(DOCTYPE_NAME)}/${encodeURIComponent(docname)}`,
+                payload,
+                { 
+                    headers: { 
+                        Authorization: `token ${apiKey}:${apiSecret}`,
+                        "Content-Type": "application/json"
+                    } 
+                }
+            );
 
-            const msg = getApiMessages(resp, null, "Document cancelled!", "Cancel failed");
-            msg.success ? toast.success(msg.message) : toast.error(msg.message);
-            setRecord(resp.data.data);
+            toast.success("Document cancelled successfully!");
+            
+            // Update local state without reload
+            const updatedRecord = resp.data.data as AssetInterchangeData;
+            setRecord(updatedRecord);
+            setActiveButton(null); // Remove cancel button after cancellation
+            setFormDirty(false);
         } catch (err: any) {
             console.error("Cancel error:", err);
-            const messages = getApiMessages(null, err, "Cancelled!", "Cancel failed");
+            const messages = getApiMessages(null, err, "Document cancelled successfully!", "Cancel failed");
             toast.error(messages.message);
         } finally {
             setIsSaving(false);
@@ -334,55 +471,49 @@ export default function AssetInterchangeDetailPage() {
                 },
             ],
         }];
-    }, [record, selectedAsset]);
-
-    // Handle form initialization
-    const handleFormInit = React.useCallback((form: any) => {
-        setFormInstance(form);
-        
-        // Track form dirty state
-        const subscription = form.watch(() => {
-            // Check if form is dirty
-            const isDirty = form.formState.isDirty;
-            if (isDirty !== formDirty) {
-                setFormDirty(isDirty);
-            }
-        });
-        
-        // Initial check
-        const initialDirty = form.formState.isDirty;
-        setFormDirty(initialDirty);
-        
-        return () => subscription.unsubscribe();
-    }, [formDirty]);
+    }, [record, selectedAsset, formVersion]);
 
     if (loading) return <div style={{ padding: "2rem" }}>Loading...</div>;
     if (!record) return <div style={{ padding: "2rem" }}>Not found</div>;
 
-    const isDraft = record.docstatus === 0;
     const isSubmitted = record.docstatus === 1;
-   
-    const showSubmitButton = isDraft && !formDirty;
-    const showCancelButton = isSubmitted;
-    
-    const showActionButton = isDraft;
+    const isDraft = record.docstatus === 0;
+
+    // Determine submit label based on active button
+    const getSubmitLabel = () => {
+        if (isSaving) {
+            switch (activeButton) {
+                case "SAVE": return "Saving...";
+                case "SUBMIT": return "Submitting...";
+                case "CANCEL": return "Cancelling...";
+                default: return "Processing...";
+            }
+        }
+        
+        switch (activeButton) {
+            case "SAVE": return "Save";
+            case "SUBMIT": return "Submit";
+            case "CANCEL": return "Cancel";
+            default: return undefined;
+        }
+    };
+
+    const formKey = `${record.name}-${record.docstatus}-${formVersion}`;
 
     return (
         <DynamicForm
+            key={formKey}
             tabs={formTabs}
-            onSubmit={handleSubmit}
-            onSubmitDocument={showSubmitButton ? handleSubmitDocument : undefined}
-            onCancelDocument={showCancelButton ? handleCancelDocument : undefined}
+            onSubmit={activeButton === "SAVE" ? handleSubmit : async () => {}}
+            onSubmitDocument={activeButton === "SUBMIT" ? handleSubmitDocument : undefined}
+            onCancelDocument={activeButton === "CANCEL" ? handleCancelDocument : undefined}
             onCancel={() => router.back()}
             title={`${DOCTYPE_NAME}: ${record.name}`}
             description="Update Asset Interchange"
-            submitLabel={isSaving ? 
-                (showSubmitButton ? "Submitting..." : "Saving...") : 
-                (showSubmitButton ? "Submit" : "Save")
-            }
-            isSubmittable={showSubmitButton || showCancelButton}
+            submitLabel={getSubmitLabel()}
+            isSubmittable={activeButton === "SUBMIT"}
             docstatus={record.docstatus}
-            initialStatus={getCurrentStatus()}
+            initialStatus={isDraft ? "Draft" : isSubmitted ? "Submitted" : "Cancelled"}
             deleteConfig={{
                 doctypeName: DOCTYPE_NAME,
                 docName: docname,
