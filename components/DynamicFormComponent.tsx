@@ -135,6 +135,7 @@ export interface FormField {
   precision?: number;
   disableAutoToday?: boolean;
   onChange?: (value: any, data: any, setFieldValue: any) => void;
+  className?: string;
 }
 
 export interface TabbedLayout {
