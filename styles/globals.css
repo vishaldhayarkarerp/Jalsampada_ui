@@ -852,6 +852,42 @@ body {
   overflow-x: hidden;
 }
 
+/* Record count display styling - Global override */
+div[class*="text-gray-500"][class*="text-[10px]"] {
+  color: white !important;
+  font-size: 12px !important;
+}
+
+/* Dark mode record count styling */
+.dark div[class*="text-gray-500"][class*="text-[10px]"] {
+  color: white !important;
+}
+
+/* Also target any record count in table headers */
+th .text-gray-500,
+th .text-gray-900,
+th .dark\:text-gray-200 {
+  color: white !important;
+  font-size: 12px !important;
+}
+
+.dark th .text-gray-500,
+.dark th .text-gray-900,
+.dark th .dark\:text-gray-200 {
+  color: white !important;
+}
+
+/* Target the total count span specifically */
+th span[class*="text-gray-900"],
+th span[class*="dark:text-gray-200"] {
+  color: white !important;
+}
+
+.dark th span[class*="text-gray-900"],
+.dark th span[class*="dark:text-gray-200"] {
+  color: white !important;
+}
+
 /* Header */
 .header {
   position: fixed;
