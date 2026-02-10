@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { useForm, Controller } from "react-hook-form";
 
 // 🟢 New Imports for Bulk Delete
 import { useSelection } from "@/hooks/useSelection";
@@ -80,6 +81,13 @@ const SORT_OPTIONS: { label: string; key: keyof Warehouse }[] = [
 
 type ViewMode = "grid" | "list";
 
+interface FilterFormData {
+  name: string;
+  parent_warehouse: string;
+  account: string;
+  is_group: string;
+}
+
 export default function WarehousePage() {
   const router = useRouter();
   const { apiKey, apiSecret, isAuthenticated, isInitialized } = useAuth();
@@ -94,8 +102,18 @@ export default function WarehousePage() {
   const [totalCount, setTotalCount] = React.useState(0);    // Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  // 🟢 Form controls for filters
+  const { control, watch } = useForm<FilterFormData>({
+    defaultValues: {
+      name: "",
+      parent_warehouse: "",
+      account: "",
+      is_group: "",
+    },
+  });
+
+  const formValues = watch();
+  const debouncedFormValues = useDebounce(formValues, 300);
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
@@ -163,14 +181,23 @@ export default function WarehousePage() {
           order_by: `${sortConfig.key} ${sortConfig.direction}`, // 🟢 Server-side sorting
         };
 
-        if (debouncedSearch) {
-          params.or_filters = JSON.stringify({
-            name: ["like", `%${debouncedSearch}%`],
-            company: ["like", `%${debouncedSearch}%`],
-            parent_warehouse: ["like", `%${debouncedSearch}%`],
-            warehouse_type: ["like", `%${debouncedSearch}%`],
-            account: ["like", `%${debouncedSearch}%`],
-          });
+        // Build filters from form values
+        const filters: any = {};
+        if (debouncedFormValues.name) {
+          filters.name = ["like", `%${debouncedFormValues.name}%`];
+        }
+        if (debouncedFormValues.parent_warehouse) {
+          filters.parent_warehouse = ["like", `%${debouncedFormValues.parent_warehouse}%`];
+        }
+        if (debouncedFormValues.account) {
+          filters.account = ["like", `%${debouncedFormValues.account}%`];
+        }
+        if (debouncedFormValues.is_group) {
+          filters.is_group = ["=", debouncedFormValues.is_group === "1" ? 1 : 0];
+        }
+
+        if (Object.keys(filters).length > 0) {
+          params.filters = JSON.stringify(filters);
         }
 
         const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
@@ -222,7 +249,7 @@ export default function WarehousePage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, sortConfig]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedFormValues, sortConfig]
   );
 
   // 🟢 Trigger fetch on search or sort change
@@ -476,132 +503,241 @@ export default function WarehousePage() {
           <Link href="/operations/doctype/warehouse/new" passHref>
             <button className="btn btn--primary flex items-center gap-2">
               <Plus className="w-4 h-4" /> Add Store Location
-            </button>
-          </Link>
-        )}
-      </div>
-
-      {/* --- FILTER BAR --- */}
-      <div
-        className="search-filter-section"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: "1rem",
-          gap: "8px",
-        }}
-      >
-        {/* Search */}
-        <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
-          <input
-            type="text"
-            placeholder="Search ID, Company, Parent, Type..."
-            className="form-control w-full pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search Warehouses"
-          />
-
-        </div>
-
-        {/* Sort & View Switcher */}
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {/* Sort Pill */}
-          <div className="relative" ref={sortMenuRef}>
-            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
-              <button
-                className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
-                onClick={() =>
-                  setSortConfig((prev) => ({
-                    ...prev,
-                    direction: prev.direction === "asc" ? "desc" : "asc",
-                  }))
-                }
-                title={`Sort ${sortConfig.direction === "asc" ? "Descending" : "Ascending"}`}
-              >
-                {sortConfig.direction === "asc" ? (
-                  <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                ) : (
-                  <ArrowUpNarrowWide className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                )}
-              </button>
-
-              <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
-              <button
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
-                onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-              >
-                {currentSortLabel}
-                <ChevronDown className="w-3 h-3 opacity-70" />
-              </button>
-            </div>
-
-            {isSortMenuOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
-                <div className="py-1">
-                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Sort By
-                  </div>
-                  {SORT_OPTIONS.map((option) => (
-                    <button
-                      key={option.key}
-                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                        sortConfig.key === option.key
-                          ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
-                          : "text-gray-700 dark:text-gray-200"
-                      }`}
-                      onClick={() => {
-                        setSortConfig((prev) => ({ ...prev, key: option.key }));
-                        setIsSortMenuOpen(false);
-                      }}
-                    >
-                      {option.label}
-                      {sortConfig.key === option.key && (
-                        <Check className="w-4 h-4 text-blue-600" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* View Switcher */}
-          <button
-            className="btn btn--outline btn--sm flex items-center justify-center"
-            onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
-            aria-label={view === "grid" ? "Switch to List View" : "Switch to Grid View"}
-          >
-            {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
           </button>
+        </Link>
+      )}
+    </div>
+
+    {/* --- FILTER BAR --- */}
+    <div
+      className="search-filter-section"
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginTop: "1rem",
+        gap: "8px",
+      }}
+    >
+      {/* Left: Individual Filters */}
+      <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+        <div style={{ minWidth: "150px" }}>
+          <Controller
+            control={control}
+            name="name"
+            render={({ field }) => {
+              const mockField = {
+                name: "name",
+                label: "",
+                type: "Text" as const,
+                placeholder: "Store Location",
+                required: false,
+              };
+
+              return (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <input
+                    {...mockField}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    className="form-control w-full"
+                  />
+                </div>
+              );
+            }}
+          />
+        </div>
+
+        <div style={{ minWidth: "200px" }}>
+          <Controller
+            control={control}
+            name="parent_warehouse"
+            render={({ field }) => {
+              const mockField = {
+                name: "parent_warehouse",
+                label: "",
+                type: "Text" as const,
+                placeholder: "Parent Store Location",
+                required: false,
+              };
+
+              return (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <input
+                    {...mockField}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    className="form-control w-full"
+                  />
+                </div>
+              );
+            }}
+          />
+        </div>
+
+        <div style={{ minWidth: "200px" }}>
+          <Controller
+            control={control}
+            name="account"
+            render={({ field }) => {
+              const mockField = {
+                name: "account",
+                label: "",
+                type: "Text" as const,
+                placeholder: "Account",
+                required: false,
+              };
+
+              return (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <input
+                    {...mockField}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    className="form-control w-full"
+                  />
+                </div>
+              );
+            }}
+          />
+        </div>
+
+        <div style={{ minWidth: "150px" }}>
+          <Controller
+            control={control}
+            name="is_group"
+            render={({ field }) => {
+              const mockField = {
+                name: "is_group",
+                label: "",
+                type: "Select" as const,
+                placeholder: "Is Group",
+                required: false,
+                options: [
+                  { label: "All", value: "" },
+                  { label: "Yes", value: "1" },
+                  { label: "No", value: "0" },
+                ]
+              };
+
+              return (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <select
+                    {...mockField}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    className="form-control w-full"
+                  >
+                    {mockField.options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            }}
+          />
         </div>
       </div>
 
-      <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
-        {view === "grid" ? renderGridView() : renderListView()}
-
-        {/* 🟢 Load More Button */}
-        {hasMore && warehouses.length > 0 && (
-          <div className="mt-6 flex justify-end">
+      {/* Right: Sort Pill + View Switcher */}
+      <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        {/* Sort Pill */}
+        <div className="relative" ref={sortMenuRef}>
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
             <button
-              onClick={handleLoadMore}
-              disabled={isLoadingMore}
-              className="btn btn--secondary flex items-center gap-2 px-6 py-2"
-              style={{ minWidth: "140px" }}
+              className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
+              onClick={() =>
+                setSortConfig((prev) => ({
+                  ...prev,
+                  direction: prev.direction === "asc" ? "desc" : "asc",
+                }))
+              }
+              title={`Sort ${sortConfig.direction === "asc" ? "Descending" : "Ascending"}`}
             >
-              {isLoadingMore ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Loading...
-                </>
+              {sortConfig.direction === "asc" ? (
+                <ArrowDownWideNarrow className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               ) : (
-                "Load More"
+                <ArrowUpNarrowWide className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               )}
             </button>
+
+            <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+            <button
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
+              onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+            >
+              {currentSortLabel}
+              <ChevronDown className="w-3 h-3 opacity-70" />
+            </button>
           </div>
-        )}
+
+          {isSortMenuOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+              <div className="py-1">
+                <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Sort By
+                </div>
+                {SORT_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      sortConfig.key === option.key
+                        ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 font-medium"
+                        : "text-gray-700 dark:text-gray-200"
+                    }`}
+                    onClick={() => {
+                      setSortConfig((prev) => ({ ...prev, key: option.key }));
+                      setIsSortMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                    {sortConfig.key === option.key && (
+                      <Check className="w-4 h-4 text-blue-600" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* View Switcher */}
+        <button
+          className="btn btn--outline btn--sm flex items-center justify-center"
+          onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
+          aria-label={view === "grid" ? "Switch to List View" : "Switch to Grid View"}
+        >
+          {view === "grid" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+        </button>
       </div>
     </div>
-  );
+
+    <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
+      {view === "grid" ? renderGridView() : renderListView()}
+
+      {/* 🟢 Load More Button */}
+      {hasMore && warehouses.length > 0 && (
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={handleLoadMore}
+            disabled={isLoadingMore}
+            className="btn btn--secondary flex items-center gap-2 px-6 py-2"
+            style={{ minWidth: "140px" }}
+          >
+            {isLoadingMore ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+              </>
+            ) : (
+              "Load More"
+            )}
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+);
 }

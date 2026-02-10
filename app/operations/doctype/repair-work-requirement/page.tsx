@@ -576,6 +576,7 @@ export default function RepairWorkRequirementPage() {
                       control={control}
                       field={{ ...mockField, defaultValue: value }}
                       error={null}
+                      filters={selectedLis ? { lis_name : selectedLis} : {}}
                       className="[&>label]:hidden"
                     />
                   </div>

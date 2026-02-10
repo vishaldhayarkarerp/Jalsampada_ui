@@ -82,8 +82,27 @@ export default function DoctypePage() {
 
   const selectedLis = watch("lis_name");
 
-  // 🟢 Remove client-side filtering since we'll use server-side filtering with pagination
-  const filteredRows = rows;
+  // Filter rows client-side for instant results
+  const filteredRows = React.useMemo(() => {
+    let filtered = rows;
+    
+    // Apply search filter
+    if (debouncedSearch) {
+      filtered = filtered.filter(record =>
+        record.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        (record.bill_number && record.bill_number.toLowerCase().includes(debouncedSearch.toLowerCase())) ||
+        (record.tender_number && record.tender_number.toLowerCase().includes(debouncedSearch.toLowerCase())) ||
+        (record.lift_irrigation_scheme && record.lift_irrigation_scheme.toLowerCase().includes(debouncedSearch.toLowerCase()))
+      );
+    }
+    
+    // Apply LIS filter
+    if (selectedLis) {
+      filtered = filtered.filter(record => record.lift_irrigation_scheme === selectedLis);
+    }
+    
+    return filtered;
+  }, [rows, debouncedSearch, selectedLis]);
 
   // 🟢 1. Initialize Selection Hook
   const {
@@ -145,7 +164,7 @@ export default function DoctypePage() {
 
         const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
 
-        // Prepare Filters
+        // Prepare Filters (removed server-side filtering)
         const params: any = {
           fields: JSON.stringify([
             "name",
@@ -160,25 +179,6 @@ export default function DoctypePage() {
           limit_page_length: limit,
           order_by: "creation desc",
         };
-
-        if (debouncedSearch) {
-          params.or_filters = JSON.stringify({
-            name: ["like", `%${debouncedSearch}%`],
-            bill_number: ["like", `%${debouncedSearch}%`],
-            tender_number: ["like", `%${debouncedSearch}%`],
-            lift_irrigation_scheme: ["like", `%${debouncedSearch}%`],
-          });
-        }
-
-        const filters: any[] = [];
-
-        if (selectedLis) {
-          filters.push(["Expenditure", "lift_irrigation_scheme", "=", selectedLis]);
-        }
-
-        if (filters.length > 0) {
-          params.filters = JSON.stringify(filters);
-        }
 
         const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
 
@@ -230,7 +230,7 @@ export default function DoctypePage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]
   );
 
   // 🟢 Trigger fetch on search or filter change

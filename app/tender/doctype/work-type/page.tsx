@@ -77,7 +77,7 @@ export default function DoctypePage() {
     handleSelectAll,
     clearSelection,
     isAllSelected
-  } = useSelection(records, "name");
+  } = useSelection(filteredRecords, "name");
 
   const [isDeleting, setIsDeleting] = React.useState(false);
 
@@ -102,9 +102,6 @@ export default function DoctypePage() {
 
         const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
         const filters: any[] = [];
-        if (debouncedSearch) {
-          filters.push(["Work Type", "name", "like", `%${debouncedSearch}%`]);
-        }
 
         const commonHeaders = {
           Authorization: `token ${apiKey}:${apiSecret}`,
@@ -164,7 +161,7 @@ export default function DoctypePage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]
   );
 
   React.useEffect(() => {
