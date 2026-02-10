@@ -298,6 +298,12 @@ export default function StockEntryDetailPage() {
                         type: "Link",
                         linkTarget: "Warehouse",
                         fieldColumns: 1,
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        customSearchParams: {
+                            filters: [["Warehouse", "company", "in", ["", "quantbit"]], ["Warehouse", "is_group", "=", 0]]
+                        },
+                        referenceDoctype: "Stock Entry",
+                        doctype: "Warehouse",
                     },
                     {
                         name: "to_warehouse",
@@ -305,6 +311,12 @@ export default function StockEntryDetailPage() {
                         type: "Link",
                         linkTarget: "Warehouse",
                         fieldColumns: 1,
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        customSearchParams: {
+                            filters: [["Warehouse", "company", "in", ["", "quantbit"]], ["Warehouse", "is_group", "=", 0]]
+                        },
+                        referenceDoctype: "Stock Entry",
+                        doctype: "Warehouse",
                     },
 
 
