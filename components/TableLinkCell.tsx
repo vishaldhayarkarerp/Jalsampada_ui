@@ -22,6 +22,11 @@ interface TableLinkCellProps {
         required?: boolean;
         placeholder?: string;
         filters?: Record<string, any> | ((getValues: (name: string) => any) => Record<string, any>);
+        searchField?: string;
+        customSearchUrl?: string;
+        customSearchParams?: Record<string, any>;
+        referenceDoctype?: string;
+        doctype?: string;
     };
     filters?: Record<string, any>;
     onValueChange?: (value: any) => void;
@@ -57,56 +62,118 @@ export function TableLinkCell({ control, fieldName, column, filters = {}, onValu
         return getValues(name);
     }, [fieldName, getValues]);
 
+    const searchKey = column.searchField || "name";
+
     const performSearch = React.useCallback(async (term: string) => {
         if (!isAuthenticated || !apiKey || !column.linkTarget) return;
 
         setIsLoading(true);
         try {
-            let activeFilters = { ...filters };
-            if (typeof column.filters === 'function') {
-                const dynamic = column.filters(getCompositeValue);
-                activeFilters = { ...activeFilters, ...dynamic };
-            } else if (column.filters) {
-                activeFilters = { ...activeFilters, ...column.filters };
-            }
-
-            const searchFilters: any[] = [];
-            if (term?.trim()) {
-                searchFilters.push([column.linkTarget, "name", "like", `%${term.trim()}%`]);
-            }
-
-            Object.entries(activeFilters).forEach(([key, value]) => {
-                if (value != null && value !== "") {
-                    if (Array.isArray(value)) {
-                        searchFilters.push([column.linkTarget, key, ...value]);
-                    } else {
-                        searchFilters.push([column.linkTarget, key, "=", value]);
-                    }
+            // Use custom search URL if provided
+            if (column.customSearchUrl) {
+                // Resolve dynamic filters
+                let activeFilters = { ...filters };
+                if (typeof column.filters === 'function') {
+                    activeFilters = { ...activeFilters, ...column.filters(getCompositeValue) };
+                } else if (column.filters) {
+                    activeFilters = { ...activeFilters, ...column.filters };
                 }
-            });
 
-            const query = JSON.stringify(searchFilters);
+                // Merge filters: prioritize array format from customSearchParams
+                let mergedFilters = column.customSearchParams?.filters;
+                if (!Array.isArray(mergedFilters) && Object.keys(activeFilters).length > 0) {
+                    mergedFilters = mergedFilters
+                        ? { ...mergedFilters, ...activeFilters }
+                        : activeFilters;
+                }
 
-            const resp = await axios.get(`${API_BASE_URL}/${column.linkTarget}`, {
-                params: {
-                    fields: JSON.stringify(["name"]),
-                    limit_page_length: "20",
-                    order_by: "name asc",
-                    filters: query
-                },
-                headers: { Authorization: `token ${apiKey}:${apiSecret}` },
-                withCredentials: true,
-            });
+                const params: Record<string, any> = {
+                    txt: term || "",
+                    ignore_user_permissions: 0,
+                    reference_doctype: column.referenceDoctype,
+                    page_length: 10,
+                    doctype: column.doctype,
+                    filters: mergedFilters
+                };
 
-            const raw = (resp.data.data || []) as { name: string }[];
-            setOptions(raw.map((r) => ({ value: r.name, label: r.name })));
+                const formData = new URLSearchParams();
+                Object.entries(params).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        if (key === 'filters' && typeof value === 'object') {
+                            formData.append(key, JSON.stringify(value));
+                        } else {
+                            formData.append(key, String(value));
+                        }
+                    }
+                });
+
+                const resp = await axios.post(column.customSearchUrl, formData, {
+                    headers: {
+                        Authorization: `token ${apiKey}:${apiSecret}`,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    withCredentials: true,
+                });
+
+                const message = resp.data.message || [];
+                setOptions(message.map((r: any) => ({
+                    value: r.value,
+                    label: r.label || r.value
+                })));
+            } else {
+                // Default search logic
+                let activeFilters = { ...filters };
+                if (typeof column.filters === 'function') {
+                    const dynamic = column.filters(getCompositeValue);
+                    activeFilters = { ...activeFilters, ...dynamic };
+                } else if (column.filters) {
+                    activeFilters = { ...activeFilters, ...column.filters };
+                }
+
+                const searchFilters: any[] = [];
+                if (term?.trim()) {
+                    searchFilters.push([column.linkTarget, searchKey, "like", `%${term.trim()}%`]);
+                }
+
+                Object.entries(activeFilters).forEach(([key, value]) => {
+                    if (value != null && value !== "") {
+                        if (Array.isArray(value)) {
+                            searchFilters.push([column.linkTarget, key, ...value]);
+                        } else {
+                            searchFilters.push([column.linkTarget, key, "=", value]);
+                        }
+                    }
+                });
+
+                const fieldsToFetch = ["name"];
+                if (searchKey !== "name") fieldsToFetch.push(searchKey);
+
+                const query = JSON.stringify(searchFilters);
+
+                const resp = await axios.get(`${API_BASE_URL}/${column.linkTarget}`, {
+                    params: {
+                        fields: JSON.stringify(fieldsToFetch),
+                        limit_page_length: "20",
+                        order_by: `${searchKey} asc`,
+                        filters: query
+                    },
+                    headers: { Authorization: `token ${apiKey}:${apiSecret}` },
+                    withCredentials: true,
+                });
+
+                const raw = (resp.data.data || []) as any[];
+                setOptions(raw.map((r) => ({
+                    value: r.name,
+                    label: r[searchKey] || r.name
+                })));
+            }
         } catch (e) {
             console.error("TableLinkCell search error:", e);
             setOptions([]);
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated, apiKey, apiSecret, column, filters, getCompositeValue]);
+    }, [isAuthenticated, apiKey, apiSecret, column, filters, getCompositeValue, searchKey]);
 
     const debouncedSearch = React.useCallback((term: string) => {
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);

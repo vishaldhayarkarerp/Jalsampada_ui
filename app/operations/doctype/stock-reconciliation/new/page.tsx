@@ -159,11 +159,16 @@ export default function NewStockReconciliationPage() {
                                 label: "Store Location",
                                 type: "Link",
                                 linkTarget: "Warehouse",
-                                filterMapping: [
-                                    { sourceField: "parent.set_warehouse", targetField: "warehouse" }
-                                ]
+                                customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                                customSearchParams: {
+                                    filters: [
+                                        ["Warehouse", "company", "in", ["", "quantbit"]],
+                                        ["Warehouse", "is_group", "=", 0]
+                                    ]
+                                },
+                                referenceDoctype: "Stock Reconciliation Item",
+                                doctype: "Warehouse"
                             },
-
                             {
                                 name: "current_qty",
                                 label: "Current Qty",

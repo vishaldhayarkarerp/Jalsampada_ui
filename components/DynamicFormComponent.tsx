@@ -104,6 +104,11 @@ export interface FormField {
     label: string;
     type: FieldType;
     linkTarget?: string;
+    searchField?: string;
+    customSearchUrl?: string;
+    customSearchParams?: Record<string, any>;
+    referenceDoctype?: string;
+    doctype?: string;
     options?: string | { label: string; value: string }[];
     precision?: number;
     filterMapping?: { sourceField: string; targetField: string }[];
@@ -1688,7 +1693,7 @@ export function DynamicForm({
     );
   };
 
-  
+
   const renderField = (field: FormField, idx: number) => {
     // Check if field should be hidden
     const isHidden = field.displayDependsOn
@@ -1838,10 +1843,10 @@ export function DynamicForm({
               {/* Show different buttons based on docstatus and isSubmittable */}
               {isSubmittable && docstatus === 0 && (
                 <>
-                
+
                   <button
                     type="button"
-                    className="btn btn--primary"  
+                    className="btn btn--primary"
                     onClick={handleSubmitDocument}
                   >
                     Submit
@@ -1849,7 +1854,7 @@ export function DynamicForm({
                 </>
               )}
               {/* {isSubmittable && docstatus === 1 && ( */}
-               {docstatus === 1 && onCancelDocument && (
+              {docstatus === 1 && onCancelDocument && (
                 <>
                   {/* Submitted: Show Cancel button */}
                   <button

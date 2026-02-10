@@ -275,9 +275,6 @@ export default function StockReconciliationDetailPage() {
     if (formValues.scan_mode !== undefined) {
       formValues.scan_mode = formValues.scan_mode ? 1 : 0;
     }
-
-    console.log("Setting form values:", formValues);
-
     // Reset form with values
     formInstance.reset(formValues);
     setFormDirty(false);
@@ -403,13 +400,7 @@ export default function StockReconciliationDetailPage() {
                 name: "store_location",
                 label: "Store Location",
                 type: "Link",
-                linkTarget: "Warehouse",
-                filterMapping: [
-                  {
-                    sourceField: "parent.set_warehouse",
-                    targetField: "warehouse",
-                  },
-                ],
+                linkTarget: "Warehouse"
               },
               {
                 name: "current_qty",

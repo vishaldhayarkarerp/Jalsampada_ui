@@ -52,27 +52,20 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
     try {
       // Use custom search URL if provided
       if (field.customSearchUrl) {
-        // Merge static custom search params with dynamic filters
-        const dynamicFilters = typeof field.filters === 'function' ? field.filters((name: string) => {
-          // Get current value from form state
-          const formValues = control._formValues || {};
-          return formValues[name];
-        }) : {};
+        // Resolve dynamic filters
+        const dynamicFilters = typeof field.filters === 'function'
+          ? field.filters((name: string) => {
+            const formValues = control._formValues || {};
+            return formValues[name];
+          })
+          : (typeof field.filters === 'object' ? field.filters : {});
 
-        // Handle filters properly - prioritize array format, fallback to object merging
+        // Merge filters: prioritize array format from customSearchParams
         let mergedFilters = field.customSearchParams?.filters;
-        const hasDynamicFilters = Object.keys(dynamicFilters).length > 0;
-
-        if (hasDynamicFilters) {
-          if (Array.isArray(mergedFilters)) {
-            // Keep array format, ignore dynamic filters (can't mix array + object)
-          } else if (mergedFilters) {
-            // Merge object filters
-            mergedFilters = { ...mergedFilters, ...dynamicFilters };
-          } else {
-            // Only dynamic filters
-            mergedFilters = dynamicFilters;
-          }
+        if (!Array.isArray(mergedFilters) && Object.keys(dynamicFilters).length > 0) {
+          mergedFilters = mergedFilters
+            ? { ...mergedFilters, ...dynamicFilters }
+            : dynamicFilters;
         }
 
         const params: Record<string, any> = {

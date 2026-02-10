@@ -18,11 +18,17 @@ interface LinkInputProps {
     placeholder?: string;
     linkTarget?: string;
     className?: string;
-    filters?: Record<string, any>;
+    filters?: Record<string, any> | ((getValues: (name: string) => any) => Record<string, any>);
     disabled?: boolean;
+    searchField?: string;
+    customSearchUrl?: string;
+    customSearchParams?: Record<string, any>;
+    referenceDoctype?: string;
+    doctype?: string;
+    getValues?: (name: string) => any;
 }
 
-export function LinkInput({ value, onChange, placeholder, linkTarget, className, filters = {}, disabled = false }: LinkInputProps) {
+export function LinkInput({ value, onChange, placeholder, linkTarget, className, filters = {}, disabled = false, searchField, customSearchUrl, customSearchParams, referenceDoctype, doctype, getValues }: LinkInputProps) {
     const { apiKey, apiSecret, isAuthenticated } = useAuth();
 
     const [searchTerm, setSearchTerm] = React.useState("");
@@ -35,6 +41,8 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
     const inputRef = React.useRef<HTMLInputElement>(null);
     const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+    const searchKey = searchField || "name";
+
     // Memoized filters to prevent unnecessary re-renders
     const filtersString = React.useMemo(() => JSON.stringify(filters), [filters]);
 
@@ -44,104 +52,152 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
 
         setIsLoading(true);
         try {
-            const searchFilters: any[] = [];
-            if (term?.trim()) {
-                if (linkTarget === "Prapan Suchi") {
-                    // For Prapan Suchi, search in work_name field first (more likely to contain work names)
-                    searchFilters.push([linkTarget, "work_name", "like", `%${term.trim()}%`]);
-                } else {
-                    searchFilters.push([linkTarget, "name", "like", `%${term.trim()}%`]);
-                }
-            }
+            // Use custom search URL if provided
+            if (customSearchUrl) {
+                // Resolve dynamic filters
+                const dynamicFilters = typeof filters === 'function' && getValues
+                    ? filters(getValues)
+                    : (typeof filters === 'object' ? filters : {});
 
-            // Apply filters from filterMapping
-            Object.entries(filters).forEach(([key, value]) => {
-                if (value != null && value !== "") {
-                    // Handle "in" filter format for array values
-                    if (Array.isArray(value) && value[0] === "in") {
-                        const arrayValues = value[1];
-                        if (Array.isArray(arrayValues) && arrayValues.length > 0) {
-                            searchFilters.push([linkTarget, key, "in", arrayValues]);
+                // Merge filters: prioritize array format from customSearchParams
+                let mergedFilters = customSearchParams?.filters;
+                if (!Array.isArray(mergedFilters) && Object.keys(dynamicFilters).length > 0) {
+                    mergedFilters = mergedFilters
+                        ? { ...mergedFilters, ...dynamicFilters }
+                        : dynamicFilters;
+                }
+
+                const params: Record<string, any> = {
+                    txt: term || "",
+                    ignore_user_permissions: 0,
+                    reference_doctype: referenceDoctype,
+                    page_length: 10,
+                    doctype: doctype,
+                    filters: mergedFilters
+                };
+
+                const formData = new URLSearchParams();
+                Object.entries(params).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        if (key === 'filters' && typeof value === 'object') {
+                            formData.append(key, JSON.stringify(value));
+                        } else {
+                            formData.append(key, String(value));
                         }
-                    } else {
-                        searchFilters.push([linkTarget, key, "=", value]);
                     }
-                }
-            });
-
-            // Determine which fields to fetch based on linkTarget
-            let fieldsToFetch = ["name"];
-            if (linkTarget === "Prapan Suchi") {
-                fieldsToFetch = ["name", "work_name"];
-            }
-
-            const query = searchFilters.length > 0 ? JSON.stringify(searchFilters) : undefined;
-            const response = await axios.get(`${API_BASE_URL}/${linkTarget}`, {
-                headers: {
-                    Authorization: `token ${apiKey}:${apiSecret}`,
-                },
-                params: {
-                    filters: query,
-                    fields: JSON.stringify(fieldsToFetch),
-                    limit_page_length: 20,
-                },
-            });
-
-            if (response.data?.data) {
-                let formattedOptions = response.data.data.map((item: any) => {
-                    const label = linkTarget === "Prapan Suchi" ? (item.work_name || item.name) : item.name;
-                    return {
-                        value: linkTarget === "Prapan Suchi" ? (item.work_name || item.name) : item.name, // Use actual value, not display label
-                        label,
-                    };
                 });
-                
-                // If searching for Prapan Suchi and no results found in work_name, try name field
-                if (linkTarget === "Prapan Suchi" && formattedOptions.length === 0 && term?.trim()) {
-                    try {
-                        const nameFilters: any[] = [[linkTarget, "name", "like", `%${term.trim()}%`]];
-                        
-                        // Apply filters from filterMapping for name search
-                        Object.entries(filters).forEach(([key, value]) => {
-                            if (value != null && value !== "") {
-                                if (Array.isArray(value) && value[0] === "in") {
-                                    const arrayValues = value[1];
-                                    if (Array.isArray(arrayValues) && arrayValues.length > 0) {
-                                        nameFilters.push([linkTarget, key, "in", arrayValues]);
-                                    }
-                                } else {
-                                    nameFilters.push([linkTarget, key, "=", value]);
+
+                const resp = await axios.post(customSearchUrl, formData, {
+                    headers: {
+                        Authorization: `token ${apiKey}:${apiSecret}`,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    withCredentials: true,
+                });
+
+                const message = resp.data.message || [];
+                setOptions(message.map((r: any) => ({
+                    value: r.value,
+                    label: r.label || r.value
+                })));
+            } else {
+                // Default search logic
+                const activeFilters = typeof filters === 'function' && getValues ? filters(getValues) : filters;
+
+                // Helper to build filter array from active filters
+                const buildFilterArray = (baseFilters: any[] = []) => {
+                    const result = [...baseFilters];
+                    Object.entries(activeFilters).forEach(([key, value]) => {
+                        if (value != null && value !== "") {
+                            if (Array.isArray(value) && value[0] === "in") {
+                                const arrayValues = value[1];
+                                if (Array.isArray(arrayValues) && arrayValues.length > 0) {
+                                    result.push([linkTarget, key, "in", arrayValues]);
                                 }
+                            } else if (Array.isArray(value)) {
+                                result.push([linkTarget, key, ...value]);
+                            } else {
+                                result.push([linkTarget, key, "=", value]);
                             }
-                        });
-                        
-                        const nameQuery = nameFilters.length > 0 ? JSON.stringify(nameFilters) : undefined;
-                        const nameResponse = await axios.get(`${API_BASE_URL}/${linkTarget}`, {
-                            headers: {
-                                Authorization: `token ${apiKey}:${apiSecret}`,
-                            },
-                            params: {
-                                filters: nameQuery,
-                                fields: JSON.stringify(fieldsToFetch),
-                                limit_page_length: 20,
-                            },
-                        });
-                        
-                        if (nameResponse.data?.data) {
-                            formattedOptions = nameResponse.data.data.map((item: any) => {
-                                const label = item.work_name || item.name;
-                                return {
-                                    value: item.work_name || item.name, // Use actual value, not display label
-                                    label,
-                                };
-                            });
                         }
-                    } catch (fallbackError) {
-                        console.log("Fallback search failed:", fallbackError);
+                    });
+                    return result;
+                };
+
+                const searchFilters: any[] = [];
+                if (term?.trim()) {
+                    if (linkTarget === "Prapan Suchi") {
+                        searchFilters.push([linkTarget, "work_name", "like", `%${term.trim()}%`]);
+                    } else {
+                        searchFilters.push([linkTarget, searchKey, "like", `%${term.trim()}%`]);
                     }
                 }
-                
-                setOptions(formattedOptions);
+
+                const allFilters = buildFilterArray(searchFilters);
+
+                // Determine which fields to fetch based on linkTarget
+                let fieldsToFetch = ["name"];
+                if (linkTarget === "Prapan Suchi") {
+                    fieldsToFetch = ["name", "work_name"];
+                } else if (searchKey !== "name") {
+                    fieldsToFetch.push(searchKey);
+                }
+
+                const query = allFilters.length > 0 ? JSON.stringify(allFilters) : undefined;
+                const response = await axios.get(`${API_BASE_URL}/${linkTarget}`, {
+                    headers: {
+                        Authorization: `token ${apiKey}:${apiSecret}`,
+                    },
+                    params: {
+                        filters: query,
+                        fields: JSON.stringify(fieldsToFetch),
+                        limit_page_length: 20,
+                        order_by: `${searchKey} asc`,
+                    },
+                });
+
+                if (response.data?.data) {
+                    let formattedOptions = response.data.data.map((item: any) => {
+                        const label = linkTarget === "Prapan Suchi" ? (item.work_name || item.name) : (item[searchKey] || item.name);
+                        return {
+                            value: item.name,
+                            label,
+                        };
+                    });
+
+                    // If searching for Prapan Suchi and no results found in work_name, try name field
+                    if (linkTarget === "Prapan Suchi" && formattedOptions.length === 0 && term?.trim()) {
+                        try {
+                            const nameFilters = buildFilterArray([[linkTarget, "name", "like", `%${term.trim()}%`]]);
+
+                            const nameQuery = nameFilters.length > 0 ? JSON.stringify(nameFilters) : undefined;
+                            const nameResponse = await axios.get(`${API_BASE_URL}/${linkTarget}`, {
+                                headers: {
+                                    Authorization: `token ${apiKey}:${apiSecret}`,
+                                },
+                                params: {
+                                    filters: nameQuery,
+                                    fields: JSON.stringify(fieldsToFetch),
+                                    limit_page_length: 20,
+                                },
+                            });
+
+                            if (nameResponse.data?.data) {
+                                formattedOptions = nameResponse.data.data.map((item: any) => {
+                                    const label = item.work_name || item.name;
+                                    return {
+                                        value: item.name,
+                                        label,
+                                    };
+                                });
+                            }
+                        } catch (fallbackError) {
+                            console.log("Fallback search failed:", fallbackError);
+                        }
+                    }
+
+                    setOptions(formattedOptions);
+                }
             }
         } catch (error) {
             console.error("LinkInput search error:", error);
@@ -149,7 +205,7 @@ export function LinkInput({ value, onChange, placeholder, linkTarget, className,
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated, apiKey, apiSecret, linkTarget, filtersString]);
+    }, [isAuthenticated, apiKey, apiSecret, linkTarget, customSearchUrl, customSearchParams, referenceDoctype, doctype, searchKey, filters, getValues, filtersString]);
 
     // Optimized debounced search with useCallback
     const debouncedSearch = React.useCallback((term: string) => {

@@ -369,6 +369,12 @@ export function DynamicFormForTable({
                     className="w-full"
                     filters={filtersToPass}
                     disabled={disabled}
+                    customSearchUrl={field.customSearchUrl}
+                    customSearchParams={field.customSearchParams}
+                    referenceDoctype={field.referenceDoctype}
+                    doctype={field.doctype}
+                    searchField={field.searchField}
+                    getValues={getValue}
                 />
                 <FieldError error={null} />
                 <FieldHelp text={field.description} />
