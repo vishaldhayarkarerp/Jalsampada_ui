@@ -72,6 +72,7 @@ export default function SpareIndentDetailPage() {
                         ],
                         defaultValue: getVal("material_request_type"),
                         required: true,
+                        layoutCols: 3,
                     },
                     {
                         name: "transaction_date",
@@ -79,6 +80,7 @@ export default function SpareIndentDetailPage() {
                         type: "Date",
                         defaultValue: getVal("transaction_date"),
                         required: true,
+                        layoutCols: 3,
                     },
                     {
                         name: "schedule_date",
@@ -86,6 +88,7 @@ export default function SpareIndentDetailPage() {
                         type: "Date",
                         defaultValue: getVal("schedule_date"),
                         required: true,
+                        layoutCols: 3,
                     },
                     {
                         name: "custom_prepared_by",
@@ -94,6 +97,7 @@ export default function SpareIndentDetailPage() {
                         linkTarget: "Employee",
                         searchField: "employee_name",
                         defaultValue: getVal("custom_prepared_by"),
+                        layoutCols: 3,
                     },
                     {
                         name: "custom_designation",
@@ -106,6 +110,7 @@ export default function SpareIndentDetailPage() {
                             targetField: "designation"
                         },
                         defaultValue: getVal("custom_designation"),
+                        layoutCols: 3,
                     },
                     {
                         name: "buying_price_list",
@@ -113,6 +118,7 @@ export default function SpareIndentDetailPage() {
                         type: "Link",
                         linkTarget: "Price List",
                         defaultValue: getVal("buying_price_list"),
+                        layoutCols: 3,
                     },
                     { name: "custom_section_break_9pzmb", label: "LIS Details", type: "Section Break" },
                     {
@@ -137,6 +143,9 @@ export default function SpareIndentDetailPage() {
                         linkTarget: "Asset Category",
                         defaultValue: getVal("custom_asset_category"),
                     },
+
+                    { name: "custom_section_break_9pzmb", label: "", type: "Section Break" },
+
                     {
                         name: "custom_assets",
                         label: "Assets",
@@ -219,6 +228,7 @@ export default function SpareIndentDetailPage() {
                         searchField: "full_name",
                         defaultValue: getVal("custom_recommended_by"),
                     },
+
                     {
                         name: "custom_verified_by",
                         label: "Verified By (DE)",
@@ -227,6 +237,7 @@ export default function SpareIndentDetailPage() {
                         searchField: "employee_name",
                         defaultValue: getVal("custom_verified_by"),
                     },
+
                     {
                         name: "custom_approved_by",
                         label: "Approved By (EE)",
@@ -235,9 +246,10 @@ export default function SpareIndentDetailPage() {
                         searchField: "employee_name",
                         defaultValue: getVal("custom_approved_by"),
                     },
+
                     {
                         name: "custom_name1",
-                        label: "Name",
+                        label: "Name (Incharge/JE)",
                         type: "Data",
                         readOnly: true,
                         fetchFrom: {
@@ -247,9 +259,10 @@ export default function SpareIndentDetailPage() {
                         },
                         defaultValue: getVal("custom_name1"),
                     },
+
                     {
                         name: "custom_name2",
-                        label: "Name",
+                        label: "Name (DE)",
                         type: "Data",
                         readOnly: true,
                         fetchFrom: {
@@ -259,9 +272,10 @@ export default function SpareIndentDetailPage() {
                         },
                         defaultValue: getVal("custom_name2"),
                     },
+
                     {
                         name: "custom_name3",
-                        label: "Name",
+                        label: "Name (EE)",
                         type: "Data",
                         readOnly: true,
                         fetchFrom: {
@@ -271,9 +285,10 @@ export default function SpareIndentDetailPage() {
                         },
                         defaultValue: getVal("custom_name3"),
                     },
-                    { name: "custom_date1", label: "Date", type: "Date", defaultValue: getVal("custom_date1") },
-                    { name: "custom_date2", label: "Date", type: "Date", defaultValue: getVal("custom_date2") },
-                    { name: "custom_date3", label: "Date", type: "Date", defaultValue: getVal("custom_date3") },
+
+                    { name: "custom_date1", label: "Date (Incharge/JE)", type: "Date", defaultValue: getVal("custom_date1") },
+                    { name: "custom_date2", label: "Date (DE)", type: "Date", defaultValue: getVal("custom_date2") },
+                    { name: "custom_date3", label: "Date (EE)", type: "Date", defaultValue: getVal("custom_date3") },
                 ],
             },
             {

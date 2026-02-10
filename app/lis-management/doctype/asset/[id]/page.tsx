@@ -436,11 +436,18 @@ export default function AssetDetailPage() {
           <div className="test-card !p-4">
             <h2 className="test-card-title text-lg mb-3">Machine Specifications</h2>
             {asset.custom_asset_specifications && asset.custom_asset_specifications.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-[repeat(auto-fill,18rem)] gap-8 justify-start">
                 {asset.custom_asset_specifications.map((spec, idx) => (
-                  <div key={idx} className="test-info-box !text-left !py-2">
-                    <p className="text-lg">{spec.specification_type}</p>
-                    <strong className="text-xl font-bold">{spec.details}</strong>
+                  <div
+                    key={idx}
+                    className="test-info-box !text-left !py-5 w-72 min-h-[100px]"
+                  >
+                    <p className="!text-lg !font-medium">
+                      {spec.specification_type}
+                    </p>
+                    <strong className="!text-xl !font-semibold block mt-1">
+                      {spec.details}
+                    </strong>
                   </div>
                 ))}
               </div>

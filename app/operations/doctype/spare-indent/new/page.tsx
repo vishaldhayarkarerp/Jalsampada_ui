@@ -39,6 +39,7 @@ export default function NewSpareIndentPage() {
             defaultValue: "Material Issue",
             required: true,
             inStandardFilter: true,
+            layoutCols: 3,
           },
           {
             name: "transaction_date",
@@ -46,13 +47,15 @@ export default function NewSpareIndentPage() {
             type: "Date",
             required: true,
             bold: true,
-            width: "100px"
+            width: "100px",
+            layoutCols: 3,
           },
           {
             name: "schedule_date",
             label: "Required By",
             type: "Date",
             required: true,
+            layoutCols: 3,
           },
           {
             name: "custom_prepared_by",
@@ -60,6 +63,7 @@ export default function NewSpareIndentPage() {
             type: "Link",
             searchField: "employee_name",
             linkTarget: "Employee",
+            layoutCols: 3,
           },
           {
             name: "custom_designation",
@@ -71,12 +75,14 @@ export default function NewSpareIndentPage() {
               targetField: "designation"
             },
             readOnly: true,
+            layoutCols: 3,
           },
           {
             name: "buying_price_list",
             label: "Price List",
             type: "Link",
             linkTarget: "Price List",
+            layoutCols: 3,
           },
           { name: "custom_section_break_9pzmb", label: "LIS Details", type: "Section Break" },
           {
@@ -99,6 +105,7 @@ export default function NewSpareIndentPage() {
             type: "Link",
             linkTarget: "Asset Category",
           },
+          { name: "custom_section_break_9pzmb", label: "", type: "Section Break" },
           {
             name: "custom_assets",
             label: "Assets",
@@ -174,6 +181,7 @@ export default function NewSpareIndentPage() {
             searchField: "full_name",
             linkTarget: "User",
           },
+
           {
             name: "custom_verified_by",
             label: "Verified By (DE)",
@@ -181,16 +189,18 @@ export default function NewSpareIndentPage() {
             searchField: "employee_name",
             linkTarget: "Employee",
           },
-          {
+
+           {
             name: "custom_approved_by",
             label: "Approved By (EE)",
             type: "Link",
             searchField: "employee_name",
             linkTarget: "Employee",
           },
+
           {
             name: "custom_name1",
-            label: "Name",
+            label: "Name (Incharge/JE)",
             type: "Data",
             fetchFrom: {
               sourceField: "custom_recommended_by",
@@ -199,9 +209,10 @@ export default function NewSpareIndentPage() {
             },
             readOnly: true,
           },
+
           {
             name: "custom_name2",
-            label: "Name",
+            label: "Name (DE)",
             type: "Data",
             fetchFrom: {
               sourceField: "custom_verified_by",
@@ -210,9 +221,10 @@ export default function NewSpareIndentPage() {
             },
             readOnly: true,
           },
+
           {
             name: "custom_name3",
-            label: "Name",
+            label: "Name (EE)",
             type: "Data",
             fetchFrom: {
               sourceField: "custom_approved_by",
@@ -221,9 +233,12 @@ export default function NewSpareIndentPage() {
             },
             readOnly: true,
           },
-          { name: "custom_date1", label: "Date", type: "Date" },
-          { name: "custom_date2", label: "Date", type: "Date" },
-          { name: "custom_date3", label: "Date", type: "Date" },
+
+          { name: "custom_date1", label: "Date (Incharge/JE)", type: "Date" },
+
+          { name: "custom_date2", label: "Date (DE)", type: "Date" },
+          
+          { name: "custom_date3", label: "Date (EE)", type: "Date" },
         ],
       },
       {
@@ -275,7 +290,7 @@ export default function NewSpareIndentPage() {
     setIsSaving(true);
     try {
       const payload: Record<string, any> = { ...data, doctype: DOCTYPE_NAME };
-      
+
       // Sanitize and format 'custom_assets' Child Table
       if (Array.isArray(payload.custom_assets)) {
         payload.custom_assets = payload.custom_assets.map((assetItem: any, index: number) => {
@@ -307,7 +322,7 @@ export default function NewSpareIndentPage() {
         payload.items = payload.items.map((item: any, index: number) => {
           // Remove temporary UI fields
           const { id, stage, name: tempName, ...rest } = item;
-          
+
           // Add proper child table fields
           return {
             ...rest,
