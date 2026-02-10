@@ -36,6 +36,7 @@ interface StockEntryItemRow {
     expense_account?: string;       // Link -> Account
     cost_center?: string;           // Link -> Cost Center
     tender?: string;                // Link -> Tender
+    allow_zero_valuation_rate?: 0 | 1; // Check
 }
 
 interface AdditionalCostRow {
@@ -284,15 +285,15 @@ export default function NewStockEntryPage() {
                                 name: "s_warehouse",
                                 label: "Source Warehouse",
                                 type: "Link",
-                                linkTarget: "Store Location",
+                                linkTarget: "Warehouse",
                             },
                             {
                                 name: "t_warehouse",
                                 label: "Target Warehouse",
                                 type: "Link",
-                                linkTarget: "Store Location",
+                                linkTarget: "Warehouse",
                             },
-                            
+
                             {
                                 name: "qty",
                                 label: "Qty",
@@ -331,7 +332,7 @@ export default function NewStockEntryPage() {
                                 type: "Small Text",
                                 defaultValue: ""
                             },
-                            
+
                             {
                                 name: "uom",
                                 label: "UOM",
@@ -550,18 +551,25 @@ export default function NewStockEntryPage() {
 
             // Child table conversions for items
             if (Array.isArray(finalPayload.items)) {
-                finalPayload.items = finalPayload.items.map(
-                    (row: any) => {
-                        return {
-                            ...row,
-                            qty: Number(row.qty) || 0,
-                            basic_rate: Number(row.basic_rate) || 0,
-                            conversion_factor: Number(row.conversion_factor) || 1,
-                            is_finished_item: row.is_finished_item ? 1 : 0,
-                            is_scrap_item: row.is_scrap_item ? 1 : 0,
-                        };
-                    }
-                );
+                finalPayload.items = finalPayload.items.map((row: any) => ({
+                    ...row,
+
+                    qty: Number(row.qty) || 0,
+                    basic_rate: Number(row.basic_rate) || 0,
+                    conversion_factor: Number(row.conversion_factor) || 1,
+
+                    is_finished_item: row.is_finished_item ? 1 : 0,
+                    is_scrap_item: row.is_scrap_item ? 1 : 0,
+
+                    // ✅ THIS FIXES THE ERROR
+                    allow_zero_valuation_rate: 1,
+
+                    // ✅ REQUIRED FOR MATERIAL ISSUE
+                    t_warehouse:
+                        finalPayload.stock_entry_type === "Material Issue"
+                            ? ""
+                            : row.t_warehouse,
+                }));
             }
 
             // Child table conversions for additional costs
@@ -578,6 +586,10 @@ export default function NewStockEntryPage() {
 
             // Send payload
             console.log("Sending this PAYLOAD to Frappe:", finalPayload);
+
+            if (finalPayload.stock_entry_type === "Material Issue") {
+                finalPayload.to_warehouse = "";
+            }
 
             const response = await axios.post(
                 `${API_BASE_URL}/Stock Entry`,
