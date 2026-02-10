@@ -47,11 +47,11 @@ type ColumnConfig = {
 // --- CONFIG: Define Fixed Columns Order & Widths ---
 // Ensure these fieldnames match exactly what Frappe returns
 const FIXED_COLUMNS_ORDER = [
-    { fieldname: "name", label: "Logbook ID", width: 120 }, // Assuming 'name' is the ID
-    { fieldname: "lis_name", label: "LIS", width: 150 },
-    { fieldname: "stage", label: "Stage", width: 100 },
-    { fieldname: "asset", label: "Asset", width: 150 },
-    { fieldname: "asset_no", label: "Asset No", width: 120 }
+    { fieldname: "name", label: "Logbook ID", width: 100 }, // Assuming 'name' is the ID
+    { fieldname: "lis_name", label: "LIS", width: 100 },
+    { fieldname: "stage", label: "Stage", width: 140 },
+    { fieldname: "asset", label: "Asset", width: 180 },
+    { fieldname: "asset_no", label: "Asset No", width: 50 }
 ];
 
 // --- Helper Functions ---

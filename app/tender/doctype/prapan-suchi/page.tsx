@@ -159,8 +159,6 @@ export default function DoctypePage() {
 
       const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
       const filters: any[] = [];
-      if (debouncedSearch) filters.push(["Prapan Suchi", "name", "like", `%${debouncedSearch}%`]);
-      if (selectedLis) filters.push(["Prapan Suchi", "lis_name", "=", selectedLis]);
 
       const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
       
@@ -225,7 +223,7 @@ export default function DoctypePage() {
       setLoading(false);
       setIsLoadingMore(false);
     }
-  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis]);
+  }, [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]);
 
   React.useEffect(() => {
     fetchRecords(0, true);

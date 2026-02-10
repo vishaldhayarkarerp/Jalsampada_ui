@@ -46,7 +46,6 @@ interface StageNo {
   name: string;
   stage_no: string;
   lis_name?: string;
-  lis_phase?: string;
   modified?: string;
 }
 
@@ -86,11 +85,12 @@ export default function DoctypePage() {
   const { control, watch } = useForm({
     defaultValues: {
       lis_name: "",
-      lis_phase: ""
+      stage_no: ""
     }
   });
 
   const selectedLis = watch("lis_name");
+  const selectedStage = watch("stage_no");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Filter stages client-side for instant results
@@ -111,8 +111,13 @@ export default function DoctypePage() {
       filtered = filtered.filter(stage => stage.lis_name === selectedLis);
     }
     
+    // Apply Stage filter
+    if (selectedStage) {
+      filtered = filtered.filter(stage => stage.name === selectedStage);
+    }
+    
     return filtered;
-  }, [stages, debouncedSearch, selectedLis]);
+  }, [stages, debouncedSearch, selectedLis, selectedStage]);
 
   // 🟢 Use filtered stages for display but original stages for pagination count
   const displayStages = filteredStages;
@@ -144,10 +149,7 @@ export default function DoctypePage() {
           headers: { Authorization: `token ${apiKey}:${apiSecret}` },
         });
 
-       
-
         const lisData = lisResp.data?.data ?? [];
-
         setLisOptions([{ name: "" }, ...lisData]); // empty string = All
         setLisPhaseOptions([{ name: "" }]); // empty string = All
       } catch (err) {
@@ -177,7 +179,6 @@ export default function DoctypePage() {
 
         const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
         const filters: any[] = [];
-        if (debouncedSearch) filters.push(["Stage No", "name", "like", `%${debouncedSearch}%`]);
 
         const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
         
@@ -226,7 +227,7 @@ export default function DoctypePage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]
   );
 
   React.useEffect(() => {
@@ -503,6 +504,39 @@ export default function DoctypePage() {
                     <LinkField
                       control={control}
                       field={{ ...mockField, defaultValue: value }}
+                      error={null}
+                      className="[&>label]:hidden vishal"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px", marginBottom: "0.2rem" }}>
+            <Controller
+              control={control}
+              name="stage_no"
+              render={({ field: { onChange, value } }) => {
+                const mockField = {
+                  name: "stage_no",
+                  label: "",
+                  type: "Link" as const,
+                  linkTarget: "Stage No",
+                  placeholder: "Select Stage",
+                  required: false,
+                  defaultValue: ""
+                };
+
+                // Apply LIS filter to stage dropdown
+                const filters = selectedLis ? { lis_name: selectedLis } : undefined;
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <LinkField
+                      control={control}
+                      field={{ ...mockField, defaultValue: value }}
+                      filters={filters}
                       error={null}
                       className="[&>label]:hidden vishal"
                     />

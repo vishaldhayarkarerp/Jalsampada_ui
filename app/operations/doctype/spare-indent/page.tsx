@@ -291,8 +291,8 @@ export default function MaterialRequestPage() {
   };
 
   const renderListView = () => (
-    <div className="stock-table-container">
-      <table className="stock-table">
+    <div className="stock-table-container thin-scroll-x" style={{ overflowX: "auto" }}>
+      <table className="stock-table" style={{ minWidth: "900px", whiteSpace: "nowrap" }}>
         <thead>
           <tr>
             <th style={{ width: "40px", textAlign: "center" }}>
@@ -303,11 +303,11 @@ export default function MaterialRequestPage() {
                 style={{ cursor: "pointer", width: "16px", height: "16px" }}
               />
             </th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("name")}>ID</th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("custom_lis_name")}>LIS Name</th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("custom_stage")}>Stage</th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("material_request_type")}>Type</th>
-            <th style={{ cursor: "pointer" }} onClick={() => requestSort("transaction_date")}>Date</th>
+            <th style={{ cursor: "pointer", minWidth: 140 }} onClick={() => requestSort("name")}>ID</th>
+            <th style={{ cursor: "pointer", minWidth: 180 }} onClick={() => requestSort("custom_lis_name")}>LIS Name</th>
+            <th style={{ cursor: "pointer", minWidth: 160 }} onClick={() => requestSort("custom_stage")}>Stage</th>
+            <th style={{ cursor: "pointer", minWidth: 160 }} onClick={() => requestSort("material_request_type")}>Type</th>
+            <th style={{ cursor: "pointer", minWidth: 140 }} onClick={() => requestSort("transaction_date")}>Date</th>
             
             <th className="text-right pr-4" style={{ width: "140px" }}>
               <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
@@ -342,11 +342,11 @@ export default function MaterialRequestPage() {
                       style={{ cursor: "pointer", width: "16px", height: "16px" }}
                     />
                   </td>
-                  <td>{req.name}</td>
-                  <td>{req.custom_lis_name || "—"}</td>
-                  <td>{req.custom_stage || "—"}</td>
-                  <td>{req.material_request_type || "—"}</td>
-                  <td>{req.transaction_date || "—"}</td>
+                  <td style={{ minWidth: 140 }}>{req.name}</td>
+                  <td style={{ minWidth: 180 }}>{req.custom_lis_name || "—"}</td>
+                  <td style={{ minWidth: 160 }}>{req.custom_stage || "—"}</td>
+                  <td style={{ minWidth: 160 }}>{req.material_request_type || "—"}</td>
+                  <td style={{ minWidth: 140 }}>{req.transaction_date || "—"}</td>
                   
                   <td className="text-right pr-4">
                     <TimeAgo date={req.modified} />
@@ -480,6 +480,7 @@ export default function MaterialRequestPage() {
                     }}
                     error={null}
                     className="[&>label]:hidden"
+                    filters={selectedLis ? { lis_name: selectedLis } : {}}
                   />
                 </div>
               )}

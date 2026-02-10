@@ -65,6 +65,17 @@ export default function MaintenanceScheduleListPage() {
 
   const title = "Maintenance Schedule";
 
+  /* ── Client-side Filtering ─────────────────────────────── */
+  const filteredRecords = React.useMemo(() => {
+    return records.filter((r) => {
+      const matchesLis = !selectedLis || r.custom_lis === selectedLis;
+      const matchesStage = !selectedStage || r.custom_stage === selectedStage;
+      const matchesAsset = !selectedAsset || r.asset_name === selectedAsset;
+      
+      return matchesLis && matchesStage && matchesAsset;
+    });
+  }, [records, selectedLis, selectedStage, selectedAsset]);
+
   const {
     selectedIds,
     handleSelectOne,
@@ -94,19 +105,8 @@ export default function MaintenanceScheduleListPage() {
 
         const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
         
-        // 🟢 2. Build Filters
-        const filters: any[] = [];
+        // 🟢 Removed server-side filters - now using client-side filtering only
         
-        if (selectedLis) {
-          filters.push(["Asset Maintenance", "custom_lis", "=", selectedLis]);
-        }
-        if (selectedStage) {
-          filters.push(["Asset Maintenance", "custom_stage", "=", selectedStage]);
-        }
-        if (selectedAsset) {
-          filters.push(["Asset Maintenance", "asset_name", "=", selectedAsset]);
-        }
-
         const commonHeaders = {
           Authorization: `token ${apiKey}:${apiSecret}`,
         };
@@ -125,16 +125,14 @@ export default function MaintenanceScheduleListPage() {
               ]),
               limit_start: start,
               limit_page_length: limit,
-              order_by: "creation desc",
-              filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+              order_by: "creation desc"
             },
             headers: commonHeaders,
             withCredentials: true,
           }),
           isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
             params: { 
-              doctype: doctypeName, 
-              filters: filters.length > 0 ? JSON.stringify(filters) : undefined 
+              doctype: doctypeName
             },
             headers: commonHeaders,
           }) : Promise.resolve(null)
@@ -173,8 +171,8 @@ export default function MaintenanceScheduleListPage() {
         setIsLoadingMore(false);
       }
     },
-    // 🟢 Add dependencies
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, selectedLis, selectedStage, selectedAsset]
+    // 🟢 Removed filter dependencies - now using client-side filtering only
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]
   );
 
   React.useEffect(() => {
@@ -276,7 +274,7 @@ export default function MaintenanceScheduleListPage() {
                   <Loader2 className="w-3 h-3 animate-spin" />
                 ) : (
                   <>
-                    <span>{records.length}</span>
+                    <span>{filteredRecords.length}</span>
                     <span className="opacity-50"> /</span>
                     <span className="text-gray-900 dark:text-gray-200 font-bold">
                       {totalCount}
@@ -288,8 +286,8 @@ export default function MaintenanceScheduleListPage() {
           </tr>
         </thead>
         <tbody>
-          {records.length ? (
-            records.map((r) => {
+          {filteredRecords.length ? (
+            filteredRecords.map((r) => {
               const isSelected = selectedIds.has(r.name);
               return (
                 <tr
@@ -337,8 +335,8 @@ export default function MaintenanceScheduleListPage() {
 
   const renderGridView = () => (
     <div className="equipment-grid">
-      {records.length ? (
-        records.map((r) => (
+      {filteredRecords.length ? (
+        filteredRecords.map((r) => (
           <RecordCard
             key={r.name}
             title={r.name}
@@ -425,11 +423,11 @@ export default function MaintenanceScheduleListPage() {
                       type: "Link",
                       linkTarget: "Stage No",
                       placeholder: "Filter by Stage",
-                      defaultValue: value,
-                      filterMapping: [{ sourceField: "custom_lis", targetField: "lis_name" }]
+                      defaultValue: value
                     }}
                     error={null}
                     className="[&>label]:hidden"
+                    filters={selectedLis ? { lis_name: selectedLis } : {}}
                   />
                 </div>
               )}
@@ -477,7 +475,7 @@ export default function MaintenanceScheduleListPage() {
 
       <div className="view-container" style={{ marginTop: "0.5rem", paddingBottom: "2rem" }}>
         {view === "grid" ? renderGridView() : renderListView()}
-        {hasMore && records.length > 0 && (
+        {hasMore && filteredRecords.length > 0 && (
           <div className="mt-6 flex justify-end">
             <button 
               onClick={handleLoadMore} 

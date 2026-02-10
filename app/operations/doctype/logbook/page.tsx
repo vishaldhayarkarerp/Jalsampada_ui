@@ -582,6 +582,7 @@ export default function LogbookPage() {
                       field={{ ...mockField, defaultValue: value }}
                       error={null}
                       className="[&>label]:hidden vishal"
+                      filters={selectedLis ? { lis_name: selectedLis } : {}}
                     />
                   </div>
                 );
