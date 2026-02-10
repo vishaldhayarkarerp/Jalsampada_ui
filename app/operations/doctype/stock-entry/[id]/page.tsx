@@ -47,7 +47,6 @@ interface AdditionalCostRow {
 
 interface StockEntryData {
     name: string;
-    naming_series?: string;           // Select
     posting_date?: string;            // Date
     posting_time?: string;            // Time
     set_posting_time?: 0 | 1;         // Check
@@ -224,17 +223,6 @@ export default function StockEntryDetailPage() {
                 name: "Details",
                 fields: fields([
                     {
-                        name: "naming_series",
-                        label: "Series",
-                        type: "Select",
-                        options: [
-                            { label: "MAT-STE-", value: "MAT-STE-" },
-                            { label: "STE-", value: "STE-" },
-                            { label: "MSE-", value: "MSE-" },
-                        ],
-                        required: true,
-                    },
-                    {
                         name: "posting_date",
                         label: "Posting Date",
                         type: "Date",
@@ -266,6 +254,14 @@ export default function StockEntryDetailPage() {
                         type: "Link",
                         linkTarget: "Stock Entry Type",
                         required: true,
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        customSearchParams: {
+                            filters: {
+                                purpose: ["not in", ["Receive from Customer", "Return Raw Material to Customer", "Subcontracting Delivery", "Subcontracting Return"]]
+                            }
+                        },
+                        referenceDoctype: "Stock Entry",
+                        doctype: "Stock Entry Type",
                         fieldColumns: 1,
                     },
                     {
@@ -310,16 +306,8 @@ export default function StockEntryDetailPage() {
                         linkTarget: "Warehouse",
                         fieldColumns: 1,
                     },
-                    {
-                        name: "cb3",
-                        label: "",
-                        type: "Section Break",
-                    },
-                    {
-                        name: "scan_barcode",
-                        label: "Scan Barcode",
-                        type: "Data",
-                    },
+
+
                     {
                         name: "cb4",
                         label: "Items",

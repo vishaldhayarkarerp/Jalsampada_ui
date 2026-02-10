@@ -46,8 +46,7 @@ interface AdditionalCostRow {
 }
 
 interface StockEntryData {
-    name?: string;
-    naming_series?: string;           // Select
+    name?: string;          // Select
     posting_date?: string;            // Date
     posting_time?: string;            // Time
     set_posting_time?: 0 | 1;         // Check
@@ -146,18 +145,7 @@ export default function NewStockEntryPage() {
             {
                 name: "Details",
                 fields: [
-                    {
-                        name: "naming_series",
-                        label: "Series",
-                        type: "Select",
-                        options: [
-                            { label: "MAT-STE-", value: "MAT-STE-" },
-                            { label: "STE-", value: "STE-" },
-                            { label: "MSE-", value: "MSE-" },
-                        ],
-                        defaultValue: getValue("naming_series", "MAT-STE-"),
-                        required: true,
-                    },
+
                     {
                         name: "posting_date",
                         label: "Posting Date",
@@ -192,6 +180,14 @@ export default function NewStockEntryPage() {
                         linkTarget: "Stock Entry Type",
                         required: true,
                         defaultValue: getValue("stock_entry_type"),
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        customSearchParams: {
+                            filters: {
+                                purpose: ["not in", ["Receive from Customer", "Return Raw Material to Customer", "Subcontracting Delivery", "Subcontracting Return"]]
+                            }
+                        },
+                        referenceDoctype: "Stock Entry",
+                        doctype: "Stock Entry Type",
                         fieldColumns: 1,
                     },
                     {
@@ -231,6 +227,15 @@ export default function NewStockEntryPage() {
                         type: "Link",
                         linkTarget: "Warehouse",
                         defaultValue: getValue("from_warehouse"),
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        customSearchParams: {
+                            filters: [
+                                ["Warehouse", "company", "in", ["", "quantbit"]],
+                                ["Warehouse", "is_group", "=", 0]
+                            ]
+                        },
+                        referenceDoctype: "Stock Entry",
+                        doctype: "Warehouse",
                         fieldColumns: 1,
                     },
                     {
@@ -239,19 +244,18 @@ export default function NewStockEntryPage() {
                         type: "Link",
                         linkTarget: "Warehouse",
                         defaultValue: getValue("to_warehouse"),
+                        customSearchUrl: "http://103.219.1.138:4412/api/method/frappe.desk.search.search_link",
+                        customSearchParams: {
+                            filters: [
+                                ["Warehouse", "company", "in", ["", "quantbit"]],
+                                ["Warehouse", "is_group", "=", 0]
+                            ]
+                        },
+                        referenceDoctype: "Stock Entry",
+                        doctype: "Warehouse",
                         fieldColumns: 1,
                     },
-                    {
-                        name: "cb3",
-                        label: "",
-                        type: "Section Break",
-                    },
-                    {
-                        name: "scan_barcode",
-                        label: "Scan Barcode",
-                        type: "Data",
-                        defaultValue: getValue("scan_barcode"),
-                    },
+
                     {
                         name: "cb4",
                         label: "Items",
@@ -434,11 +438,6 @@ export default function NewStockEntryPage() {
             {
                 name: "Other Info",
                 fields: [
-                    {
-                        name: "print_settings_section",
-                        label: "Printing Settings",
-                        type: "Section Break",
-                    },
                     {
                         name: "print_heading",
                         label: "Print Heading",

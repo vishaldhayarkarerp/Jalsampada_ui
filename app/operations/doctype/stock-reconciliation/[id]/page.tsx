@@ -334,18 +334,6 @@ export default function StockReconciliationDetailPage() {
         name: "Details",
         fields: [
           {
-            name: "naming_series",
-            label: "Series",
-            type: "Select",
-            options: [
-              { label: "MAT-REC-", value: "MAT-REC-" },
-              { label: "STK-REC-", value: "STK-REC-" },
-              { label: "INV-REC-", value: "INV-REC-" },
-            ],
-            defaultValue: stockReconciliation.naming_series || "MAT-REC-",
-            required: true,
-          },
-          {
             name: "purpose",
             label: "Purpose",
             type: "Select",
@@ -372,7 +360,7 @@ export default function StockReconciliationDetailPage() {
             fieldColumns: 1,
             defaultValue: stockReconciliation.posting_time
               ? stockReconciliation.posting_time.split(" ")[1]?.split(".")[0] ||
-                stockReconciliation.posting_time.split(".")[0]
+              stockReconciliation.posting_time.split(".")[0]
               : "00:00:00",
           },
           {
@@ -389,13 +377,6 @@ export default function StockReconciliationDetailPage() {
             linkTarget: "Warehouse",
             fieldColumns: 1,
             defaultValue: stockReconciliation.set_warehouse || "",
-          },
-          {
-            name: "scan_barcode",
-            label: "Scan Barcode",
-            type: "Data",
-            fieldColumns: 1,
-            defaultValue: stockReconciliation.scan_barcode || "",
           },
           {
             name: "scan_mode",
@@ -467,11 +448,7 @@ export default function StockReconciliationDetailPage() {
                   targetField: "item_code",
                 },
               },
-              {
-                name: "barcode",
-                label: "Barcode",
-                type: "Data",
-              },
+
               {
                 name: "item_group",
                 label: "Item Group",
@@ -504,22 +481,7 @@ export default function StockReconciliationDetailPage() {
                 type: "Check",
                 displayDependsOn: "use_serial_batch_fields==false",
               },
-              {
-                name: "serial_batch_no_type",
-                label: "Serial/Batch No",
-                type: "Select",
-                options: [
-                  { label: "Serial No", value: "Serial No" },
-                  { label: "Batch No", value: "Batch No" },
-                ],
-                displayDependsOn: "use_serial_batch_fields==false",
-              },
             ],
-          },
-          {
-            name: "cb3",
-            label: "",
-            type: "Section Break",
           },
           {
             name: "difference_account",
@@ -1045,7 +1007,7 @@ export default function StockReconciliationDetailPage() {
       key={formKey}
       title={`Stock Reconciliation ${stockReconciliation.name}`}
       tabs={formTabs}
-      onSubmit={activeButton === "SAVE" ? handleSubmit : async () => {}}
+      onSubmit={activeButton === "SAVE" ? handleSubmit : async () => { }}
       onSubmitDocument={
         activeButton === "SUBMIT" ? handleSubmitDocument : undefined
       }

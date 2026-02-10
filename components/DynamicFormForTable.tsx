@@ -943,7 +943,7 @@ export function DynamicFormForTable({
                 </Button>
                 <Button
                     type="button"
-                    className="bg-primary hover:bg-primary/90"
+                    className="btn--primary"
                     onClick={handleSubmit}
                     disabled={disabled}
                 >

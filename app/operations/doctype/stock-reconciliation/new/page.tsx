@@ -93,18 +93,6 @@ export default function NewStockReconciliationPage() {
                 name: "Details",
                 fields: [
                     {
-                        name: "naming_series",
-                        label: "Series",
-                        type: "Select",
-                        options: [
-                            { label: "MAT-REC-", value: "MAT-REC-" },
-                            { label: "STK-REC-", value: "STK-REC-" },
-                            { label: "INV-REC-", value: "INV-REC-" },
-                        ],
-                        defaultValue: "MAT-REC-",
-                        required: true,
-                    },
-                    {
                         name: "purpose",
                         label: "Purpose",
                         type: "Select",
@@ -146,12 +134,7 @@ export default function NewStockReconciliationPage() {
                         required: true,
                         fieldColumns: 1,
                     },
-                    {
-                        name: "scan_barcode",
-                        label: "Scan Barcode",
-                        type: "Data",
-                        fieldColumns: 1,
-                    },
+
                     {
                         name: "scan_mode",
                         label: "Scan Mode",
@@ -210,11 +193,7 @@ export default function NewStockReconciliationPage() {
                                 defaultValue: "0.00",
                                 fetchFrom: { sourceField: "valuation_rate", targetDoctype: "Item", targetField: "item_code" }
                             },
-                            {
-                                name: "barcode",
-                                label: "Barcode",
-                                type: "Data"
-                            },
+
                             {
                                 name: "item_group",
                                 label: "Item Group",
@@ -243,25 +222,7 @@ export default function NewStockReconciliationPage() {
                                 type: "Check",
                                 displayDependsOn: "use_serial_batch_fields==false"
                             },
-                            {
-                                name: "serial_batch_no_type",
-                                label: "Serial/Batch No",
-                                type: "Select",
-                                options: [
-                                    { label: "Serial No", value: "Serial No" },
-                                    { label: "Batch No", value: "Batch No" }
-                                ],
-                                displayDependsOn: "use_serial_batch_fields==false"
-                            },
-                            //   { 
-                            //     name: "add_serial_batch_no_button", 
-                            //     label: "Add Serial/Batch No", 
-                            //     type: "Button",
-                            //     buttonType: "route",
-                            //     routePath: "/operations/doctype/serial-no", // Change this to your actual route
-                            //     displayDependsOn: "use_serial_batch_fields==false",
-                            //     buttonVariant: "outline"
-                            //   },
+
                         ],
                     },
                     {

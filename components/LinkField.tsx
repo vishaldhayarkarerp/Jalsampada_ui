@@ -59,10 +59,21 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
           return formValues[name];
         }) : {};
 
-        const mergedFilters = {
-          ...field.customSearchParams?.filters,
-          ...dynamicFilters
-        };
+        // Handle filters properly - prioritize array format, fallback to object merging
+        let mergedFilters = field.customSearchParams?.filters;
+        const hasDynamicFilters = Object.keys(dynamicFilters).length > 0;
+
+        if (hasDynamicFilters) {
+          if (Array.isArray(mergedFilters)) {
+            // Keep array format, ignore dynamic filters (can't mix array + object)
+          } else if (mergedFilters) {
+            // Merge object filters
+            mergedFilters = { ...mergedFilters, ...dynamicFilters };
+          } else {
+            // Only dynamic filters
+            mergedFilters = dynamicFilters;
+          }
+        }
 
         const params: Record<string, any> = {
           txt: term || "",
