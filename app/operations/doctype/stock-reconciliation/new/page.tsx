@@ -172,10 +172,10 @@ export default function NewStockReconciliationPage() {
                                 required: true
                             },
                             {
-                                name: "store_location",
+                                name: "warehouse",
                                 label: "Store Location",
                                 type: "Link",
-                                linkTarget: "Store Location",
+                                linkTarget: "Warehouse",
                                 filterMapping: [
                                     { sourceField: "parent.set_warehouse", targetField: "warehouse" }
                                 ]
@@ -279,7 +279,6 @@ export default function NewStockReconciliationPage() {
                             const company = getValue("company");
                             const filters: Record<string, any> = {
                                 is_group: 0,
-                                account_type: "Stock"
                             };
                             if (company) {
                                 filters.company = company;

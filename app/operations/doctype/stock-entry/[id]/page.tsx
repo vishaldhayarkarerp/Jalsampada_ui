@@ -331,7 +331,7 @@ export default function StockEntryDetailPage() {
                         type: "Table",
                         showDownloadUpload: true,
                         columns: [
-                             {
+                            {
                                 name: "item_code",
                                 label: "Item Code",
                                 type: "Link",
@@ -351,15 +351,35 @@ export default function StockEntryDetailPage() {
                                 name: "s_warehouse",
                                 label: "Source Warehouse",
                                 type: "Link",
-                                linkTarget: "Store Location",
+                                linkTarget: "Warehouse",
+                                filters: (getValue) => {
+                                    const company = getValue("company");
+                                    const filters: Record<string, any> = {
+                                        is_group: 0,
+                                    };
+                                    if (company) {
+                                        filters.company = company;
+                                    }
+                                    return filters;
+                                },
                             },
                             {
                                 name: "t_warehouse",
                                 label: "Target Warehouse",
                                 type: "Link",
-                                linkTarget: "Store Location",
+                                linkTarget: "Warehouse",
+                                filters: (getValue) => {
+                                    const company = getValue("company");
+                                    const filters: Record<string, any> = {
+                                        is_group: 0,
+                                    };
+                                    if (company) {
+                                        filters.company = company;
+                                    }
+                                    return filters;
+                                },
                             },
-                           
+
                             {
                                 name: "qty",
                                 label: "Qty",
@@ -397,7 +417,7 @@ export default function StockEntryDetailPage() {
                                 type: "Small Text",
                                 defaultValue: ""
                             },
-                            
+
                             {
                                 name: "uom",
                                 label: "UOM",
@@ -809,6 +829,45 @@ export default function StockEntryDetailPage() {
         if (!formInstance) return;
 
         const formData = formInstance.getValues();
+
+        // 🔴 BLOCK GROUP WAREHOUSE ON SUBMIT (EXACT FIX)
+
+        // 1️⃣ Default source warehouse check
+        if (formData.from_warehouse === "All Warehouses - Q") {
+            toast.error(
+                "Group warehouse is not allowed. Please select a child warehouse.",
+                { duration: Infinity }
+            );
+            setIsSaving(false);
+            return;
+        }
+
+        // 2️⃣ Items table validation
+        const items = formData.items || [];
+
+        for (let i = 0; i < items.length; i++) {
+            const row = items[i];
+
+            // Material Issue requires source warehouse
+            if (!row.s_warehouse) {
+                toast.error(`Source Warehouse is required in row ${i + 1}`, {
+                    duration: Infinity,
+                });
+                setIsSaving(false);
+                return;
+            }
+
+            // ❌ Block group warehouse
+            if (row.s_warehouse === "All Warehouses - Q") {
+                toast.error(
+                    `Group warehouse is not allowed in row ${i + 1}. Please select a child warehouse.`,
+                    { duration: Infinity }
+                );
+                setIsSaving(false);
+                return;
+            }
+        }
+
         if (!apiKey || !apiSecret || !isInitialized || !isAuthenticated) {
             toast.error("Authentication required");
             return;
