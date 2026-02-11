@@ -450,7 +450,14 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
               label: "Asset",
               type: "Link",
               linkTarget: "Asset",
-              displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1"
+              displayDependsOn: "work_type==Repair || work_type==Auxiliary || have_asset==1",
+                customSearchParams: {
+                  filters: [
+                    ["Asset", "lift_irrigation_scheme", "=", ""],
+                    ["Asset", "stage_no_sub_scheme", "=", ""],
+                    ["Asset", "obsolete", "=", "No"]
+                  ]
+                },
             },
             {
               name: "asset_name",

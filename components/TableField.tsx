@@ -503,16 +503,18 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
   const allSelected = fields.length > 0 && selectedIndices.size === fields.length;
   const someSelected = selectedIndices.size > 0 && selectedIndices.size < fields.length;
 
+  const visibleColumns = (field.columns || []).filter(
+  (c) => c.type !== "Column Break" && c.type !== "Section Break"
+);
+
   return (
     <>
       <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-       <label className={`form-label ${field.className || ""}`}>
-  {field.label}
-</label>
-
-        <div className="stock-table-container">
-
-          <table className="stock-table child-form-table">
+        <label className={`form-label ${field.className || ""}`}>
+          {field.label}
+        </label>
+        <div className="stock-table-container data-driven-table-wrapper">
+          <table className="stock-table child-form-table auto-width-data-table">
             <thead>
               <tr>
                 <th style={{ width: 40 }} className="child-table-checkbox-cell">
@@ -530,7 +532,7 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
                   />
                 </th>
 
-                {(field.columns || []).map((c) => (
+                {visibleColumns?.map((c) => (
                   <th key={c.name}>{c.label}</th>
                 ))}
                 <th style={{ width: 60, position: 'sticky', right: 0, zIndex: 10 }} className="child-table-edit-cell">
@@ -559,7 +561,7 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
                       />
                     </td>
 
-                    {(field.columns || []).map((c) => (
+                    {visibleColumns?.map((c) => (
                       <td key={c.name} className="child-table-input-cell">
                         {c.type === "Attach" ? (
                           <AttachmentCell
