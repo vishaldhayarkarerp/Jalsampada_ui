@@ -22,6 +22,6 @@ jobs:
             set -e
             cd ~/bench-Jalsampada/apps/Jalsampada_ui
             git pull origin develop
-            bun install
-            bun run build
-            pm2 restart jalsampada-frontend
+            # Build and restart the container
+            docker compose up -d --build
+

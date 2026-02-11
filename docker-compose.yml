@@ -1,0 +1,13 @@
+services:
+  jalsampada-ui:
+    build: .
+    container_name: jalsampada-ui
+    ports:
+      - "4000:4000"
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - HOSTNAME=0.0.0.0
