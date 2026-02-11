@@ -57,11 +57,11 @@ interface ExpenditureData {
   bill_type?: string;               // Select
   posting_date?: string;            // Date
   bill_amount?: number;             // Currency
-  
+
   // 🟢 Corrected Field Names (From our fix)
   previous_page_no?: string;        // Data (Previous)
   previous_mb_no?: string;          // Data (Previous)
-  
+
   page_no?: string;                 // Data (Current)
   mb_no?: string;                   // Data (Current)
 
@@ -127,7 +127,7 @@ export default function RecordDetailPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
-  
+
   const isProgrammaticUpdate = React.useRef(false);
   const [formVersion, setFormVersion] = React.useState(0);
 
@@ -241,32 +241,32 @@ export default function RecordDetailPage() {
     if (!formInstance || !expenditure?.tender_number) return;
 
     const currentPrevMB = formInstance.getValues("previous_mb_no");
-    
+
     if (!currentPrevMB) {
-        const fetchInitialPrevDetails = async () => {
-             if (!apiKey || !apiSecret) return;
-             try {
-                 const prevDetails = await fetchPreviousBillDetails(
-                    expenditure.tender_number!, 
-                    docname,
-                    apiKey, 
-                    apiSecret
-                 );
-                 if (prevDetails) {
-                    isProgrammaticUpdate.current = true; // Don't mark as dirty for initial load
-                    
-                    formInstance.setValue("prev_bill_no", prevDetails.bill_number || 0);
-                    formInstance.setValue("prev_bill_amt", prevDetails.bill_amount || 0);
-                    // Map 'mb_no' from old record -> 'previous_mb_no'
-                    formInstance.setValue("previous_mb_no", prevDetails.mb_no || 0);
-                    // Map 'page_no' from old record -> 'previous_page_no'
-                    formInstance.setValue("previous_page_no", prevDetails.page_no || 0);
-                    
-                    setTimeout(() => { isProgrammaticUpdate.current = false; }, 100);
-                 }
-             } catch(e) { console.error(e); }
-        };
-        fetchInitialPrevDetails();
+      const fetchInitialPrevDetails = async () => {
+        if (!apiKey || !apiSecret) return;
+        try {
+          const prevDetails = await fetchPreviousBillDetails(
+            expenditure.tender_number!,
+            docname,
+            apiKey,
+            apiSecret
+          );
+          if (prevDetails) {
+            isProgrammaticUpdate.current = true; // Don't mark as dirty for initial load
+
+            formInstance.setValue("prev_bill_no", prevDetails.bill_number || 0);
+            formInstance.setValue("prev_bill_amt", prevDetails.bill_amount || 0);
+            // Map 'mb_no' from old record -> 'previous_mb_no'
+            formInstance.setValue("previous_mb_no", prevDetails.mb_no || 0);
+            // Map 'page_no' from old record -> 'previous_page_no'
+            formInstance.setValue("previous_page_no", prevDetails.page_no || 0);
+
+            setTimeout(() => { isProgrammaticUpdate.current = false; }, 100);
+          }
+        } catch (e) { console.error(e); }
+      };
+      fetchInitialPrevDetails();
     }
   }, [formInstance, expenditure, docname, apiKey, apiSecret]);
 
@@ -296,9 +296,9 @@ export default function RecordDetailPage() {
         const fetchPreviousBill = async () => {
           try {
             const prevDetails = await fetchPreviousBillDetails(
-              value.tender_number, 
+              value.tender_number,
               docname || null,
-              apiKey, 
+              apiKey,
               apiSecret
             );
 
@@ -319,7 +319,7 @@ export default function RecordDetailPage() {
 
         await Promise.all([fetchWorkName(), fetchPreviousBill()]);
       }
-      
+
       // 🟢 Watch for form changes to mark as dirty
       if (name && !isProgrammaticUpdate.current) {
         setFormDirty(true);
@@ -672,7 +672,7 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
       });
       return;
     }
-    
+
     // If validation passes, proceed to save
     setIsSaving(true);
 
@@ -879,7 +879,7 @@ Please ensure that the Invoice Amount and the Total Bill Amount are equal.`, dur
 
     try {
       await axios.post(
-        `http://103.219.1.138:4412/api/method/frappe.client.cancel`,
+        `http://103.219.3.169:2223/api/method/frappe.client.cancel`,
         {
           doctype: "Expenditure",
           name: docname,

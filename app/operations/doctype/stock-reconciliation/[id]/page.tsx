@@ -12,7 +12,7 @@ import { getApiMessages } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE_URL = "http://103.219.1.138:4412/api/resource";
+const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
 /* -------------------------------------------------
 1. Stock Reconciliation type interfaces
@@ -752,7 +752,7 @@ export default function StockReconciliationDetailPage() {
 
     try {
       await axios.post(
-        `http://103.219.1.138:4412/api/method/frappe.client.cancel`,
+        `http://103.219.3.169:2223/api/method/frappe.client.cancel`,
         {
           doctype: "Stock Reconciliation",
           name: docname,
