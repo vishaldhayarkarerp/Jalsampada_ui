@@ -22,6 +22,11 @@ jobs:
             set -e
             cd ~/bench-Jalsampada/apps/Jalsampada_ui
             git pull origin develop
-            # Build and restart the container
-            docker compose up -d --build
+            
+            # Fast deployment with Docker cache optimization
+            docker compose build --parallel
+            docker compose up -d
+            
+            # Clean up old images (optional, can be removed for speed)
+            docker image prune -f --filter "until=24h"
 
