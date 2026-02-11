@@ -144,14 +144,14 @@ export default function DoctypePage() {
     defaultValues: {
       asset_category: "",
       custom_stage_no: "",
-      custom_lis_phase: "",
+      
       custom_lis_name: ""
     }
   });
 
   const selectedCategory = watch("asset_category");
   const selectedStage = watch("custom_stage_no");
-  const selectedLisPhase = watch("custom_lis_phase");
+ 
   const selectedLis = watch("custom_lis_name");
 
   // Close sort menu on outside click
@@ -227,7 +227,7 @@ export default function DoctypePage() {
         if (selectedCategory) filters.push(["Asset", "asset_category", "=", selectedCategory]);
         if (selectedLis) filters.push(["Asset", "custom_lis_name", "=", selectedLis]);
         if (selectedStage) filters.push(["Asset", "custom_stage_no", "=", selectedStage]);
-        if (selectedLisPhase) filters.push(["Asset", "custom_lis_phase", "=", selectedLisPhase]);
+        
 
         const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
 
@@ -280,7 +280,7 @@ export default function DoctypePage() {
         setIsLoadingMore(false);
       }
     },
-    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedCategory, selectedLis, selectedStage, selectedLisPhase, sortConfig]
+    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedCategory, selectedLis, selectedStage,  sortConfig]
   );
 
   React.useEffect(() => {
@@ -417,13 +417,6 @@ export default function DoctypePage() {
             <input type="text" placeholder="Search Asset ID..." className="form-control w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} aria-label="Search Assets" />
           </div>
           <div style={{ minWidth: "200px" }}>
-            <Controller control={control} name="asset_category" render={({ field: { value } }) => (
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <LinkField control={control} field={{ name: "asset_category", label: "", type: "Link", linkTarget: "Asset Category", placeholder: "Select Category", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
-              </div>
-            )} />
-          </div>
-          <div style={{ minWidth: "200px" }}>
             <Controller control={control} name="custom_lis_name" render={({ field: { value } }) => (
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <LinkField control={control} field={{ name: "custom_lis_name", label: "", type: "Link", linkTarget: "Lift Irrigation Scheme", placeholder: "Select LIS", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
@@ -434,7 +427,28 @@ export default function DoctypePage() {
           <div style={{ minWidth: "200px" }}>
             <Controller control={control} name="custom_stage_no" render={({ field: { value } }) => (
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <LinkField control={control} field={{ name: "custom_stage_no", label: "", type: "Link", linkTarget: "Stage No", placeholder: "Select Stage", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
+                <LinkField 
+                  control={control} 
+                  field={{ 
+                    name: "custom_stage_no", 
+                    label: "", 
+                    type: "Link", 
+                    linkTarget: "Stage No", 
+                    placeholder: "Select Stage", 
+                    required: false, 
+                    defaultValue: value 
+                  }} 
+                  error={null} 
+                  className="[&>label]:hidden vishal"
+                  filters={selectedLis ? { lis_name: selectedLis } : {}}
+                />
+              </div>
+            )} />
+          </div>
+          <div style={{ minWidth: "200px" }}>
+            <Controller control={control} name="asset_category" render={({ field: { value } }) => (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <LinkField control={control} field={{ name: "asset_category", label: "", type: "Link", linkTarget: "Asset Category", placeholder: "Select Category", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal"  />
               </div>
             )} />
           </div>

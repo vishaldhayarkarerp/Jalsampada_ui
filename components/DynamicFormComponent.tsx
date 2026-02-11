@@ -88,6 +88,7 @@ export interface FormField {
   doctype?: string;
   required?: boolean;
   fieldColumns?: number;
+  layoutCols?: number;
   description?: string;
   placeholder?: string;
   options?: string | { label: string; value: string; className?: string }[];
@@ -104,6 +105,11 @@ export interface FormField {
     label: string;
     type: FieldType;
     linkTarget?: string;
+    searchField?: string;
+    customSearchUrl?: string;
+    customSearchParams?: Record<string, any>;
+    referenceDoctype?: string;
+    doctype?: string;
     options?: string | { label: string; value: string }[];
     precision?: number;
     filterMapping?: { sourceField: string; targetField: string }[];
@@ -135,6 +141,7 @@ export interface FormField {
   precision?: number;
   disableAutoToday?: boolean;
   onChange?: (value: any, data: any, setFieldValue: any) => void;
+  className?: string;
 }
 
 export interface TabbedLayout {
@@ -1687,7 +1694,7 @@ export function DynamicForm({
     );
   };
 
-  
+
   const renderField = (field: FormField, idx: number) => {
     // Check if field should be hidden
     const isHidden = field.displayDependsOn
@@ -1779,6 +1786,9 @@ export function DynamicForm({
     return fieldContent();
   };
 
+  const hasThreeColLayout = activeTabFields.some(
+    (field) => field.layoutCols === 3
+  );
   // ── RENDER ───────────────────────────────────────────────────────────────
   return (
     <FormProvider {...methods}>
@@ -1837,10 +1847,10 @@ export function DynamicForm({
               {/* Show different buttons based on docstatus and isSubmittable */}
               {isSubmittable && docstatus === 0 && (
                 <>
-                
+
                   <button
                     type="button"
-                    className="btn btn--primary"  
+                    className="btn btn--primary"
                     onClick={handleSubmitDocument}
                   >
                     Submit
@@ -1848,7 +1858,7 @@ export function DynamicForm({
                 </>
               )}
               {/* {isSubmittable && docstatus === 1 && ( */}
-               {docstatus === 1 && onCancelDocument && (
+              {docstatus === 1 && onCancelDocument && (
                 <>
                   {/* Submitted: Show Cancel button */}
                   <button
@@ -1978,9 +1988,10 @@ export function DynamicForm({
           </div>
 
           {/* Dynamic grid */}
+
           <div
-            className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4"
-            style={{ overflow: "visible" }}
+            className={`grid grid-cols-1 ${hasThreeColLayout ? "md:grid-cols-3" : "md:grid-cols-4"
+              } gap-x-6 gap-y-4`}
           >
             {activeTabFields.map((field, idx) => {
               const isHidden = field.displayDependsOn
@@ -1997,14 +2008,22 @@ export function DynamicForm({
               // Determine column span based on field type
               let colSpanClass = "md:col-span-1"; // Default: 1 column (1/4 width)
 
-              if (isWideField) {
-                colSpanClass = "md:col-span-4"; // Full width (4 columns)
-              } else if (field.fieldColumns === 2) {
-                colSpanClass = "md:col-span-2"; // Half width (2/4)
-              } else if (field.fieldColumns === 3) {
-                colSpanClass = "md:col-span-3"; // 3/4 width
-              } else if (field.fieldColumns === 4) {
-                colSpanClass = "md:col-span-4"; // Full width
+              if (hasThreeColLayout) {
+                if (isWideField) {
+                  colSpanClass = "md:col-span-3";
+                } else {
+                  colSpanClass = "md:col-span-1"; // always equal width
+                }
+              } else {
+                if (isWideField) {
+                  colSpanClass = "md:col-span-4";
+                } else if (field.fieldColumns === 2) {
+                  colSpanClass = "md:col-span-2";
+                } else if (field.fieldColumns === 3) {
+                  colSpanClass = "md:col-span-3";
+                } else if (field.fieldColumns === 4) {
+                  colSpanClass = "md:col-span-4";
+                }
               }
 
               return (

@@ -558,11 +558,15 @@ export default function GatePage() {
                   defaultValue: "",
                 };
 
+                // Apply LIS filter to stage dropdown
+                const filters = selectedLis ? { lis_name: selectedLis } : undefined;
+
                 return (
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <LinkField
                       control={control}
                       field={{ ...mockField, defaultValue: value }}
+                      filters={filters}
                       error={null}
                       className="[&>label]:hidden vishal"
                     />

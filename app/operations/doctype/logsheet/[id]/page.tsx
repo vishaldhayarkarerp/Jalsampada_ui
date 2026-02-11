@@ -10,6 +10,7 @@ import {
 } from "@/components/DynamicFormComponent";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { getApiMessages } from "@/lib/utils";
 
 const API_BASE_URL = "http://103.219.3.169:2223/api/resource";
 
@@ -61,6 +62,13 @@ export default function LogSheetDetailPage() {
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
+    const isProgrammaticUpdate = React.useRef(false);
+    const [formVersion, setFormVersion] = React.useState(0);
+    const [formInstance, setFormInstance] = React.useState<any>(null);
+
+    // NEW: Track which button to show
+    const [activeButton, setActiveButton] = React.useState<"SAVE" | "SUBMIT" | "CANCEL" | null>(null);
+    const [formDirty, setFormDirty] = React.useState(false);
 
     /* -------------------------------------------------
        3. FETCH RECORD
@@ -76,24 +84,46 @@ export default function LogSheetDetailPage() {
                 setLoading(true);
                 setError(null);
 
-                const resp = await axios.get(`${API_BASE_URL}/${doctypeName}/${docname}`, {
-                    headers: {
-                        Authorization: `token ${apiKey}:${apiSecret}`,
-                        "Content-Type": "application/json",
-                    },
-                    withCredentials: true,
-                });
+                const resp = await axios.get(
+                    `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
+                    {
+                        headers: {
+                            Authorization: `token ${apiKey}:${apiSecret}`,
+                            "Content-Type": "application/json",
+                        },
+                        withCredentials: true,
+                        maxBodyLength: Infinity,
+                        maxContentLength: Infinity,
+                    }
+                );
 
-                setRecord(resp.data.data);
+                const data = resp.data.data as LogSheetData;
+                setRecord(data);
+                
+                // Initialize button state based on document status
+                if (data.docstatus === 0) { // Draft
+                    setActiveButton("SUBMIT");
+                } else if (data.docstatus === 1) { // Submitted
+                    setActiveButton("CANCEL");
+                }
+                
+                setFormDirty(false);
             } catch (err: any) {
                 console.error("API Error:", err);
-                setError(
-                    err.response?.status === 404
-                        ? "Log Sheet not found"
-                        : err.response?.status === 403
-                            ? "Unauthorized"
-                            : "Failed to load record"
+                
+                const messages = getApiMessages(
+                    null,
+                    err,
+                    "Record loaded successfully",
+                    "Failed to load record",
+                    (error) => {
+                        if (error.response?.status === 404) return "Log Sheet not found";
+                        if (error.response?.status === 403) return "Unauthorized";
+                        return "Failed to load record";
+                    }
                 );
+
+                setError(messages.description || messages.message);
             } finally {
                 setLoading(false);
             }
@@ -101,6 +131,29 @@ export default function LogSheetDetailPage() {
 
         fetchRecord();
     }, [docname, apiKey, apiSecret, isAuthenticated, isInitialized]);
+
+    React.useEffect(() => {
+        if (!formInstance) return;
+
+        const subscription = formInstance.watch((value: any, { name }: { name?: string }) => {
+            // Watch for form changes to mark as dirty
+            if (name && !isProgrammaticUpdate.current) {
+                setFormDirty(true);
+                // When form becomes dirty, show SAVE button
+                if (record?.docstatus === 0) {
+                    setActiveButton("SAVE");
+                }
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, [formInstance, record?.docstatus]);
+
+    const handleFormInit = React.useCallback((form: any) => {
+        setFormInstance(form);
+    }, []);
 
     /* -------------------------------------------------
        4. Build form tabs structure
@@ -162,20 +215,21 @@ export default function LogSheetDetailPage() {
                     { name: "operator_id", label: "Operator ID", type: "Read Only" },
                     { name: "operator_name", label: "Operator Name", type: "Read Only" },
                     { name: "section_break_mgrv", label: "", type: "Section Break" },
-                    { name: "water_level", label: "Water Level", type: "Float", precision: 2 },
-                    { name: "pressure_guage", label: "Pressure Guage Reading", type: "Float", precision: 2 },
-                    { name: "voltage_section", label: "Voltage Reading", type: "Section Break" },
+                    { name: "water_level", label: "Water Level (In Meters)", type: "Float", precision: 2 },
+                    { name: "pressure_guage", label: "Pressure Guage Reading (in Kg/cm2)", type: "Float", precision: 2 },
+                    { name: "voltage_section", label: "Voltage Reading (In Volt)", type: "Section Break" },
                     { name: "br", label: "BR", type: "Float", precision: 2 },
                     { name: "ry", label: "RY", type: "Float", precision: 2 },
                     { name: "yb", label: "YB", type: "Float", precision: 2 },
-                    { name: "current_reading_section", label: "Current Reading", type: "Section Break" },
+                    { name: "current_reading_section", label: "Current Reading (In Ampere)", type: "Section Break" },
                     { name: "r", label: "R", type: "Float", precision: 2 },
                     { name: "y", label: "Y", type: "Float", precision: 2 },
                     { name: "b", label: "B", type: "Float", precision: 2 },
                     { name: "section_break_qzro", label: "", type: "Section Break" },
                     {
                         name: "temperature_readings",
-                        label: "Temperature Readings",
+                        label: "Temperature Readings (In °C)",
+                        className: "big-table-label",
                         type: "Table",
                         columns: [
                             {
@@ -197,40 +251,77 @@ export default function LogSheetDetailPage() {
             }
         ];
     }, [record]);
+
+    /* -------------------------------------------------
+       5. SAVE (UPDATE) DOCUMENT
+       ------------------------------------------------- */
     const handleSubmit = async (data: Record<string, any>, isDirty: boolean) => {
         if (!isDirty) {
             toast.info("No changes to save.");
             return;
         }
+
+        if (!record) {
+            toast.error("Record not loaded. Cannot save.", { duration: Infinity });
+            return;
+        }
+
         setIsSaving(true);
+        isProgrammaticUpdate.current = true;
+
         try {
-            const payload = { ...data };
-            const nonDataFields = new Set([
-                "section_break_mgrv", "voltage_section", "current_reading_section",
-                "section_break_qzro",
-            ]);
+            const payload: Record<string, any> = JSON.parse(JSON.stringify(data));
+
+            const allFields = formTabs.flatMap((tab) => tab.fields);
+            const nonDataFields = new Set<string>();
+            allFields.forEach((field) => {
+                if (
+                    field.type === "Section Break" ||
+                    field.type === "Column Break" ||
+                    field.type === "Button" ||
+                    field.type === "Read Only"
+                ) {
+                    nonDataFields.add(field.name);
+                }
+            });
+
             const finalPayload: Record<string, any> = {};
             for (const key in payload) {
                 if (!nonDataFields.has(key)) {
                     finalPayload[key] = payload[key];
                 }
             }
-            if (record) {
-                finalPayload.modified = record.modified;
-                finalPayload.docstatus = record.docstatus;
-            }
+
+            finalPayload.modified = record.modified;
+            finalPayload.docstatus = record.docstatus;
+
             const floatFields = [
                 "water_level", "pressure_guage",
                 "br", "ry", "yb",
                 "r", "y", "b"
             ];
-            floatFields.forEach(field => {
-                if (field in finalPayload) {
-                    finalPayload[field] = Number(finalPayload[field]) || 0;
+            floatFields.forEach((f) => {
+                if (f in finalPayload) {
+                    finalPayload[f] = Number(finalPayload[f]) || 0;
                 }
             });
+
+            // Child table numeric conversions
+            if (Array.isArray(finalPayload.temperature_readings)) {
+                finalPayload.temperature_readings = finalPayload.temperature_readings.map(
+                    (row: any) => {
+                        return {
+                            ...row,
+                            temp_value: Number(row.temp_value) || 0,
+                        };
+                    }
+                );
+            }
+
+            console.log("Sending this PAYLOAD to Frappe:", finalPayload);
+
             const resp = await axios.put(
-                `${API_BASE_URL}/${doctypeName}/${docname}`,
+                `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
                 finalPayload,
                 {
                     headers: {
@@ -238,25 +329,158 @@ export default function LogSheetDetailPage() {
                         "Content-Type": "application/json",
                     },
                     withCredentials: true,
+                    maxBodyLength: Infinity,
+                    maxContentLength: Infinity,
                 }
             );
-            toast.success("Changes saved successfully!");
-            if (resp.data?.data) {
-                setRecord(resp.data.data);
+
+            const messages = getApiMessages(resp, null, "Changes saved!", "Failed to save");
+
+            if (messages.success) {
+                toast.success(messages.message, { description: messages.description });
+            } else {
+                toast.error(messages.message, { description: messages.description, duration: Infinity });
             }
-            router.push(`/operations/doctype/logsheet/${encodeURIComponent(docname)}`);
-            return { statusCode: resp.status, status: resp.data?.data?.status };
+
+            if (resp.data && resp.data.data) {
+                // Update state with new data
+                const updatedData = resp.data.data as LogSheetData;
+                setRecord(updatedData);
+                setFormDirty(false);
+                
+                // Update button state after save
+                if (updatedData.docstatus === 0) { // Still draft
+                    setActiveButton("SUBMIT");
+                }
+
+                // Force form remount
+                setFormVersion((v) => v + 1);
+            }
+
         } catch (err: any) {
             console.error("Save error:", err);
-            toast.error("Failed to Save", {
-                description: err.response?.data?.message || err.message || "Unknown error",
-                duration: Infinity
+            const messages = getApiMessages(null, err, "Changes saved!", "Failed to save");
+            toast.error(messages.message, { description: messages.description, duration: Infinity});
+        } finally {
+            setIsSaving(false);
+            isProgrammaticUpdate.current = false;
+        }
+    };
+
+    /* -------------------------------------------------
+       6. SUBMIT DOCUMENT
+       ------------------------------------------------- */
+    const handleSubmitDocument = async () => {
+        if (!record) return;
+        
+        setIsSaving(true);
+
+        try {
+            // Prepare payload similar to handleSubmit
+            const payload: Record<string, any> = { ...record };
+            
+            // Convert numeric fields
+            const floatFields = [
+                "water_level", "pressure_guage",
+                "br", "ry", "yb",
+                "r", "y", "b"
+            ];
+            floatFields.forEach((f) => {
+                if (f in payload) {
+                    payload[f] = Number(payload[f]) || 0;
+                }
             });
+
+            // Child table numeric conversions
+            if (Array.isArray(payload.temperature_readings)) {
+                payload.temperature_readings = payload.temperature_readings.map((row: any) => ({
+                    ...row,
+                    temp_value: Number(row.temp_value) || 0,
+                }));
+            }
+
+            // Set docstatus to 1 (submitted)
+            payload.docstatus = 1;
+
+            const response = await axios.put(
+                `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
+                payload,
+                {
+                    headers: { 
+                        Authorization: `token ${apiKey}:${apiSecret}`,
+                        "Content-Type": "application/json"
+                    }
+                }
+            );
+
+            toast.success("Document submitted successfully!");
+            
+            // Update local state without reload
+            const updatedData = response.data.data as LogSheetData;
+            setRecord(updatedData);
+            setFormDirty(false);
+            
+            // Update button to CANCEL after submission
+            setActiveButton("CANCEL");
+            
+            // Force form remount with new docstatus
+            setFormVersion((v) => v + 1);
+        } catch (err: any) {
+            console.error("Submit error:", err);
+            const messages = getApiMessages(null, err, "Document submitted successfully!", "Submit failed");
+            toast.error(messages.message);
         } finally {
             setIsSaving(false);
         }
     };
-    const handleCancel = () => router.back();
+
+    /* -------------------------------------------------
+       7. CANCEL DOCUMENT
+       ------------------------------------------------- */
+    const handleCancelDocument = async () => {
+        if (!record) return;
+        
+        if (!window.confirm("Are you sure you want to cancel this Log Sheet? This action cannot be undone.")) {
+            return;
+        }
+        
+        setIsSaving(true);
+        
+        try {
+            const payload = {
+                docstatus: 2,
+                modified: record.modified
+            };
+            
+            const resp = await axios.put(
+                `${API_BASE_URL}/${encodeURIComponent(doctypeName)}/${encodeURIComponent(docname)}`,
+                payload,
+                { 
+                    headers: { 
+                        Authorization: `token ${apiKey}:${apiSecret}`,
+                        "Content-Type": "application/json"
+                    } 
+                }
+            );
+
+            toast.success("Document cancelled successfully!");
+            
+            // Update local state without reload
+            const updatedRecord = resp.data.data as LogSheetData;
+            setRecord(updatedRecord);
+            setActiveButton(null); // Remove cancel button after cancellation
+        } catch (err: any) {
+            console.error("Cancel error:", err);
+            const messages = getApiMessages(null, err, "Document cancelled successfully!", "Cancel failed");
+            toast.error(messages.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    /* -------------------------------------------------
+       8. UI STATES
+       ------------------------------------------------- */
     if (loading) {
         return (
             <div className="module active" style={{ padding: "2rem", textAlign: "center" }}>
@@ -264,6 +488,7 @@ export default function LogSheetDetailPage() {
             </div>
         );
     }
+
     if (error) {
         return (
             <div className="module active" style={{ padding: "2rem" }}>
@@ -274,6 +499,7 @@ export default function LogSheetDetailPage() {
             </div>
         );
     }
+
     if (!record) {
         return (
             <div className="module active" style={{ padding: "2rem" }}>
@@ -281,19 +507,53 @@ export default function LogSheetDetailPage() {
             </div>
         );
     }
+
+    // Determine submit label based on active button
+    const getSubmitLabel = () => {
+        if (isSaving) {
+            switch (activeButton) {
+                case "SAVE": return "Saving...";
+                case "SUBMIT": return "Submitting...";
+                case "CANCEL": return "Cancelling...";
+                default: return "Processing...";
+            }
+        }
+        
+        switch (activeButton) {
+            case "SAVE": return "Save";
+            case "SUBMIT": return "Submit";
+            case "CANCEL": return "Cancel";
+            default: return undefined;
+        }
+    };
+
+    const isSubmitted = record.docstatus === 1;
+    const isDraft = record.docstatus === 0;
+
+    const formKey = `${record.name}-${record.docstatus}-${formVersion}`;
+
+    /* -------------------------------------------------
+       9. RENDER FORM
+       ------------------------------------------------- */
     return (
         <DynamicForm
+            key={formKey}
             tabs={formTabs}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
+            onSubmit={activeButton === "SAVE" ? handleSubmit : async () => {}}
+            onSubmitDocument={activeButton === "SUBMIT" ? handleSubmitDocument : undefined}
+            onCancelDocument={activeButton === "CANCEL" ? handleCancelDocument : undefined}
+            onCancel={() => router.back()}
             title={`${doctypeName}: ${record.name}`}
-            description={`Record ID: ${docname}`}
-            submitLabel={isSaving ? "Saving..." : "Save"}
-            cancelLabel="Cancel"
+            description={`Update details for record ID: ${docname}`}
+            isSubmittable={activeButton === "SUBMIT"}
+            docstatus={record.docstatus}
+            initialStatus={isDraft ? "Draft" : isSubmitted ? "Submitted" : "Cancelled"}
+            onFormInit={handleFormInit}
+            submitLabel={getSubmitLabel()}
             deleteConfig={{
                 doctypeName: doctypeName,
                 docName: docname,
-                redirectUrl: "/operations/doctype/logsheet"
+                redirectUrl: "/operations/doctype/logsheet",
             }}
         />
     );

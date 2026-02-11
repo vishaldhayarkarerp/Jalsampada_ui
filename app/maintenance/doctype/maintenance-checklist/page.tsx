@@ -132,6 +132,17 @@ export default function MaintenanceChecklistListPage() {
     fetchFilterOptions();
   }, [isInitialized, isAuthenticated, apiKey, apiSecret]);
 
+  // ── Filter Stage Options based on LIS ───────────────────────────────
+  const filteredStageOptions = React.useMemo(() => {
+    if (!selectedLis) {
+      return stageOptions;
+    }
+    
+    // If we had a way to filter stages by LIS, we would do it here
+    // For now, return all stages since we don't have the relationship data
+    return stageOptions;
+  }, [selectedLis, stageOptions]);
+
   /* ── Search & Filter ─────────────────────────────── */
   const filteredRecords = React.useMemo(() => {
     return records.filter((r) => {
@@ -174,17 +185,7 @@ export default function MaintenanceChecklistListPage() {
         }
 
         const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
-        const filters: any[] = [];
-        if (debouncedSearch) {
-          filters.push(["Maintenance Checklist", "name", "like", `%${debouncedSearch}%`]);
-          filters.push(["Maintenance Checklist", "lis_name", "like", `%${debouncedSearch}%`]);
-          filters.push(["Maintenance Checklist", "stage", "like", `%${debouncedSearch}%`]);
-          filters.push(["Maintenance Checklist", "monitoring_type", "like", `%${debouncedSearch}%`]);
-          filters.push(["Maintenance Checklist", "asset_category", "like", `%${debouncedSearch}%`]);
-        }
-        if (selectedLis) filters.push(["Maintenance Checklist", "lis_name", "=", selectedLis]);
-        if (selectedStage) filters.push(["Maintenance Checklist", "stage", "=", selectedStage]);
-        if (selectedAssetCategory) filters.push(["Maintenance Checklist", "asset_category", "=", selectedAssetCategory]);
+        // 🟢 Removed server-side filters - now using client-side filtering only
 
         const commonHeaders = {
           Authorization: `token ${apiKey}:${apiSecret}`,
@@ -205,17 +206,15 @@ export default function MaintenanceChecklistListPage() {
               ]),
               limit_start: start,
               limit_page_length: limit,
-              order_by: "creation desc",
-              filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+              order_by: "creation desc"
             },
             headers: commonHeaders,
             withCredentials: true,
           }),
-          // Only fetch count during initial load or filter change
+          // Only fetch count during initial load
           isReset ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
             params: { 
-              doctype: doctypeName, 
-              filters: filters.length > 0 ? JSON.stringify(filters) : undefined 
+              doctype: doctypeName
             },
             headers: commonHeaders,
           }) : Promise.resolve(null)
@@ -254,7 +253,7 @@ export default function MaintenanceChecklistListPage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, selectedLis, selectedStage, selectedAssetCategory]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized]
   );
 
   React.useEffect(() => {
@@ -486,7 +485,21 @@ export default function MaintenanceChecklistListPage() {
           <div style={{ minWidth: "200px" }}>
             <Controller control={control} name="stage" render={({ field: { value } }) => (
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <LinkField control={control} field={{ name: "stage", label: "", type: "Link", linkTarget: "Stage No", placeholder: "Select Stage", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
+                <LinkField 
+                  control={control} 
+                  field={{ 
+                    name: "stage", 
+                    label: "", 
+                    type: "Link", 
+                    linkTarget: "Stage No", 
+                    placeholder: "Select Stage", 
+                    required: false, 
+                    defaultValue: value 
+                  }} 
+                  error={null} 
+                  className="[&>label]:hidden vishal" 
+                  filters={selectedLis ? { lis_name: selectedLis } : {}}
+                />
               </div>
             )} />
           </div>

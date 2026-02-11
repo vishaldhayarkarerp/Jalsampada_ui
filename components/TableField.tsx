@@ -506,7 +506,9 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
   return (
     <>
       <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-        <label className="form-label">{field.label}</label>
+       <label className={`form-label ${field.className || ""}`}>
+  {field.label}
+</label>
 
         <div className="stock-table-container">
 

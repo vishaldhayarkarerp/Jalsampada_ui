@@ -64,8 +64,8 @@ export default function NewRecordPage() {
           { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category", defaultValue: getValue("asset_category") },
           { name: "custom_asset_no", label: "Asset No", type: "Data", defaultValue: getValue("custom_asset_no") },
           { name: "custom_lis_name", label: "Lift Irrigation Scheme", required: true, type: "Link", linkTarget: "Lift Irrigation Scheme", defaultValue: getValue("custom_lis_name") },
-         
-          
+
+
           {
             name: "custom_stage_no", label: "Stage No.", type: "Link", required: true, linkTarget: "Stage No", defaultValue: getValue("custom_stage_no"),
             filterMapping: [
@@ -108,12 +108,12 @@ export default function NewRecordPage() {
             linkTarget: "Asset",
             customSearchUrl: "http://103.219.3.169:2223/api/method/frappe.desk.search.search_link",
             filters: (getValue) => {
-                const filters: Record<string, any> = {};
-                const stageNo = getValue("custom_stage_no");
-                const lisName = getValue("custom_lis_name");
+              const filters: Record<string, any> = {};
+              const stageNo = getValue("custom_stage_no");
+              const lisName = getValue("custom_lis_name");
 
-                if (stageNo) filters.custom_stage_no = stageNo;
-                if (lisName) filters.custom_lis_name = lisName;
+              if (stageNo) filters.custom_stage_no = stageNo;
+              if (lisName) filters.custom_lis_name = lisName;
 
               return filters;
             },
@@ -172,8 +172,7 @@ export default function NewRecordPage() {
           { name: "last_repair_date", label: "Last Repair Date", type: "Date", defaultValue: getValue("last_repair_date") },
           { name: "custom_equipement_capacity", label: "Equipement Capacity", type: "Link", linkTarget: "Equipement Capacity", defaultValue: getValue("custom_equipement_capacity") },
           { name: "custom_equipement_rating", label: "Equipement Rating", type: "Link", linkTarget: "Rating", defaultValue: getValue("custom_equipement_rating") },
-          { name: "maintenance_required", label: "Maintenance Required", type: "Check", defaultValue: getValue("maintenance_required", false) },
-          { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float", defaultValue: getValue("custom_previous_hours") },
+
           {
             name: "custom_condition",
             label: "Condition",
@@ -182,18 +181,15 @@ export default function NewRecordPage() {
             defaultValue: getValue("custom_condition"),
 
           },
+          { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float", defaultValue: getValue("custom_previous_hours") },
+          { name: "custom_hours_before_system", label: "Hours Before System", type: "Float", defaultValue: getValue("custom_hours_before_system") },
+          { name: "custom_cumulative_hours", label: "Cumulative Hours", type: "Float", defaultValue: getValue("custom_cumulative_hours") },
+          { name: "maintenance_required", label: "Maintenance Required", type: "Check", defaultValue: getValue("maintenance_required", false) },
           {
             name: "custom_description", label: "Description", type: "Small Text", defaultValue: getValue("custom_description"),
             displayDependsOn: "custom_condition=='Under Repair'"
 
           },
-          { name: "pump_motor_status", label: "Logbook Pump/Motor Status", type: "Section Break" },
-          { name: "custom_pump_status", label: "Pump Status", type: "Select", options: [{ label: "Running", value: "Running" }, { label: "Stopped", value: "Stopped" }], defaultValue: getValue("custom_pump_status") },
-          { name: "custom_start_datetime", label: "Asset Start Date and Time", type: "Date", defaultValue: getValue("custom_start_datetime") },
-          { name: "custom_hours_before_system", label: "Hours Before System", type: "Float", defaultValue: getValue("custom_hours_before_system") },
-          { name: "custom_cumulative_hours", label: "Cumulative Hours", type: "Float", defaultValue: getValue("custom_cumulative_hours") },
-          { name: "custom_previous_hours", label: "Total Previous Running Hours", type: "Float", defaultValue: getValue("custom_previous_hours") },
-          { name: "custom_current_hours", label: "Current Hours", type: "Float", defaultValue: getValue("custom_current_hours") },
           { name: "section_specifications", label: "Specification of Asset", type: "Section Break" },
           {
             name: "custom_asset_specifications",

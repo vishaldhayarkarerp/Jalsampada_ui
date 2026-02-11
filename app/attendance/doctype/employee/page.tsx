@@ -525,7 +525,7 @@ export default function EmployeeListPage() {
             <input
               type="text"
               placeholder="Search Name..."
-              className="form-control w-full"
+              className="form-control w-full mb-[3px]"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               aria-label="Search Employees"
@@ -549,7 +549,7 @@ export default function EmployeeListPage() {
                 };
 
                 return (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
+                  <div className="form-group" style={{ marginBottom: -9 }}>
                     <LinkField
                       control={control}
                       field={{ ...mockField, defaultValue: value }}

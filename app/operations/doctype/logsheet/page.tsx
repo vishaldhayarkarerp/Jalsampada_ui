@@ -634,6 +634,7 @@ export default function LogSheetPage() {
                       control={control}
                       field={{ ...mockField, defaultValue: value }}
                       error={null}
+                      filters={selectedLis ? {lis_name : selectedLis} : {}}
                       className="[&>label]:hidden vishal"
                     />
                   </div>

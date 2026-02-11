@@ -52,17 +52,21 @@ export function LinkField({ control, field, error, className, filters = {}, getQ
     try {
       // Use custom search URL if provided
       if (field.customSearchUrl) {
-        // Merge static custom search params with dynamic filters
-        const dynamicFilters = typeof field.filters === 'function' ? field.filters((name: string) => {
-          // Get current value from form state
-          const formValues = control._formValues || {};
-          return formValues[name];
-        }) : {};
+        // Resolve dynamic filters
+        const dynamicFilters = typeof field.filters === 'function'
+          ? field.filters((name: string) => {
+            const formValues = control._formValues || {};
+            return formValues[name];
+          })
+          : (typeof field.filters === 'object' ? field.filters : {});
 
-        const mergedFilters = {
-          ...field.customSearchParams?.filters,
-          ...dynamicFilters
-        };
+        // Merge filters: prioritize array format from customSearchParams
+        let mergedFilters = field.customSearchParams?.filters;
+        if (!Array.isArray(mergedFilters) && Object.keys(dynamicFilters).length > 0) {
+          mergedFilters = mergedFilters
+            ? { ...mergedFilters, ...dynamicFilters }
+            : dynamicFilters;
+        }
 
         const params: Record<string, any> = {
           txt: term || "",

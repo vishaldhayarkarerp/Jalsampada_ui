@@ -1,16 +1,14 @@
-
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { LinkInput } from "@/components/LinkInput";
 import jsPDF from 'jspdf';
 
+// --- API Configuration ---
+const API_BASE_URL = "http://103.219.1.138:4412/";
 
-// API base URL
-const API_BASE_URL = "http://103.219.3.169:2223/";
-
-// Type definitions for API response
+// --- Type Definitions ---
 type AssetReportField = {
     label: string;
     fieldname: string;
@@ -21,11 +19,6 @@ type AssetReportField = {
 
 type AssetReportData = Record<string, any>;
 
-type AssetReportResponse = {
-    message: [AssetReportField[], AssetReportData[]];
-};
-
-// Filter state type
 type Filters = {
     custom_lis_name: string;
     custom_stage_no: string;
@@ -33,7 +26,6 @@ type Filters = {
     custom_doctype_name: string;
 };
 
-// Column configuration
 type ColumnConfig = {
     fieldname: string;
     label: string;
@@ -41,72 +33,127 @@ type ColumnConfig = {
     formatter?: (value: any) => string;
 };
 
-// Helper functions
+// --- Helper Functions ---
 const formatDate = (dateString: string | null): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB');
 };
 
-const formatCurrency = (amount: number): string => {
+const formatCurrency = (amount: number | string | null) => {
+    if (amount === null || amount === undefined || amount === "") return "-";
     return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
         maximumFractionDigits: 2
-    }).format(amount * 100000);
+    }).format(Number(amount) * 100000);
 };
 
 // Default column widths for fields without API width
 const DEFAULT_COLUMN_WIDTHS: Record<string, string> = {
-    custom_lis_name: "100px",
-    custom_stage_no: "400px",
-    asset_category: "150px",
-    custom_asset_no: "120px",
-    custom_doctype_name: "400px",
-    make_model: "150px",
+    custom_lis_name: "150px",
+    custom_stage_no: "200px",
+    custom_doctype_name: "300px",
+    custom_asset_no: "150px",
+    asset_category: "200px",
+    make_model: "200px",
     capacity_rating: "150px",
-    location: "120px",
-    custom_installation_date: "140px",
-    custom_condition: "120px",
-    custom_last_repair_date: "140px",
-    net_purchase_amount: "140px",
-    total_expenditure: "140px"
+    location: "200px",
+    custom_installation_date: "150px",
+    custom_condition: "150px",
+    custom_last_repair_date: "150px",
+    net_purchase_amount: "180px",
+    total_expenditure: "180px"
 };
 
-// Filter fields configuration
-const FILTER_FIELDS = [
-    { key: 'custom_lis_name' as const, label: 'LIS Name', linkTarget: 'Lift Irrigation Scheme', placeholder: 'Search LIS Name...' },
-    { key: 'custom_stage_no' as const, label: 'Stage No', linkTarget: 'Stage No', placeholder: 'Search Stage No...' },
-    { key: 'asset_category' as const, label: 'Asset Category', linkTarget: 'Asset Category', placeholder: 'Search Asset Category...' },
-    { key: 'custom_doctype_name' as const, label: 'Asset ID', linkTarget: 'Asset', placeholder: 'Search Asset ID...' }
+const COLUMN_ORDER = [
+    "custom_lis_name",
+    "custom_stage_no",
+    "custom_doctype_name",
+    "custom_asset_no",
+    "asset_category",
+    "make_model",
+    "capacity_rating",
+    "location",
+    "custom_installation_date",
+    "custom_condition",
+    "custom_last_repair_date",
+    "net_purchase_amount",
+    "total_expenditure"
 ];
 
-export default function TPReportsPage() {
-    // State management
+const STICKY_COLUMNS = [
+    "custom_lis_name",
+    "custom_stage_no",
+    "custom_doctype_name",
+    "custom_asset_no"
+];
+
+export default function AssetRegisterReport() {
+    // --- State ---
     const [reportData, setReportData] = useState<AssetReportData[]>([]);
     const [filteredData, setFilteredData] = useState<AssetReportData[]>([]);
+    const [apiFields, setApiFields] = useState<AssetReportField[]>([]);
+
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+
     const [filters, setFilters] = useState<Filters>({
         custom_lis_name: '',
         custom_stage_no: '',
         asset_category: '',
         custom_doctype_name: ''
     });
-    const [uniqueValues, setUniqueValues] = useState<Record<string, string[]>>({});
-    const [apiFields, setApiFields] = useState<AssetReportField[]>([]);
 
-    // Memoized column configuration
+    const tableRef = useRef<HTMLDivElement>(null);
+    const [dragState, setDragState] = useState({
+        isGrabbing: false,
+        startX: 0,
+        scrollLeft: 0,
+    });
+
+    // --- Column Configuration ---
     const columnConfig = useMemo((): ColumnConfig[] => {
-        return apiFields.map(field => ({
+        if (!apiFields.length) return [];
+
+        const reorderedFields = [...apiFields].sort((a, b) => {
+            const aIndex = COLUMN_ORDER.indexOf(a.fieldname);
+            const bIndex = COLUMN_ORDER.indexOf(b.fieldname);
+
+            if (aIndex !== -1 && bIndex !== -1) {
+                return aIndex - bIndex;
+            }
+
+            if (aIndex !== -1) return -1;
+            if (bIndex !== -1) return 1;
+
+            return 0;
+        });
+
+        return reorderedFields.map(field => ({
             fieldname: field.fieldname,
             label: field.label,
-            width: DEFAULT_COLUMN_WIDTHS[field.fieldname] || "150px",
+            width: DEFAULT_COLUMN_WIDTHS[field.fieldname] || `${field.width || 150}px`,
             formatter: getFieldFormatter(field.fieldtype)
         }));
     }, [apiFields]);
 
-    // Get appropriate formatter for field type
+    // --- Sticky Columns Calculation ---
+    const stickyLeftMap = useMemo(() => {
+        let left = 0;
+        const map: Record<string, string> = {};
+
+        columnConfig.forEach(col => {
+            if (STICKY_COLUMNS.includes(col.fieldname)) {
+                map[col.fieldname] = `${left}px`;
+                left += parseInt(col.width.replace("px", "")) || 150;
+            }
+        });
+
+        return map;
+    }, [columnConfig]);
+
+    // --- Field Formatter ---
     function getFieldFormatter(fieldType: string): ((value: any) => string) | undefined {
         switch (fieldType) {
             case 'Date':
@@ -118,8 +165,19 @@ export default function TPReportsPage() {
         }
     }
 
-    // Fetch data from API
-    const fetchReportData = async () => {
+    // --- Dependent Filters Logic ---
+    const stageNoFilters = useMemo(() => {
+        const depFilters: Record<string, string> = {};
+
+        if (filters.custom_lis_name) {
+            depFilters["lis_name"] = filters.custom_lis_name;
+        }
+
+        return Object.keys(depFilters).length > 0 ? depFilters : undefined;
+    }, [filters.custom_lis_name]);
+
+    // --- Actions ---
+    const fetchReportData = useCallback(async () => {
         setLoading(true);
         setError(null);
 
@@ -138,117 +196,145 @@ export default function TPReportsPage() {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const result: AssetReportResponse = await response.json();
+            const result = await response.json();
             const [fields, data] = result.message;
 
             setApiFields(fields);
             setReportData(data);
             setFilteredData(data);
 
-            // Extract unique values for filters
-            const uniqueValuesMap: Record<string, string[]> = {};
-            FILTER_FIELDS.forEach(({ key }) => {
-                const values = [...new Set(data.map(item => item[key]).filter(Boolean))];
-                uniqueValuesMap[key] = values;
-            });
-
-            setUniqueValues(uniqueValuesMap);
-
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to fetch data');
+            console.error(err);
+            setError(err instanceof Error ? err.message : "Failed to fetch data");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    // Apply filters
-    const applyFilters = useMemo(() => {
-        let filtered = reportData;
-
-        Object.entries(filters).forEach(([key, value]) => {
-            if (value) {
-                filtered = filtered.filter(item => item[key] === value);
-            }
-        });
-
-        return filtered;
-    }, [reportData, filters]);
-
-    // Handle filter changes
-    const handleFilterChange = (field: keyof Filters, value: string) => {
-        setFilters(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
-
-    // Update filtered data when filters change
+    // --- Effects ---
+    // Auto-refresh when filters change (Debounced 500ms)
     useEffect(() => {
-        setFilteredData(applyFilters);
-    }, [applyFilters]);
+        const timer = setTimeout(() => {
+            // Apply client-side filtering
+            if (!reportData.length) {
+                setFilteredData([]);
+                return;
+            }
+
+            let filtered = [...reportData];
+
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value && value.trim()) {
+                    filtered = filtered.filter(row => {
+                        const rowValue = row[key];
+                        return rowValue && rowValue.toString().toLowerCase() === value.toLowerCase();
+                    });
+                }
+            });
+
+            setFilteredData(filtered);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [filters, reportData]);
 
     // Fetch data on component mount
     useEffect(() => {
         fetchReportData();
-    }, []);
+    }, [fetchReportData]);
 
-    // Calculate total table width
-    const totalTableWidth = useMemo(() => {
-        return columnConfig.reduce((total, col) => {
-            const width = parseInt(col.width.replace('px', ''));
-            return total + width;
-        }, 0);
-    }, [columnConfig]);
-
-    // Render cell value
-    const renderCellValue = (value: any, formatter?: ((value: any) => string) | undefined) => {
-        if (value === null || value === undefined || value === '') {
-            return '-';
-        }
-
-        if (formatter) {
-            return formatter(value);
-        }
-
-        return String(value);
-    };
-
-    // Export to CSV function
-    const exportToCSV = () => {
+    // --- Handlers ---
+    const handleExportCSV = () => {
         if (filteredData.length === 0) return;
 
-        // Create CSV headers
-        const headers = columnConfig.map(col => col.label).join(',');
-
-        // Create CSV rows
-        const rows = filteredData.map(asset => {
+        const headers = columnConfig.map(c => c.label).join(",");
+        const rows = filteredData.map(row => {
             return columnConfig.map(col => {
-                const value = asset[col.fieldname];
-                // Handle values that might contain commas or quotes
-                const stringValue = value === null || value === undefined || value === '' ? '' : String(value);
-                // Escape quotes and wrap in quotes if contains comma or quote
-                if (stringValue.includes(',') || stringValue.includes('"')) {
-                    return `"${stringValue.replace(/"/g, '""')}"`;
+                let val = row[col.fieldname];
+                val = val === null || val === undefined ? "" : String(val);
+                if (val.includes(",") || val.includes("\n") || val.includes('"')) {
+                    val = `"${val.replace(/"/g, '""')}"`;
                 }
-                return stringValue;
-            }).join(',');
-        });
+                return val;
+            }).join(",");
+        }).join("\n");
 
-        // Combine headers and rows
-        const csvContent = [headers, ...rows].join('\n');
-
-        // Create blob and download
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `asset_register_report_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
+        const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows;
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "asset_register_report.csv");
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
+    const handleFilterChange = (field: keyof Filters, value: string) => {
+        setFilters((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    const totalTableWidth = useMemo(() => {
+        return columnConfig.reduce((total, col) => {
+            const width = parseInt(col.width.replace("px", ""));
+            return total + (isNaN(width) ? 150 : width);
+        }, 0);
+    }, [columnConfig]);
+
+    const renderCellValue = (row: AssetReportData, col: ColumnConfig) => {
+        const value = row[col.fieldname];
+
+        if (col.formatter) {
+            return col.formatter(value);
+        }
+
+        if (value === null || value === undefined || value === "") {
+            return "-";
+        }
+        return String(value);
+    };
+
+    // --- Mouse Handlers ---
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!tableRef.current) return;
+        setDragState({
+            isGrabbing: true,
+            startX: e.pageX - tableRef.current.offsetLeft,
+            scrollLeft: tableRef.current.scrollLeft,
+        });
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!dragState.isGrabbing || !tableRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - tableRef.current.offsetLeft;
+        const walk = (x - dragState.startX) * 1.5;
+        tableRef.current.scrollLeft = dragState.scrollLeft - walk;
+    };
+
+    const handleMouseUp = useCallback(() => {
+        setDragState(prev => ({ ...prev, isGrabbing: false }));
+    }, []);
+
+    const handleMouseLeave = useCallback(() => {
+        setDragState(prev => ({ ...prev, isGrabbing: false }));
+    }, []);
+
+    // Global mouse up handler
+    useEffect(() => {
+        const handleGlobalMouseUp = () => {
+            if (dragState.isGrabbing) {
+                setDragState(prev => ({ ...prev, isGrabbing: false }));
+            }
+        };
+
+        document.addEventListener('mouseup', handleGlobalMouseUp);
+        return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
+    }, [dragState.isGrabbing]);
+
+    // PDF Export Function
     const exportToPDF = async () => {
         if (filteredData.length === 0) return;
 
@@ -265,12 +351,12 @@ export default function TPReportsPage() {
             const usableWidth = pageWidth - (margin * 2);
             const usableHeight = pageHeight - (margin * 2);
 
-            // 1. Pre-calculate Column Widths
+            // Pre-calculate Column Widths
             const columnWidths: number[] = [];
             columnConfig.forEach(col => {
                 pdf.setFontSize(8);
                 let maxWidth = pdf.getStringUnitWidth(col.label) * pdf.getFontSize();
-                filteredData.slice(0, 20).forEach(asset => { // Sample 20 rows for speed
+                filteredData.slice(0, 20).forEach(asset => {
                     const val = String(asset[col.fieldname] || '-');
                     const textWidth = pdf.getStringUnitWidth(val) * pdf.getFontSize();
                     if (textWidth > maxWidth) maxWidth = textWidth;
@@ -281,7 +367,7 @@ export default function TPReportsPage() {
             const scaleFactor = usableWidth / columnWidths.reduce((sum, w) => sum + w, 0);
             const finalColumnWidths = columnWidths.map(w => w * scaleFactor);
 
-            // 2. Define the Complete Header Function (Title + Filters + Table Header)
+            // Define the Complete Header Function
             const drawPageHeader = (isFirstPage = false) => {
                 let y = 20;
 
@@ -298,7 +384,14 @@ export default function TPReportsPage() {
 
                 const filtersApplied = Object.entries(filters)
                     .filter(([_, v]) => v)
-                    .map(([k, v]) => `${FILTER_FIELDS.find(f => f.key === k)?.label || k}: ${v}`)
+                    .map(([k, v]) => {
+                        let label = k;
+                        if (k === 'custom_lis_name') label = 'LIS Name';
+                        if (k === 'custom_stage_no') label = 'Stage No';
+                        if (k === 'asset_category') label = 'Asset Category';
+                        if (k === 'custom_doctype_name') label = 'Asset ID';
+                        return `${label}: ${v}`;
+                    })
                     .join(', ') || 'None';
                 y += 5;
                 pdf.text(`Filters Applied: ${filtersApplied}`, margin, y);
@@ -308,7 +401,6 @@ export default function TPReportsPage() {
                 pdf.setFontSize(8);
                 pdf.setFont('helvetica', 'bold');
 
-                // Calculate height for headers (allowing 2 lines)
                 let headerMaxHeight = 0;
                 const headerPadding = 3;
                 columnConfig.forEach((col, i) => {
@@ -328,7 +420,6 @@ export default function TPReportsPage() {
                     const x = margin + finalColumnWidths.slice(0, i).reduce((sum, w) => sum + w, 0);
                     const lines = pdf.splitTextToSize(col.label, finalColumnWidths[i] - 4).slice(0, 2);
                     const h = (lines.length * pdf.getFontSize()) / pdf.internal.scaleFactor;
-                    // Center text vertically in the header box
                     const yOffset = (totalHeaderHeight - h) / 2;
                     pdf.text(lines, x + 2, y + yOffset, { baseline: 'top' });
                 });
@@ -336,14 +427,14 @@ export default function TPReportsPage() {
                 pdf.setDrawColor(200, 200, 200);
                 pdf.line(margin, y + totalHeaderHeight, pageWidth - margin, y + totalHeaderHeight);
 
-                return y + totalHeaderHeight; // Return the new Y position
+                return y + totalHeaderHeight;
             };
 
-            // 3. Start Rendering Rows
+            // Start Rendering Rows
             let currentY = drawPageHeader(true);
 
             filteredData.forEach((asset) => {
-                pdf.setFont('helvetica', 'normal'); // FORCE RESET TO NORMAL
+                pdf.setFont('helvetica', 'normal');
                 pdf.setFontSize(7);
 
                 // Calculate row height
@@ -359,7 +450,7 @@ export default function TPReportsPage() {
                 if (currentY + rowMaxHeight + rowPadding > usableHeight) {
                     pdf.addPage();
                     currentY = drawPageHeader();
-                    pdf.setFont('helvetica', 'normal'); // RESET AFTER HEADER ON NEW PAGE
+                    pdf.setFont('helvetica', 'normal');
                     pdf.setFontSize(7);
                 }
 
@@ -371,7 +462,7 @@ export default function TPReportsPage() {
                 });
 
                 // Draw Borders
-                pdf.setDrawColor(230, 230, 230); // Light grey lines
+                pdf.setDrawColor(230, 230, 230);
                 let xPos = margin;
                 finalColumnWidths.forEach((width) => {
                     pdf.line(xPos, currentY, xPos, currentY + rowMaxHeight + rowPadding);
@@ -391,78 +482,128 @@ export default function TPReportsPage() {
 
     return (
         <div className="module active">
-            {/* Page Header */}
             <div className="module-header">
                 <div>
                     <h2>Asset Register Report</h2>
+                    <p>Track detailed information about assets across different stages.</p>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                        className="btn btn--success"
-                        onClick={exportToCSV}
-                        disabled={loading || filteredData.length === 0}
-                    >
-                        <i className="fas fa-file-csv"></i> Export CSV
-                    </button>
-                    <button
-                        className="btn btn--danger"
-                        onClick={exportToPDF}
-                        disabled={loading || filteredData.length === 0}
-                    >
-                        <i className="fas fa-file-pdf"></i> Export PDF
-                    </button>
+
+                <div className="flex gap-2">
                     <button
                         className="btn btn--primary"
                         onClick={fetchReportData}
                         disabled={loading}
                     >
-                        <i className="fas fa-sync-alt"></i> {loading ? 'Refreshing...' : 'Refresh'}
+                        <i className="fas fa-sync-alt"></i> {loading ? "Refreshing..." : "Refresh"}
                     </button>
+                    <div className="export-buttons flex gap-2 ml-2">
+                        <button className="btn btn--outline" onClick={handleExportCSV}>
+                            <i className="fas fa-file-csv"></i> CSV
+                        </button>
+                        <button className="btn btn--outline" onClick={exportToPDF}>
+                            <i className="fas fa-file-pdf"></i> PDF
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="tab-content active">
-                {/* Error Message */}
+            <div className="tab-content active relative">
                 {error && (
-                    <div className="alert alert--danger" style={{ marginBottom: '20px' }}>
+                    <div className="alert alert--danger" style={{ marginBottom: "20px" }}>
                         <i className="fas fa-exclamation-triangle"></i> {error}
                     </div>
                 )}
 
-                {/* Loading Message */}
-                {loading && (
-                    <div className="alert alert--info" style={{ marginBottom: '20px' }}>
+                {loading && !reportData.length && (
+                    <div className="alert alert--info" style={{ marginBottom: "20px" }}>
                         <i className="fas fa-spinner fa-spin"></i> Loading data...
                     </div>
                 )}
 
-                {/* Filters Section */}
-                <div className="filters-grid">
-                    {FILTER_FIELDS.map(({ key, placeholder, linkTarget }) => (
-                        <div key={key} className="form-group">
-                            <LinkInput
-                                value={filters[key as keyof Filters]}
-                                onChange={(value) => handleFilterChange(key as keyof Filters, value)}
-                                placeholder={placeholder}
-                                linkTarget={linkTarget}
-                                className="w-full"
-                            />
-                        </div>
-                    ))}
+                {/* Filters Grid */}
+                <div className="filters-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 relative z-[60]">
+                    <div className="form-group z-[70]">
+                        <label className="text-sm font-medium mb-1 block">LIS Name</label>
+                        <LinkInput
+                            value={filters.custom_lis_name}
+                            onChange={(value) => handleFilterChange("custom_lis_name", value)}
+                            placeholder="Select LIS..."
+                            linkTarget="Lift Irrigation Scheme"
+                            className="w-full relative"
+                        />
+                    </div>
+
+                    <div className="form-group z-[69]">
+                        <label className="text-sm font-medium mb-1 block">Stage No</label>
+                        <LinkInput
+                            value={filters.custom_stage_no}
+                            onChange={(value) => handleFilterChange("custom_stage_no", value)}
+                            placeholder="Select Stage..."
+                            linkTarget="Stage No"
+                            filters={stageNoFilters}
+                            className="w-full relative"
+                        />
+                    </div>
+
+                    <div className="form-group z-[68]">
+                        <label className="text-sm font-medium mb-1 block">Asset Category</label>
+                        <LinkInput
+                            value={filters.asset_category}
+                            onChange={(value) => handleFilterChange("asset_category", value)}
+                            placeholder="Select Category..."
+                            linkTarget="Asset Category"
+                            className="w-full relative"
+                        />
+                    </div>
+
+                    <div className="form-group z-[67]">
+                        <label className="text-sm font-medium mb-1 block">Asset ID</label>
+                        <LinkInput
+                            value={filters.custom_doctype_name}
+                            onChange={(value) => handleFilterChange("custom_doctype_name", value)}
+                            placeholder="Select Asset..."
+                            linkTarget="Asset"
+                            className="w-full relative"
+                        />
+                    </div>
                 </div>
 
                 {/* Report Table */}
-                <div className="stock-table-container" style={{
-                    overflowX: 'auto',
-                    overflowY: 'auto',
-                    maxHeight: '70vh'
-                }}>
-                    <table className="stock-table sticky-header-table" style={{ minWidth: `${totalTableWidth}px` }}>
-                        <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white' }}>
+                <div
+                    ref={tableRef}
+                    className="stock-table-container border rounded-md relative z-10"
+                    style={{
+                        overflowX: "auto",
+                        overflowY: "auto",
+                        maxHeight: "70vh",
+                        cursor: dragState.isGrabbing ? "grabbing" : "grab",
+                        userSelect: dragState.isGrabbing ? "none" : "auto",
+                        willChange: dragState.isGrabbing ? "transform" : "auto",
+                    }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                >
+                    <table
+                        className="stock-table sticky-header-table"
+                        style={{ minWidth: `${totalTableWidth}px` }}
+                    >
+                        <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#3683f6" }}>
                             <tr>
                                 {columnConfig.map((column) => (
-                                    <th key={column.fieldname} style={{ width: column.width }}>
+                                    <th
+                                        key={column.fieldname}
+                                        style={{
+                                            width: column.width,
+                                            position: STICKY_COLUMNS.includes(column.fieldname) ? "sticky" : "static",
+                                            left: stickyLeftMap[column.fieldname] || "auto",
+                                            zIndex: STICKY_COLUMNS.includes(column.fieldname) ? 40 : 15,
+                                            backgroundColor: STICKY_COLUMNS.includes(column.fieldname)
+                                                ? "#3683f6"
+                                                : "inherit",
+                                        }}
+                                    >
                                         {column.label}
                                     </th>
                                 ))}
@@ -472,18 +613,28 @@ export default function TPReportsPage() {
                             {filteredData.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={columnConfig.length}
-                                        style={{ textAlign: 'center', padding: '20px' }}
+                                        colSpan={Math.max(columnConfig.length, 1)}
+                                        style={{ textAlign: "center", padding: "40px" }}
                                     >
-                                        {loading ? 'Loading data...' : 'No records found'}
+                                        {loading ? "Fetching records..." : "No records found matching criteria"}
                                     </td>
                                 </tr>
                             ) : (
-                                filteredData.map((asset: AssetReportData, index: number) => (
+                                filteredData.map((row, index) => (
                                     <tr key={index}>
                                         {columnConfig.map((column) => (
-                                            <td key={column.fieldname}>
-                                                {renderCellValue(asset[column.fieldname], column.formatter)}
+                                            <td
+                                                key={`${index}-${column.fieldname}`}
+                                                style={{
+                                                    position: STICKY_COLUMNS.includes(column.fieldname) ? "sticky" : "static",
+                                                    left: stickyLeftMap[column.fieldname] || "auto",
+                                                    zIndex: STICKY_COLUMNS.includes(column.fieldname) ? 30 : 10,
+                                                    backgroundColor: STICKY_COLUMNS.includes(column.fieldname)
+                                                        ? "white"
+                                                        : "inherit",
+                                                }}
+                                            >
+                                                {renderCellValue(row, column)}
                                             </td>
                                         ))}
                                     </tr>

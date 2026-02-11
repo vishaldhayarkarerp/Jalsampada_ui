@@ -266,13 +266,15 @@ export default function NewLogbookPage() {
             displayDependsOn: "pump_operation == 'stop'",
             required: isStopOperationRequired
           },
-          {
-            name: "specify",
-            label: "Specify Reason",
-            type: "Text",
-            defaultValue: getValue("specify"),
-            displayDependsOn: "pump_stop_reason == 'Other'"
+
+           {
+            name: "status",
+            label: "Status",
+            type: "Read Only",
+            readOnly: true,
+            displayDependsOn: "pump_operation == 'start' || pump_operation == 'stop'"
           },
+          
           {
             name: "operator_id_1",
             label: "Operator ID",
@@ -287,12 +289,13 @@ export default function NewLogbookPage() {
             displayDependsOn: "pump_operation == 'stop'"
           },
           {
-            name: "status",
-            label: "Status",
-            type: "Read Only",
-            readOnly: true,
-            displayDependsOn: "pump_operation == 'start' || pump_operation == 'stop'"
+            name: "specify",
+            label: "Specify Reason",
+            type: "Text",
+            defaultValue: getValue("specify"),
+            displayDependsOn: "pump_stop_reason == 'Other'"
           },
+         
           {
             name: "primary_list",
             label: primaryListLabel,

@@ -38,3 +38,8 @@
 .stock-table.child-form-table {
     margin: 0;
 }
+
+.big-table-label {
+  font-size: 17px !important;
+  font-weight: 600;
+}

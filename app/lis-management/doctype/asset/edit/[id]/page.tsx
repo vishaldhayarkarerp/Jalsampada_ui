@@ -590,7 +590,7 @@ export default function RecordDetailPage() {
                     { name: "asset_category", label: "Asset Category", type: "Link", linkTarget: "Asset Category" },
                     { name: "custom_asset_no", label: "Asset No", type: "Data" },
                     { name: "custom_lis_name", label: "Lift Irrigation Scheme", required: true, type: "Link", linkTarget: "Lift Irrigation Scheme" },
-                   
+
                     { name: "custom_stage_no", label: "Stage No.", type: "Link", required: true, linkTarget: "Stage No" },
                     { name: "location", label: "Location", type: "Link", required: true, linkTarget: "Location" },
                     { name: "custom_serial_number", label: "Serial Number", type: "Data" },
@@ -701,25 +701,16 @@ export default function RecordDetailPage() {
                     { name: "last_repair_date", label: "Last Repair Date", type: "Date" },
                     { name: "custom_equipement_capacity", label: "Equipement Capacity", type: "Link", linkTarget: "Equipement Capacity" },
                     { name: "custom_equipement_rating", label: "Equipement Rating", type: "Link", linkTarget: "Rating" },
-                    { name: "maintenance_required", label: "Maintenance Required", type: "Check" },
-                    { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float" },
                     {
                         name: "custom_condition",
                         label: "Condition",
                         type: "Select",
                         options: [{ label: "Working", value: "Working" }, { label: "Under Repair", value: "Under Repair", }],
                     },
-                    {
-                        name: "custom_description", label: "Description", type: "Long Text",
-                        displayDependsOn: "custom_condition=='Under Repair'",
-                    },
-                    { name: "pump_motor_status", label: "Logbook Pump/Motor Status", type: "Section Break" },
-                    { name: "custom_pump_status", label: "Pump Status", type: "Select", options: [{ label: "Running", value: "Running" }, { label: "Stopped", value: "Stopped" }] },
-                    { name: "custom_start_datetime", label: "Asset Start Date and Time", type: "Date" },
-                    { name: "custom_hours_before_system", label: "Hours Before System", type: "Float", precision: 2 },
-                    { name: "custom_cumulative_hours", label: "Cumulative Hours", type: "Float", precision: 2 },
-                    { name: "custom_previous_hours", label: "Total Previous Running Hours", type: "Float", precision: 2 },
-                    { name: "custom_current_hours", label: "Current Hours", type: "Float", precision: 2 },
+                    { name: "custom_previous_hours", label: "Previous Running Hours", type: "Float" },
+                    { name: "custom_hours_before_system", label: "Hours Before System", type: "Float" },
+                    { name: "custom_cumulative_hours", label: "Cumulative Hours", type: "Float" },
+                    { name: "maintenance_required", label: "Maintenance Required", type: "Check" },
                     { name: "section_specifications", label: "Specification of Asset", type: "Section Break" },
                     {
                         name: "custom_asset_specifications",

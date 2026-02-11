@@ -5,6 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
+import { useForm, Controller } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 import Link from "next/link";
 import {
   Search,
@@ -91,8 +93,20 @@ export default function ItemPage() {
   const [totalCount, setTotalCount] = React.useState(0);    // Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  // Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      id: "",
+      item_name: "",
+      item_group: "",
+      status: "",
+    },
+  });
+
+  const selectedId = watch("id");
+  const selectedItemName = watch("item_name");
+  const selectedItemGroup = watch("item_group");
+  const selectedStatus = watch("status");
 
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "modified",
@@ -159,14 +173,6 @@ export default function ItemPage() {
           order_by: `${sortConfig.key} ${sortConfig.direction}`, // 🟢 Server-side sorting
         };
 
-        if (debouncedSearch) {
-          params.or_filters = JSON.stringify({
-            name: ["like", `%${debouncedSearch}%`],
-            item_name: ["like", `%${debouncedSearch}%`],
-            item_group: ["like", `%${debouncedSearch}%`],
-          });
-        }
-
         const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
 
         // 🟢 Parallel Requests: Data + Count (only on reset)
@@ -180,9 +186,6 @@ export default function ItemPage() {
             ? axios.get(`${API_BASE_URL}/api/method/frappe.client.get_count`, {
                 params: { 
                     doctype: doctypeName,
-                    // Note: frappe.client.get_count doesn't easily support or_filters in GET params 
-                    // without full filter array. For now, we fetch total unfiltered or simply ignore count filter accuracy for complex OR searches.
-                    // If you need accurate count on search, you might need a custom RPC method.
                 },
                 headers: commonHeaders,
               })
@@ -215,7 +218,7 @@ export default function ItemPage() {
         setIsLoadingMore(false);
       }
     },
-    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, sortConfig]
+    [doctypeName, apiKey, apiSecret, isAuthenticated, isInitialized, sortConfig]
   );
 
   // 🟢 Trigger fetch on search or sort change
@@ -293,8 +296,40 @@ export default function ItemPage() {
   /* -------------------------------------------------
      4. SORTING LOGIC
      ------------------------------------------------- */
-  // 🟢 Removed client-side sortedRows useMemo. 
-  // We now rely on 'rows' which is sorted by the server via 'order_by' param.
+  // Filter rows client-side for instant results
+  const filteredRows = React.useMemo(() => {
+    let filtered = rows;
+    
+    // Apply ID filter
+    if (selectedId) {
+      filtered = filtered.filter(row =>
+        row.name.toLowerCase().includes(selectedId.toLowerCase())
+      );
+    }
+    
+    // Apply Item Name filter
+    if (selectedItemName) {
+      filtered = filtered.filter(row =>
+        row.item_name && row.item_name.toLowerCase().includes(selectedItemName.toLowerCase())
+      );
+    }
+    
+    // Apply Item Group filter
+    if (selectedItemGroup) {
+      filtered = filtered.filter(row =>
+        row.item_group && row.item_group.toLowerCase().includes(selectedItemGroup.toLowerCase())
+      );
+    }
+    
+    // Apply Status filter
+    if (selectedStatus) {
+      filtered = filtered.filter(row =>
+        row.status && row.status.toLowerCase().includes(selectedStatus.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  }, [rows, selectedId, selectedItemName, selectedItemGroup, selectedStatus]);
 
   const requestSort = (key: keyof ItemRow) => {
     // This will trigger the useEffect -> fetchItems(0, true)
@@ -391,7 +426,7 @@ export default function ItemPage() {
             <th className="text-right pr-4" style={{ width: "140px" }}>
                 <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                  {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
-                   <><span>{rows.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
+                   <><span>{filteredRows.length}</span><span className="opacity-50"> /</span><span className="text-gray-900 dark:text-gray-200 font-bold">{totalCount}</span></>
                  )}
 
               </div>
@@ -399,8 +434,8 @@ export default function ItemPage() {
           </tr>
         </thead>
         <tbody>
-          {rows.length ? (
-            rows.map((row) => {
+          {filteredRows.length ? (
+            filteredRows.map((row) => {
               const isSelected = selectedIds.has(row.name);
               return (
                 <tr
@@ -520,17 +555,126 @@ export default function ItemPage() {
           gap: "8px",
         }}
       >
-        {/* Left: Single Omni-Search */}
-        <div className="relative" style={{ flexGrow: 1, maxWidth: "400px" }}>
-          <input
-            type="text"
-            placeholder="Search ID, Item Name, Group..."
-            className="form-control w-full pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search Item"
-          />
+        {/* Left: Individual Filters */}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          <div style={{ minWidth: "150px" }}>
+            <Controller
+              control={control}
+              name="id"
+              render={({ field }) => {
+                const mockField = {
+                  name: "id",
+                  label: "",
+                  type: "Text" as const,
+                  placeholder: "Filter by ID",
+                  required: false,
+                };
 
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <input
+                      {...mockField}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className="form-control w-full"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px" }}>
+            <Controller
+              control={control}
+              name="item_name"
+              render={({ field }) => {
+                const mockField = {
+                  name: "item_name",
+                  label: "",
+                  type: "Text" as const,
+                  placeholder: "Filter by Item Name",
+                  required: false,
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <input
+                      {...mockField}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className="form-control w-full"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "200px" }}>
+            <Controller
+              control={control}
+              name="item_group"
+              render={({ field }) => {
+                const mockField = {
+                  name: "item_group",
+                  label: "",
+                  type: "Text" as const,
+                  placeholder: "Filter by Item Group",
+                  required: false,
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <input
+                      {...mockField}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className="form-control w-full"
+                    />
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: "150px" }}>
+            <Controller
+              control={control}
+              name="status"
+              render={({ field }) => {
+                const mockField = {
+                  name: "status",
+                  label: "",
+                  type: "Select" as const,
+                  placeholder: "Filter by Status",
+                  required: false,
+                  options: [
+                    { label: "All", value: "" },
+                    { label: "Enabled", value: "Enabled" },
+                    { label: "Disabled", value: "Disabled" },
+                  ]
+                };
+
+                return (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <select
+                      {...mockField}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className="form-control w-full"
+                    >
+                      {mockField.options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }}
+            />
+          </div>
         </div>
 
         {/* Right: Sort Pill + View Switcher */}

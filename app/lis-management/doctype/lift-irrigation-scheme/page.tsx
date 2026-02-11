@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { RecordCard, RecordCardField } from "@/components/RecordCard";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { getApiMessages } from "@/lib/utils"; // 🟢 Added import for error handling
+import { getApiMessages} from "@/lib/utils"; // 🟢 Added import for error handling
+import { useForm, Controller } from "react-hook-form";
+import { LinkField } from "@/components/LinkField";
 
 // 🟢 New Imports for Bulk Delete & Icons
 import { useSelection } from "@/hooks/useSelection";
@@ -67,19 +69,34 @@ export default function DoctypePage() {
   const [totalCount, setTotalCount] = React.useState(0);    // 🟢 NEW: Total count of records
   const [error, setError] = React.useState<string | null>(null);
 
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  // 🟢 Form for filters
+  const { control, watch } = useForm({
+    defaultValues: {
+      name: "",
+      lis_name: ""
+    }
+  });
 
-  // Filter schemes client-side for instant results
-  const filteredSchemes = React.useMemo(() => {
-    if (!debouncedSearch) return schemes;
-    return schemes.filter(scheme =>
-      scheme.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      scheme.lis_name.toLowerCase().includes(debouncedSearch.toLowerCase())
-    );
-  }, [schemes, debouncedSearch]);
+  const selectedName = watch("name");
+  const selectedLisName = watch("lis_name");
   
-  // 🟢 Use filtered schemes for display but original schemes for pagination count
+  // 🟢 Debounce filter values to reduce API calls
+  const debouncedName = useDebounce(selectedName, 300);
+  const debouncedLisName = useDebounce(selectedLisName, 300);
+  
+  // 🟢 Track if filters are changing to show loading state
+  const [isFilterChanging, setIsFilterChanging] = React.useState(false);
+
+  // 🟢 Filter schemes client-side for instant results (like original implementation)
+  const filteredSchemes = React.useMemo(() => {
+    if (!selectedName && !selectedLisName) return schemes;
+    return schemes.filter(scheme =>
+      (selectedName ? scheme.name === selectedName : true) &&
+      (selectedLisName ? scheme.lis_name === selectedLisName : true)
+    );
+  }, [schemes, selectedName, selectedLisName]);
+
+  // 🟢 Use filtered schemes for display
   const displaySchemes = filteredSchemes;
 
   // 🟢 1. Initialize Selection Hook
@@ -112,7 +129,6 @@ export default function DoctypePage() {
 
         const limit = isReset ? INITIAL_PAGE_SIZE : LOAD_MORE_SIZE;
         const filters: any[] = [];
-        if (debouncedSearch) filters.push(["Lift Irrigation Scheme", "name", "like", `%${debouncedSearch}%`]);
 
         const commonHeaders = { Authorization: `token ${apiKey}:${apiSecret}` };
         
@@ -160,7 +176,7 @@ export default function DoctypePage() {
         setIsLoadingMore(false);
       }
     },
-    [apiKey, apiSecret, isAuthenticated, isInitialized, debouncedSearch, doctypeName]
+    [apiKey, apiSecret, isAuthenticated, isInitialized, doctypeName]
   );
 
   React.useEffect(() => {
@@ -400,15 +416,21 @@ export default function DoctypePage() {
           marginTop: "1rem",
         }}
       >
-        <div style={{ display: "flex", gap: "8px" }}>
-          <input
-            type="text"
-            placeholder={`Search ${title}...`}
-            className="form-control"
-            style={{ width: 240 }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: "1" }}>
+          <div style={{ minWidth: "200px" }}>
+            <Controller control={control} name="name" render={({ field: { value } }) => (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <LinkField control={control} field={{ name: "name", label: "", type: "Link", linkTarget: "Lift Irrigation Scheme", placeholder: "Select ID", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
+              </div>
+            )} />
+          </div>
+          <div style={{ minWidth: "200px" }}>
+            <Controller control={control} name="lis_name" render={({ field: { value } }) => (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <LinkField control={control} field={{ name: "lis_name", label: "", type: "Link", linkTarget: "Lift Irrigation Scheme", placeholder: "Select LIS Name", required: false, defaultValue: value }} error={null} className="[&>label]:hidden vishal" />
+              </div>
+            )} />
+          </div>
         </div>
 
         <div className="view-switcher">

@@ -130,9 +130,19 @@ export default function NewAssetInterchangePage() {
                         },
                         displayDependsOn: { which_asset_to_interchange: "Motor" },
                     },
-                    { name: "current_motor_asset", label: "Current Motor Asset", type: "Read Only", displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true }, },
+                    {
+                        name: "current_motor_asset", label: "Current Motor Asset", type: "Read Only", displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true },
+                        fetchFrom: {
+                            sourceField: "pump_asset", targetDoctype: "Asset", targetField: "custom_current_linked_asset",
+                        },
+                    },
 
-                    { name: "current_motor_no", label: "Current Motor No", type: "Data", displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true }, },
+                    {
+                        name: "current_motor_no", label: "Current Motor No", type: "Data", displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true },
+                        fetchFrom: {
+                            sourceField: "pump_asset", targetDoctype: "Asset", targetField: "custom_linked_asset_no",
+                        },
+                    },
 
                     { name: "interchange_motor", label: "Interchange Motor", type: "Link", linkTarget: "Asset", displayDependsOn: { which_asset_to_interchange: "Motor", pump_asset: true }, },
 
@@ -157,13 +167,25 @@ export default function NewAssetInterchangePage() {
                         displayDependsOn: { which_asset_to_interchange: "Pump", },
 
                     },
-                    { name: "current_pump_asset", label: "Current Pump Asset", type: "Read Only", displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true }, },
-                    { name: "current_pump_no", label: "Current Pump No", type: "Data", displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true }, },
+                    {
+                        name: "current_pump_asset", label: "Current Pump Asset", type: "Read Only", displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true },
+                        fetchFrom: {
+                            sourceField: "pump_asset", targetDoctype: "Asset", targetField: "custom_current_linked_asset",
+                        },
+                    },
+                    {
+                        name: "current_pump_no", label: "Current Pump No", type: "Data", displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true },
+                        fetchFrom: {
+                            sourceField: "pump_asset", targetDoctype: "Asset", targetField: "custom_linked_asset_no",
+                        },
+                    },
                     { name: "interchange_pump", label: "Interchange Pump", type: "Link", linkTarget: "Asset", displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true }, },
-                    { name: "interchange_pump_no", label: "Interchange Pump No", type: "Data", displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true }, 
-                 fetchFrom: {
+                    {
+                        name: "interchange_pump_no", label: "Interchange Pump No", type: "Data", displayDependsOn: { which_asset_to_interchange: "Pump", motor_asset: true },
+                        fetchFrom: {
                             sourceField: "interchange_pump", targetDoctype: "Asset", targetField: "custom_asset_no",
-                        },},
+                        },
+                    },
                 ],
             },
         ];
@@ -193,10 +215,10 @@ export default function NewAssetInterchangePage() {
             toast.success("Asset Interchange created successfully!");
             const newName = response.data?.data?.name;
             if (newName) {
-    router.push(
-        `/lis-management/doctype/asset-interchange/${newName}?asset=${data.which_asset_to_interchange}`
-    );
-}
+                router.push(
+                    `/lis-management/doctype/asset-interchange/${newName}?asset=${data.which_asset_to_interchange}`
+                );
+            }
         } catch (err: any) {
             console.error("Create error:", err);
             const res = err.response?.data;
