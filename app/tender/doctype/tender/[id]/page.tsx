@@ -332,14 +332,14 @@ export default function RecordDetailPage() {
         linkTarget: "Contractor",
       },
       {
-        name: "custom_mobile_no",
-        label: "Mobile No",
+        name: "custom_contractor_company",
+        label: "Contractor Company",
         type: "Read Only",
         fetchFrom: {
           sourceField: "custom_contractor_name",
           targetDoctype: "Contractor",
-          targetField: "phone"
-        }
+          targetField: "custom_contractor_company"
+        },
       },
       {
         name: "custom_supplier_address",
@@ -352,6 +352,16 @@ export default function RecordDetailPage() {
         }
       },
       {
+        name: "custom_mobile_no",
+        label: "Mobile No",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "phone"
+        }
+      },
+      {
         name: "custom_email_id",
         label: "Email ID",
         type: "Read Only",
@@ -359,6 +369,26 @@ export default function RecordDetailPage() {
           sourceField: "custom_contractor_name",
           targetDoctype: "Contractor",
           targetField: "email_address"
+        },
+      },
+      {
+        name: "custom_gst",
+        label: "GST",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "custom_gst"
+        },
+      },
+      {
+        name: "custom_pan",
+        label: "PAN",
+        type: "Read Only",
+        fetchFrom: {
+          sourceField: "custom_contractor_name",
+          targetDoctype: "Contractor",
+          targetField: "custom_pan"
         },
       },
     ]);
@@ -530,7 +560,19 @@ export default function RecordDetailPage() {
       const nonDataFields = new Set<string>();
       formTabs.forEach((tab) => {
         tab.fields.forEach((field) => {
-          if (["Section Break", "Column Break", "Button", "Read Only"].includes(field.type)) {
+          if (["Section Break", "Column Break", "Button"].includes(field.type)) {
+            nonDataFields.add(field.name);
+          }
+          // Don't exclude contractor fields even if they are Read Only
+          // because they need to be saved with the tender record
+          if (field.type === "Read Only" && ![
+            "custom_contractor_company",
+            "custom_mobile_no", 
+            "custom_supplier_address",
+            "custom_email_id",
+            "custom_gst",
+            "custom_pan"
+          ].includes(field.name)) {
             nonDataFields.add(field.name);
           }
         });

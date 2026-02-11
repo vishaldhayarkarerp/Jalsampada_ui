@@ -568,7 +568,7 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
                             rowIndex={idx}
                             columnName={c.name}
                             onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
-                            disabled={disabled}
+                            disabled={disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1)}
                           />
                         ) : c.type === "Link" ? (
                           <TableLinkCell
@@ -576,7 +576,7 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
                             fieldName={`${field.name}.${idx}.${c.name}`}
                             column={c}
                             onValueChange={(value) => handleTableInputChange(idx, c.name, value)}
-                            disabled={disabled}
+                            disabled={disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1)}
                           />
                         ) : c.type === "Date" ? (
                           <DatePicker
@@ -592,14 +592,14 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
                             yearDropdownItemNumber={100}
                             withPortal
                             portalId="root"
-                            disabled={disabled}
+                            disabled={disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0)}
                           />
                         ) : c.type === "Data" || c.type === "Small Text" || c.type === "Text" ? (
-                          renderTableInput(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableInput(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Long Text" || c.type === "Markdown Editor" ? (
-                          renderTableTextarea(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableTextarea(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Code" ? (
-                          renderTableTextarea(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableTextarea(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Password" ? (
                           <input
                             className="form-control-borderless"
@@ -607,14 +607,14 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
                             placeholder={c.label}
                             value={currentRowData[c.name] || ""}
                             onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
-                            disabled={disabled}
+                            disabled={disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0)}
                           />
                         ) : c.type === "Int" ? (
-                          renderTableNumber(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableNumber(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Float" || c.type === "Currency" || c.type === "Percent" ? (
-                          renderTableNumber(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableNumber(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Color" ? (
-                          renderTableColor(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableColor(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "DateTime" || c.type === "Time" ? (
                           <input
                             className="form-control-borderless"
@@ -622,24 +622,24 @@ function TableFieldContent({ field, control, register, errors, disabled = false 
                             placeholder={c.label}
                             value={currentRowData[c.name] || ""}
                             onChange={(e) => handleTableInputChange(idx, c.name, e.target.value)}
-                            disabled={disabled}
+                            disabled={disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0)}
                           />
                         ) : c.type === "Duration" ? (
-                          renderTableDuration(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableDuration(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Check" ? (
-                          renderTableCheckbox(c, idx, rows, handleTableInputChange, formMethods.getValues("pump_operation") === "stop", disabled)
+                          renderTableCheckbox(c, idx, rows, handleTableInputChange, formMethods.getValues("pump_operation") === "stop", disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Select" ? (
-                          renderTableSelect(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableSelect(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Barcode" ? (
-                          renderTableInput(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableInput(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Read Only" ? (
                           renderTableReadOnly(c, idx, rows)
                         ) : c.type === "Rating" ? (
-                          renderTableRating(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableRating(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         ) : c.type === "Button" ? (
                           renderTableButton(c, idx, rows)
                         ) : (
-                          renderTableInput(c, idx, rows, handleTableInputChange, disabled)
+                          renderTableInput(c, idx, rows, handleTableInputChange, disabled || (field.name === 'custom_tender_extension_history' && rows.length > 1 && idx === 0))
                         )}
                       </td>
                     ))}
