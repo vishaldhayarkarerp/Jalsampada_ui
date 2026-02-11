@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p 2225",
     "lint": "next lint",
-    "deploy": "npm run build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && pm2 restart jalsampada --update-env"
+    "deploy": "bun run build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && pm2 restart jalsampada --update-env"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
