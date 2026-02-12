@@ -438,7 +438,7 @@ export default function LogBookSheetReportPage() {
                         zIndex: column.isSticky ? 30 : 20, // Sticky headers higher than normal headers
                         backgroundColor: "#3683f6", // Blue background matching stock-table style
                         color: "white", // White text for blue background
-                        borderRight: column.isSticky ? "1px solid #ddd" : "none", // Divider
+                        borderRight: column.isSticky ? "none" : "none", // Remove border divider
                         boxShadow: column.isSticky && column.fieldname === "asset_no" ? "4px 0 5px -2px rgba(0,0,0,0.1)" : "none" // Shadow on last sticky col
                     }}
                   >
@@ -462,7 +462,7 @@ export default function LogBookSheetReportPage() {
                             left: column.isSticky ? `${column.stickyLeft}px` : "auto",
                             zIndex: column.isSticky ? 10 : 1, // Sticky body higher than normal body
                             backgroundColor: "white", // CRITICAL: Opaque background so text doesn't overlap
-                            borderRight: column.isSticky ? "1px solid #eee" : "none",
+                            borderRight: column.isSticky ? "none" : "none",
                             boxShadow: column.isSticky && column.fieldname === "asset_no" ? "4px 0 5px -2px rgba(0,0,0,0.1)" : "none"
                         }}
                       >
