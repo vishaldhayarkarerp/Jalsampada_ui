@@ -216,6 +216,32 @@ export default function NewExpenditurePage() {
     };
   }, [formInstance, apiKey, apiSecret, docName]);
 
+  // Calculate bill_upto and remaining_amount when relevant fields change
+  React.useEffect(() => {
+    if (!formInstance) return;
+
+    const subscription = formInstance.watch((value: any, { name }: { name?: string }) => {
+      // Recalculate when bill_amount or prev_bill_amt changes
+      if (name === "bill_amount" || name === "prev_bill_amt" || name === "tender_amount" || name === undefined) {
+        const billAmount = Number(value.bill_amount) || 0;
+        const prevBillAmt = Number(value.prev_bill_amt) || 0;
+        const tenderAmount = Number(value.tender_amount) || 0;
+
+        // Calculate bill_upto = bill_amount + prev_bill_amt
+        const billUpto = billAmount + prevBillAmt;
+        formInstance.setValue("bill_upto", billUpto, { shouldDirty: true });
+
+        // Calculate remaining_amount = tender_amount - bill_upto
+        const remainingAmount = tenderAmount - billUpto;
+        formInstance.setValue("remaining_amount", remainingAmount, { shouldDirty: true });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [formInstance]);
+
   const handleFormInit = React.useCallback((form: any) => {
   setFormInstance(form);
 
@@ -397,6 +423,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           type: "Currency",
           precision: 2,
           defaultValue: "0.00",
+          readOnly: true,
         },
         {
           name: "remaining_amount",
@@ -404,6 +431,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           type: "Currency",
           precision: 2,
           defaultValue: "0.00",
+          readOnly: true,
         },
         {
           name: "bill_type",
