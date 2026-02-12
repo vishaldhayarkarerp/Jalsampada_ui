@@ -1,24 +1,36 @@
 # Use the official Bun image
-FROM oven/bun:1-slim
+FROM oven/bun:1-slim AS base
 WORKDIR /app
 
-# Copy all files from the current directory
+# Copy package files first (for better caching)
+COPY package.json bun.lockb* ./
+
+# Install dependencies (cached if package.json unchanged)
+RUN bun install --frozen-lockfile
+
+# Copy source code (only when files change)
 COPY . .
 
-# Install dependencies and build the application
-RUN bun install
+# Build application (cached if source unchanged)
 RUN bun run build
 
-# Prepare standalone server assets (copy static and public as per deploy script)
-RUN cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/
+# Production stage - use the standalone output
+FROM oven/bun:1-slim AS production
+WORKDIR /app
+
+# Copy the standalone build
+COPY --from=base /app/.next/standalone ./
+
+# Copy static files to the correct location expected by standalone server
+COPY --from=base /app/.next/static ./.next/static/
+COPY --from=base /app/public ./public/
 
 # Environment variables
 ENV NODE_ENV=production
-ENV PORT=2225
+ENV PORT=4000
 ENV HOSTNAME=0.0.0.0
 
-EXPOSE 2225
+EXPOSE 4000
 
 # Run the standalone server
-WORKDIR /app/.next/standalone
 CMD ["bun", "server.js"]
