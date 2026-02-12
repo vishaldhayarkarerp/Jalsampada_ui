@@ -589,19 +589,22 @@ export default function TenderLevelReport() {
             className="stock-table sticky-header-table"
             style={{ minWidth: `${totalTableWidth}px` }}
           >
-            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#3683f6" }}>
+            <thead style={{ position: "sticky", top: 0, zIndex: 30, backgroundColor: "#3683f6" }}>
               <tr>
                 {columnConfig.map((column) => (
                   <th
                     key={column.fieldname}
                     style={{
                       width: column.width,
-                      position: STICKY_COLUMNS.includes(column.fieldname) ? "sticky" : "static",
+                      position: STICKY_COLUMNS.includes(column.fieldname) ? "sticky" : "relative",
                       left: stickyLeftMap[column.fieldname] || "auto",
-                      zIndex: STICKY_COLUMNS.includes(column.fieldname) ? 40 : 15,
-                      backgroundColor: STICKY_COLUMNS.includes(column.fieldname)
-                        ? "#3683f6"
-                        : "inherit",
+                      zIndex: STICKY_COLUMNS.includes(column.fieldname) ? 30 : 20,
+                      backgroundColor: "#3683f6",
+                      color: "white",
+                      borderRight: "none",
+                      boxShadow: STICKY_COLUMNS.includes(column.fieldname) && 
+                                 column.fieldname === STICKY_COLUMNS[STICKY_COLUMNS.length - 1] 
+                                 ? "4px 0 5px -2px rgba(0,0,0,0.1)" : "none"
                     }}
                   >
                     {column.label}
@@ -626,12 +629,14 @@ export default function TenderLevelReport() {
                       <td
                         key={`${index}-${column.fieldname}`}
                         style={{
-                          position: STICKY_COLUMNS.includes(column.fieldname) ? "sticky" : "static",
+                          position: STICKY_COLUMNS.includes(column.fieldname) ? "sticky" : "relative",
                           left: stickyLeftMap[column.fieldname] || "auto",
-                          zIndex: STICKY_COLUMNS.includes(column.fieldname) ? 30 : 10,
-                          backgroundColor: STICKY_COLUMNS.includes(column.fieldname)
-                            ? "white"
-                            : "inherit",
+                          zIndex: STICKY_COLUMNS.includes(column.fieldname) ? 10 : 1,
+                          backgroundColor: "white",
+                          borderRight: "none",
+                          boxShadow: STICKY_COLUMNS.includes(column.fieldname) && 
+                                     column.fieldname === STICKY_COLUMNS[STICKY_COLUMNS.length - 1] 
+                                     ? "4px 0 5px -2px rgba(0,0,0,0.1)" : "none"
                         }}
                       >
                         {renderCellValue(row, column)}
