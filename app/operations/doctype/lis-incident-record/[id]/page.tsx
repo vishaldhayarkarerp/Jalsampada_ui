@@ -24,28 +24,28 @@ export default function EditLisIncidentRecordPage() {
   const [isSaving, setIsSaving] = React.useState(false);
 
   // 1. Fetch Existing Record
-  React.useEffect(() => {
-    const fetchRecord = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
-                headers: {
-                    'Authorization': `token ${apiKey}:${apiSecret}`
-                }
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.exception || "Failed to fetch record");
-            setRecord(data.data);
-        } catch (error: any) {
-            toast.error("Error loading record", { description: error.message, duration: Infinity});
-        } finally {
-            setIsLoading(false);
+  const fetchRecord = React.useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/${DOCTYPE_NAME}/${docname}`, {
+        headers: {
+          'Authorization': `token ${apiKey}:${apiSecret}`
         }
-    };
-
-    if (apiKey && apiSecret && docname) {
-        fetchRecord();
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.exception || "Failed to fetch record");
+      setRecord(data.data);
+    } catch (error: any) {
+      toast.error("Error loading record", { description: error.message, duration: Infinity});
+    } finally {
+      setIsLoading(false);
     }
   }, [apiKey, apiSecret, docname]);
+
+  React.useEffect(() => {
+    if (apiKey && apiSecret && docname) {
+      fetchRecord();
+    }
+  }, [fetchRecord]);
 
   // 2. Define Form Configuration (Mirrors new/page.tsx)
   const formTabs: TabbedLayout[] = React.useMemo(() => {
@@ -100,7 +100,7 @@ export default function EditLisIncidentRecordPage() {
             })
           },
           { name: "custom_asset_no", label: "Asset No", type: "Data", defaultValue: getValue("custom_asset_no"), readOnlyValue: getValue("custom_asset_no") }, 
-          { name: "custom_reported_by", label: "Reported By", type: "Link", linkTarget: "Employee", defaultValue: getValue("custom_reported_by") },
+          { name: "custom_reported_by", label: "Reported By", type: "Link", linkTarget: "Employee",searchField: "employee_name", defaultValue: getValue("custom_reported_by") },
           { name: "priority", label: "Priority", type: "Link", linkTarget: "Issue Priority", defaultValue: getValue("priority") },
           { name: "status", label: "Status", type: "Select", options: "Open\nReplied\nOn Hold\nResolved\nClosed", defaultValue: getValue("status", "Open") },
           { 
@@ -254,7 +254,7 @@ export default function EditLisIncidentRecordPage() {
             type: "Table",
             defaultValue: getValue("custom_reporting_and_approval", []),
             columns: [
-              { name: "name1", label: "Employee", type: "Link", linkTarget: "Employee" },
+              { name: "name1", label: "Employee", type: "Link",searchField: "employee_name", linkTarget: "Employee" },
               { name: "designation", label: "Designation", type: "Data", fetchFrom: { sourceField: "name1", targetDoctype: "Employee", targetField: "designation" } },
               { name: "signature", label: "Signature", type: "Attach" },
               { name: "date", label: "Date", type: "Date" },
@@ -348,7 +348,9 @@ export default function EditLisIncidentRecordPage() {
       }
 
       toast.success("Incident Updated Successfully");
-      router.push(`/operations/doctype/lis-incident-record`);
+      setRecord(responseData.data);
+      setIsLoading(true);
+      setTimeout(() => setIsLoading(false), 50);
 
     } catch (err: any) {
       console.error("Save Error:", err);

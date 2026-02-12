@@ -90,7 +90,7 @@ export default function NewLisIncidentRecordPage() {
             })
           },
           { name: "custom_asset_no", label: "Asset No", type: "Data", defaultValue: getValue("custom_asset_no"), readOnlyValue: getValue("custom_asset_no") }, // Read-only logic usually handled by fetchFrom
-          { name: "custom_reported_by", label: "Reported By", type: "Link", linkTarget: "Employee", defaultValue: getValue("custom_reported_by") },
+          { name: "custom_reported_by", label: "Reported By", type: "Link", linkTarget: "Employee",searchField: "employee_name", defaultValue: getValue("custom_reported_by") },
           { name: "priority", label: "Priority", type: "Link", linkTarget: "Issue Priority", defaultValue: getValue("priority") },
           { name: "status", label: "Status", type: "Select", options: "Open\nReplied\nOn Hold\nResolved\nClosed", defaultValue: getValue("status", "Open") },
           { 
@@ -247,7 +247,7 @@ export default function NewLisIncidentRecordPage() {
             type: "Table",
             defaultValue: getValue("custom_reporting_and_approval", []),
             columns: [
-              { name: "name1", label: "Employee", type: "Link", linkTarget: "Employee" },
+              { name: "name1", label: "Employee", type: "Link",searchField: "employee_name", linkTarget: "Employee" },
               { name: "designation", label: "Designation", type: "Data", fetchFrom: { sourceField: "name1", targetDoctype: "Employee", targetField: "designation" } },
               { name: "signature", label: "Signature", type: "Attach" },
               { name: "date", label: "Date", type: "Date" },
@@ -347,7 +347,7 @@ export default function NewLisIncidentRecordPage() {
       }
 
       toast.success("Incident Recorded Successfully");
-      router.push(`/operations/doctype/lis-incident-record`);
+      router.push(`/operations/doctype/lis-incident-record/${encodeURIComponent(responseData.data.name)}`);
 
     } catch (err: any) {
       console.error("Save Error:", err);
