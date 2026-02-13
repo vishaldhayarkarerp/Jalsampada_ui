@@ -122,7 +122,21 @@ export default function NewAssetInterchangePage() {
                         label: "Interchange Motor",
                         displayDependsOn: { which_asset_to_interchange: "Motor" },
                     },
-                    { name: "pump_asset", label: "Pump Asset", type: "Link", linkTarget: "Asset", displayDependsOn: { which_asset_to_interchange: "Motor" }, },
+                    {
+                        name: "pump_asset",
+                        label: "Pump Asset",
+                        type: "Link",
+                        linkTarget: "Asset",
+                        displayDependsOn: { which_asset_to_interchange: "Motor" },
+
+                        doctype: "Asset",
+                        filterMapping: [
+                            { sourceField: "lis_name", targetField: "custom_lis_name" },
+                            { sourceField: "stage", targetField: "custom_stage_no" },
+                        ],
+
+                        referenceDoctype: "Asset Interchange",
+                    },
                     {
                         name: "pump_no", label: "Pump No", type: "Read Only",
                         fetchFrom: {
@@ -160,7 +174,16 @@ export default function NewAssetInterchangePage() {
                         label: "Interchange Pump",
                         displayDependsOn: { which_asset_to_interchange: "Pump" },
                     },
-                    { name: "motor_asset", label: "Motor Asset", type: "Link", linkTarget: "Asset", displayDependsOn: { which_asset_to_interchange: "Pump" }, },
+                    {
+                        name: "motor_asset", label: "Motor Asset", type: "Link", linkTarget: "Asset", displayDependsOn: { which_asset_to_interchange: "Pump" },
+                        doctype: "Asset",
+                        filterMapping: [
+                            { sourceField: "lis_name", targetField: "custom_lis_name" },
+                            { sourceField: "stage", targetField: "custom_stage_no" },
+                        ],
+
+                        referenceDoctype: "Asset Interchange",
+                    },
                     {
                         name: "motor_no", label: "Motor No", type: "Read Only",
                         fetchFrom: { sourceField: "motor_asset", targetDoctype: "Asset", targetField: "custom_asset_no" },
@@ -189,7 +212,7 @@ export default function NewAssetInterchangePage() {
                 ],
             },
         ];
-    }, [duplicateData]);
+    }, [duplicateData, selectedAsset]);
 
     const handleSubmit = async (data: Record<string, any>) => {
         if (!isInitialized || !isAuthenticated || !apiKey || !apiSecret) {
