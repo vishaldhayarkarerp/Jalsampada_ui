@@ -465,7 +465,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           {
             name: "prev_bill_no",
             label: "Previous Bill Number",
-            type: "Data",
+            type: "Read Only",
             defaultValue: 0,
             fieldColumns: 1,
           },
@@ -473,7 +473,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           {
             name: "prev_bill_amt",
             label: "Previous Bill Amount",
-            type: "Currency",
+            type: "Read Only",
             precision: 2,
             defaultValue: "0.00",
             fieldColumns: 1,
@@ -483,7 +483,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           {
             name: "previous_mb_no",
             label: "Previous MB No",
-            type: "Data",
+            type: "Read Only",
             defaultValue: 0,
             fieldColumns: 1,
           },
@@ -491,7 +491,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
           {
             name: "previous_page_no",
             label: "Previous Page No",
-            type: "Data",
+            type: "Read Only",
             defaultValue: 0,
             fieldColumns: 1,
           },
@@ -500,7 +500,7 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
             name: "bill_number",
             label: "Bill Number",
             type: "Data",
-            defaultValue: "0.00",
+            defaultValue: "0",
             fieldColumns: 1,
           },
 
