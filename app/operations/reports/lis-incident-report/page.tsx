@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { LinkInput } from "@/components/LinkInput";
 import { useAuth } from "@/context/AuthContext";
 import jsPDF from 'jspdf';
-
 
 // --- API Configuration ---
 const API_BASE_URL = "http://103.219.1.138:4412/";
@@ -54,17 +53,17 @@ const formatDateTime = (dateString: string | null): string => {
 };
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, string> = {
-  name: "150px",
-  custom_incident_subject: "200px",
+  name: "130px",
+  custom_incident_subject: "140px",
   customer: "150px",
-  raised_by: "250px",
+  raised_by: "130px",
   custom_lis: "120px",
-  custom_stage: "100px",
+  custom_stage: "150px",
   custom_asset: "120px",
   custom_asset_no: "100px",
-  status: "100px",
-  workflow_state: "180px",
-  priority: "100px",
+  status: "60px",
+  workflow_state: "100px",
+  priority: "60px",
   issue_type: "120px",
   description: "350px",
   first_responded_on: "180px",
@@ -92,6 +91,13 @@ export default function LISIncidentReportPage() {
     custom_stage: "",
     asset: "",
     status: "",
+  });
+
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [dragState, setDragState] = useState({
+    isGrabbing: false,
+    startX: 0,
+    scrollLeft: 0,
   });
 
   // --- Dependent Filters Logic ---
@@ -219,6 +225,16 @@ export default function LISIncidentReportPage() {
     return () => clearTimeout(timer);
   }, [filters, fetchReportData, isInitialized, isAuthenticated]);
 
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (dragState.isGrabbing) {
+        setDragState(prev => ({ ...prev, isGrabbing: false }));
+      }
+    };
+
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [dragState.isGrabbing]);
 
   // --- Event Handlers ---
   const handleExportCSV = () => {
@@ -452,6 +468,32 @@ export default function LISIncidentReportPage() {
     }));
   };
 
+  // --- Horizontal Scroll Drag Handlers ---
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!tableRef.current) return;
+    setDragState({
+      isGrabbing: true,
+      startX: e.pageX - tableRef.current.offsetLeft,
+      scrollLeft: tableRef.current.scrollLeft,
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!dragState.isGrabbing || !tableRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - tableRef.current.offsetLeft;
+    const walk = (x - dragState.startX) * 1.5; // Optimized scroll speed
+    tableRef.current.scrollLeft = dragState.scrollLeft - walk;
+  };
+
+  const handleMouseUp = useCallback(() => {
+    setDragState(prev => ({ ...prev, isGrabbing: false }));
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setDragState(prev => ({ ...prev, isGrabbing: false }));
+  }, []);
+
   const totalTableWidth = useMemo(() => {
     return columnConfig.reduce((total, col) => {
       const width = parseInt(col.width.replace("px", ""));
@@ -610,12 +652,20 @@ export default function LISIncidentReportPage() {
 
         {/* Table Section */}
         <div
+          ref={tableRef}
           className="stock-table-container border rounded-md relative z-10"
           style={{
             overflowX: "auto",
             overflowY: "auto",
             maxHeight: "70vh",
+            cursor: dragState.isGrabbing ? "grabbing" : "grab",
+            userSelect: dragState.isGrabbing ? "none" : "auto",
+            willChange: dragState.isGrabbing ? "transform" : "auto",
           }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
         >
           <table
             className="stock-table sticky-header-table"
