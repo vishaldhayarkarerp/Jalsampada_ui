@@ -353,44 +353,46 @@ const formTabs: TabbedLayout[] = React.useMemo(() => {
         },
 
         {
-          name: "prev_bill_no",
-          label: "Previous Bill Number",
-          type: "Data",
-          defaultValue: 0,
-          fieldColumns: 1,
-        },
-        {
-          name: "prev_bill_amt",
-          label: "Previous Bill Amount",
-          type: "Currency",
-          precision: 2,
-          defaultValue: "0.00",
-          fieldColumns: 1,
-        },
-        {
-          // 🟢 RENAMED: was "mb_no", now "prev_mb_no" to avoid conflict
-          name: "prev_mb_no",
-          label: "Previous MB No",
-          type: "Data",
-          defaultValue: 0,
-          fieldColumns: 1,
-        },
-        {
-          // 🟢 RENAMED: was "page_no", now "prev_page_no" to avoid conflict
-          name: "prev_page_no",
-          label: "Previous Page No",
-          type: "Data",
-          defaultValue: 0,
-          fieldColumns: 1,
-        },
+            name: "prev_bill_no",
+            label: "Previous Bill Number",
+            type: "Read Only",
+            defaultValue: 0,
+            fieldColumns: 1,
+          },
 
-        {
-          name: "bill_number",
-          label: "Bill Number",
-          type: "Data",
-          defaultValue: "0.00",
-          fieldColumns: 1,
-        },
+          {
+            name: "prev_bill_amt",
+            label: "Previous Bill Amount",
+            type: "Read Only",
+            precision: 2,
+            defaultValue: "0.00",
+            fieldColumns: 1,
+          },
+
+          // 🟢 Corrected Field Names
+          {
+            name: "previous_mb_no",
+            label: "Previous MB No",
+            type: "Read Only",
+            defaultValue: 0,
+            fieldColumns: 1,
+          },
+
+          {
+            name: "previous_page_no",
+            label: "Previous Page No",
+            type: "Read Only",
+            defaultValue: 0,
+            fieldColumns: 1,
+          },
+
+          {
+            name: "bill_number",
+            label: "Bill Number",
+            type: "Data",
+            defaultValue: "0",
+            fieldColumns: 1,
+          },
         {
           name: "bill_amount",
           label: "Bill Amount",
